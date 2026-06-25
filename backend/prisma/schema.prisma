@@ -33,3 +33,61 @@ model RefreshToken {
 
   @@index([userId])
 }
+
+enum ProductType {
+  TYPE1
+  TYPE2
+  TYPE3
+}
+
+enum Shape {
+  ROUND
+  SQUARE
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  type        ProductType
+
+  // field umum, wajib semua tipe
+  name        String
+  description String
+  image       String
+
+  // hanya wajib untuk TYPE1 & TYPE2, null untuk TYPE3 (validasi di app layer)
+  flavor      String?
+
+  // diskon, opsional, default 0
+  discount    Decimal     @default(0) @db.Decimal(5, 2)
+
+  // relasi ke variant (shape + size + price)
+  // TYPE1  -> hanya 1 row variant
+  // TYPE2  -> banyak row, shape ROUND & SQUARE harus ada
+  // TYPE3  -> sama seperti TYPE2 tapi tanpa flavor
+  variants    ProductVariant[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id         String   @id @default(uuid())
+
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  shape      Shape
+  // diameter (cm) untuk ROUND, panjang sisi (cm) untuk SQUARE
+  // contoh: 16,18,20,...,30 (kelipatan 2)
+  size       Int
+
+  price      Decimal  @db.Decimal(12, 2)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([productId, shape, size]) // cegah duplikat size yg sama untuk 1 product+shape
+  @@map("product_variants")
+}

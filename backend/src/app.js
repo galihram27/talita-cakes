@@ -1,7 +1,8 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import routes from "./routes/index.js";
-import { errorHandler } from "./middlewares/errorHandler.js"; //? sesuaikan kalau nama file error handler kamu berbeda
+import { errorHandler } from "./middlewares/errorHandler.js";
+import { AppError } from './utils/appError.js';
 
 const app = express();
 
@@ -10,6 +11,11 @@ app.use(cookieParser());
 
 // semua route fitur masuk lewat sini, dengan prefix /api
 app.use("/api", routes);
+
+// 404 handler
+app.use((req, res, next) => {
+  next(new AppError(`Route ${req.originalUrl} tidak ditemukan`, 404));
+});
 
 // error handler harus paling bawah, setelah semua route
 app.use(errorHandler);
