@@ -49,6 +49,23 @@ export const findAllProducts = async () => {
   });
 };
 
+// tambahkan di product.repository.js, jangan timpa yang sudah ada
+
+export const findSingleVariantByProductId = async (productId) => {
+  return prisma.productVariant.findFirst({
+    where: { productId },
+  });
+};
+
+export const findVariantById = async (id) => {
+  return prisma.productVariant.findUnique({
+    where: { id },
+    include: { product: true },
+  });
+};
+
+
+
 /**
  * Update TYPE1: update field product (yang dikirim saja) + update 1 variant
  * dengan field yang dikirim saja (merge dengan data lama).

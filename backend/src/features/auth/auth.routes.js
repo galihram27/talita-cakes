@@ -3,16 +3,18 @@ import {
    registerController,
    loginController,
    refreshTokenController,
-   logoutController, //? tambah controller logout
+   logoutController,
 } from "./auth.controller.js";
+import { validate } from "../../middlewares/validate.js";
+import { registerSchema, loginSchema } from "./auth.validation.js";
 
 const router = Router();
 
 // POST /auth/register
-router.post("/register", registerController);
+router.post("/register", validate(registerSchema), registerController);
 
 // POST /auth/login
-router.post("/login", loginController);
+router.post("/login", validate(loginSchema), loginController);
 
 // POST /auth/refresh-token
 router.post("/refresh-token", refreshTokenController);
