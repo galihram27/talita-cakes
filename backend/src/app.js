@@ -3,11 +3,13 @@ import cookieParser from "cookie-parser";
 import routes from "./routes/index.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { AppError } from './utils/appError.js';
+import { visitorTrackingMiddleware } from "./middlewares/visitorTracking.middleware.js";
 
 const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(visitorTrackingMiddleware);
 
 // semua route fitur masuk lewat sini, dengan prefix /api
 app.use("/api", routes);

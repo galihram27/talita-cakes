@@ -286,3 +286,15 @@ model Gallery {
 
   @@map("galleries")
 }
+
+model VisitorLog {
+  id        String   @id @default(uuid())
+  visitorId String   // dari cookie, bukan userId (karena belum tentu login)
+  date      DateTime @db.Date // hanya tanggal, jam diabaikan untuk dedupe harian
+  userId    String?  // optional, kalau ternyata visitor itu sedang login
+  createdAt DateTime @default(now())
+
+  @@unique([visitorId, date]) // inti dedupe: 1 visitor cuma 1 row per hari
+  @@index([date])
+  @@map("visitor_logs")
+}
