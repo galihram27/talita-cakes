@@ -3,6 +3,7 @@ import authRoutes from "../features/auth/auth.routes.js";
 import productRoutes from "../features/product/product.routes.js";
 import cartRoutes from "../features/cart/cart.routes.js";
 import orderRoutes from "../features/order/order.routes.js";
+import galleryRoutes from "../features/gallery/gallery.routes.js";
 
 const router = Router();
 
@@ -10,5 +11,6 @@ router.use("/auth", authRoutes);
 router.use("/products", productRoutes);
 router.use("/carts", cartRoutes);
 router.use("/orders", orderRoutes);
+router.use("/galleries", galleryRoutes);
 
 export default router;

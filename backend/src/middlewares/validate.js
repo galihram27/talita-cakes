@@ -12,6 +12,12 @@ export const validate = (schema, target = 'body') => (req, res, next) => {
     return next(new AppError('Validasi gagal', 422, result.error.flatten()));
   }
 
-  req[target] = result.data;
+  if (target === 'query') {
+    Object.keys(req.query).forEach((key) => delete req.query[key]);
+    Object.assign(req.query, result.data);
+  } else {
+    req[target] = result.data;
+  }
+
   next();
 };
