@@ -28,6 +28,8 @@ model User {
   cart          Cart?   // 1 user hanya punya 1 cart
 
   orders Order[]
+
+  @@map("users")
 }
 
 model RefreshToken {
@@ -39,6 +41,7 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@map("refresh_tokens")
 }
 
 // ==========================================
@@ -269,4 +272,17 @@ model OrderItem {
   @@index([productId])
   @@index([variantId])
   @@map("order_items")
+}
+
+model Gallery {
+  id          String   @id @default(uuid())
+  title       String
+  imageUrl    String
+  description String?
+  tags        String[]
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("galleries")
 }
