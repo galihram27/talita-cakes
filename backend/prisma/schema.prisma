@@ -24,12 +24,41 @@ model User {
   role       Role     @default(USER)
   created_at DateTime @default(now())
 
+  isVerified Boolean  @default(false)
+
+  // ===== TERMS & PRIVACY CONSENT =====
+  // Disimpan buat bukti audit: kapan user setuju & versi dokumen yang mana.
+  // termsVersion berguna kalau nanti Terms of Use di-update, sehingga
+  // kamu bisa tahu user mana yang belum agree ke versi terbaru.
+  termsAcceptedAt DateTime?
+  termsVersion    String?
+
+  otpCodes   OtpCode[]
   refreshTokens RefreshToken[]
   cart          Cart?   // 1 user hanya punya 1 cart
 
   orders Order[]
 
   @@map("users")
+}
+
+enum OtpPurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+model OtpCode {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String     // hashed pakai bcrypt, bukan plaintext
+  purpose   OtpPurpose
+  expiresAt DateTime
+  attempts  Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  @@index([userId, purpose])
+  @@map("otp_codes")
 }
 
 model RefreshToken {
@@ -210,6 +239,10 @@ model Order {
   // diisi kalau recipientType = FOR_SOMEONE_ELSE
   recipientName   String?
   recipientPhone  String?
+  // hanya diisi kalau recipientType = FOR_SOMEONE_ELSE
+  // bukti bahwa user menyatakan sudah dapat izin dari penerima
+  // untuk membagikan nama, no HP, dan alamatnya demi keperluan pengiriman
+  recipientDataConsent Boolean @default(false)
 
   // alamat tujuan delivery (dipakai baik FOR_MYSELF maupun FOR_SOMEONE_ELSE)
   // untuk FOR_MYSELF, ini alamat user sendiri yang dipilih lewat map

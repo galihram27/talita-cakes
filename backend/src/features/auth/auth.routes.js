@@ -2,24 +2,35 @@ import { Router } from "express";
 import {
    registerController,
    loginController,
+   verifyEmailController,
+   resendOtpController,
+   forgotPasswordController,
+   resetPasswordController,
    refreshTokenController,
    logoutController,
 } from "./auth.controller.js";
 import { validate } from "../../middlewares/validate.js";
-import { registerSchema, loginSchema } from "./auth.validation.js";
+import {
+   registerSchema,
+   loginSchema,
+   verifyEmailSchema,
+   resendOtpSchema,
+   forgotPasswordSchema,
+   resetPasswordSchema,
+} from "./auth.validation.js";
 
 const router = Router();
 
-// POST /auth/register
 router.post("/register", validate(registerSchema), registerController);
+router.post("/verify-email", validate(verifyEmailSchema), verifyEmailController);
+router.post("/resend-otp", validate(resendOtpSchema), resendOtpController);
 
-// POST /auth/login
 router.post("/login", validate(loginSchema), loginController);
 
-// POST /auth/refresh-token
-router.post("/refresh-token", refreshTokenController);
+router.post("/forgot-password", validate(forgotPasswordSchema), forgotPasswordController);
+router.post("/reset-password", validate(resetPasswordSchema), resetPasswordController);
 
-// POST /auth/logout
+router.post("/refresh-token", refreshTokenController);
 router.post("/logout", logoutController);
 
 export default router;

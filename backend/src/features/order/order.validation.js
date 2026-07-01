@@ -2,6 +2,22 @@
 import { z } from 'zod';
 import { isRequestCakeDateValid } from './order.helper.js';
 
+const strictBooleanSchema = z
+  .union([z.boolean(), z.string()])
+  .transform((val, ctx) => {
+    if (typeof val === 'boolean') return val;
+
+    const normalized = val.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'recipientDataConsent harus true atau false',
+    });
+    return z.NEVER;
+  });
+
 const checkoutBaseSchema = z.object({
   fulfillmentType: z.enum(['PICKUP', 'DELIVERY'], {
     message: 'fulfillmentType harus PICKUP atau DELIVERY',
@@ -12,6 +28,7 @@ const checkoutBaseSchema = z.object({
   recipientType: z.enum(['FOR_MYSELF', 'FOR_SOMEONE_ELSE']).optional(),
   recipientName: z.string().trim().min(1).optional(),
   recipientPhone: z.string().trim().min(8).optional(),
+  recipientDataConsent: strictBooleanSchema.optional(),
   address: z.string().trim().min(1).optional(),
   addressLat: z.coerce.number().optional(),
   addressLng: z.coerce.number().optional(),
@@ -61,6 +78,15 @@ export const checkoutSchema = checkoutBaseSchema.superRefine((data, ctx) => {
         code: z.ZodIssueCode.custom,
         message: 'recipientPhone wajib diisi',
         path: ['recipientPhone'],
+      });
+    }
+
+    // WAJIB: user harus konfirmasi sudah dapat izin dari penerima
+    if (!data.recipientDataConsent) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Anda harus konfirmasi sudah mendapat izin dari penerima untuk membagikan datanya',
+        path: ['recipientDataConsent'],
       });
     }
   }

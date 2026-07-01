@@ -29,16 +29,44 @@ const passwordSchema = z
 // Phone
 const phoneSchema = z.string().min(8, "Phone number is too short");
 
+const acceptedTermsSchema = z
+   .boolean({ message: "acceptedTerms wajib diisi" })
+   .refine((val) => val === true, {
+      message: "Kamu harus menyetujui Terms of Use & Privacy Policy",
+   });
+
 // REGISTER VALIDATION
 export const registerSchema = z.object({
    name: nameSchema,
    email: emailSchema,
    password: passwordSchema,
    phone: phoneSchema,
+   acceptedTerms: acceptedTermsSchema,
 });
 
 // LOGIN VALIDATION
 export const loginSchema = z.object({
    email: emailSchema,
    password: z.string().min(1, "Password is required"),
+});
+
+// OTP VALIDATION
+export const verifyEmailSchema = z.object({
+   email: emailSchema,
+   code: z.string().length(6, "Kode OTP harus 6 digit"),
+});
+
+export const resendOtpSchema = z.object({
+   email: emailSchema,
+   purpose: z.enum(["EMAIL_VERIFICATION", "PASSWORD_RESET"]),
+});
+
+export const forgotPasswordSchema = z.object({
+   email: emailSchema,
+});
+
+export const resetPasswordSchema = z.object({
+   email: emailSchema,
+   code: z.string().length(6, "Kode OTP harus 6 digit"),
+   newPassword: passwordSchema,
 });

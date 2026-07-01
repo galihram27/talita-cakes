@@ -1,39 +1,41 @@
 import bcrypt from "bcrypt";
 import prisma from "../src/lib/prisma.js";
+import { CURRENT_TERMS_VERSION } from "../src/config/legal.config.js";
 
-async function main() {
-   const adminEmail = process.env.ADMIN_EMAIL;
-   const adminPassword = process.env.ADMIN_PASSWORD;
-   const adminPhone = process.env.ADMIN_PHONE;
+const seedAdmin = async () => {
+  const { ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_PHONE } = process.env;
 
-   if (!adminEmail || !adminPassword) {
-      throw new Error(
-         "ADMIN_EMAIL dan ADMIN_PASSWORD harus diset di file .env"
-      );
-   }
+  if (!ADMIN_NAME || !ADMIN_EMAIL || !ADMIN_PASSWORD || !ADMIN_PHONE) {
+    console.warn("⚠️  ADMIN_* env vars belum lengkap, skip seed admin.");
+    return;
+  }
 
-   const hashedPassword = await bcrypt.hash(adminPassword, 10);
+  const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
-   const admin = await prisma.user.upsert({
-      where: { email: adminEmail },
-      update: {},
-      create: {
-         name: "Admin",
-         email: adminEmail,
-         password: hashedPassword,
-         phone: adminPhone,
-         role: "ADMIN",
-      },
-   });
+  // upsert biar seed aman dijalankan berkali-kali (idempotent)
+  const admin = await prisma.user.upsert({
+    where: { email: ADMIN_EMAIL },
+    update: {}, // kalau sudah ada, jangan diubah — hindari re-hash password tiap run
+    create: {
+      name: ADMIN_NAME,
+      email: ADMIN_EMAIL,
+      password: hashedPassword,
+      phone: ADMIN_PHONE,
+      role: "ADMIN",
+      isVerified: true, // langsung verified, skip OTP sepenuhnya
+      termsAcceptedAt: new Date(),
+      termsVersion: CURRENT_TERMS_VERSION,
+    },
+  });
 
-   console.log("Admin berhasil dibuat:", admin);
-}
+  console.log(`✅ Admin seeded: ${admin.email}`);
+};
 
-main()
-   .catch((e) => {
-      console.error(e);
-      process.exit(1);
-   })
-   .finally(async () => {
-      await prisma.$disconnect();
-   });
+seedAdmin()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

@@ -97,6 +97,7 @@ export const confirmCheckout = async (userId, payload) => {
     recipientType: isDelivery ? data.recipientType : null,
     recipientName: isForSomeoneElse ? data.recipientName : null,
     recipientPhone: isForSomeoneElse ? data.recipientPhone : null,
+    recipientDataConsent: isForSomeoneElse ? data.recipientDataConsent : false,
     address: isDelivery ? data.address : null,
     addressLat: isDelivery ? data.addressLat : null,
     addressLng: isDelivery ? data.addressLng : null,

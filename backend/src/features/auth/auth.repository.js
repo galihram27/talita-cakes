@@ -16,6 +16,8 @@ export const createUser = async (data) => {
          password: data.password,
          phone: data.phone,
          role: data.role || "USER",
+         termsAcceptedAt: data.termsAcceptedAt,
+         termsVersion: data.termsVersion,
       },
    });
 };
@@ -98,5 +100,44 @@ export const deleteExpiredRefreshTokens = async () => {
       where: {
          expiresAt: { lt: new Date() },
       },
+   });
+};
+
+// =========================
+// OTP
+// =========================
+
+export const createOtpCode = async ({ userId, code, purpose, expiresAt }) => {
+   return prisma.otpCode.create({
+      data: { userId, code, purpose, expiresAt },
+   });
+};
+
+export const findLatestOtpByUserAndPurpose = async (userId, purpose) => {
+   return prisma.otpCode.findFirst({
+      where: { userId, purpose },
+      orderBy: { createdAt: "desc" },
+   });
+};
+
+export const deleteOtpById = async (id) => {
+   return prisma.otpCode.delete({ where: { id } });
+};
+
+export const deleteOtpsByUserAndPurpose = async (userId, purpose) => {
+   return prisma.otpCode.deleteMany({ where: { userId, purpose } });
+};
+
+export const markUserVerified = async (userId) => {
+   return prisma.user.update({
+      where: { id: userId },
+      data: { isVerified: true },
+   });
+};
+
+export const updateUserPassword = async (userId, hashedPassword) => {
+   return prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
    });
 };
