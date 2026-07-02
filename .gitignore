@@ -1,2 +1,6 @@
 # Ignore local structure export
-structure.txt
+backend.txt
+frontend_next.txt
+frontend_vue.txt
+module-vue.txt
+steps.txt
