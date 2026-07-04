@@ -136,7 +136,21 @@ export const getOrderById = async (userId, orderId) => {
 };
 
 export const getAllOrdersForAdmin = async (status) => {
-  return orderRepository.findAllOrders(status);
+  const orders = await orderRepository.findAllOrders(status);
+
+  // Jangan bocorkan field sensitif user (password hash, dll) ke response —
+  // admin cukup tahu identitas & kontak pemesan
+  return orders.map((order) => ({
+    ...order,
+    user: order.user
+      ? {
+          id: order.user.id,
+          name: order.user.name,
+          email: order.user.email,
+          phone: order.user.phone,
+        }
+      : null,
+  }));
 };
 
 export const updateOrderStatusByAdmin = async (orderId, status) => {

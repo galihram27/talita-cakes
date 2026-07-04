@@ -2,12 +2,13 @@
 import { AppError } from "../../utils/appError.js";
 import * as cartRepository from "./cart.repository.js";
 import * as productRepository from "../../features/product/product.repository.js";
-import { TYPE3_FLAVORS } from "../../features/product/product.constant.js";
+import { CUSTOM_FLAVORS } from "../../features/product/product.constant.js";
 
 const PRODUCT_TYPE = {
    TYPE1: "TYPE1",
    TYPE2: "TYPE2",
    TYPE3: "TYPE3",
+   TYPE4: "TYPE4",
 };
 
 /**
@@ -30,8 +31,21 @@ const applyDiscount = (basePrice, discountPercent) => {
 const resolveItemDetails = async (product, payload) => {
    const { type, discount } = product;
 
-   // TYPE 1
-   if (type === PRODUCT_TYPE.TYPE1) {
+   // flavor pilihan user wajib untuk TYPE2 & TYPE4, dan harus dari CUSTOM_FLAVORS
+   const validateCustomFlavor = (flavor) => {
+      if (!flavor) {
+         throw new AppError("flavor wajib diisi untuk tipe produk ini", 422);
+      }
+      if (!CUSTOM_FLAVORS.includes(flavor)) {
+         throw new AppError(
+            `flavor tidak valid, pilih salah satu: ${CUSTOM_FLAVORS.join(", ")}`,
+            422
+         );
+      }
+   };
+
+   // TYPE 1 & TYPE 2: variant fixed (1 row), tidak disimpan di cart item
+   if (type === PRODUCT_TYPE.TYPE1 || type === PRODUCT_TYPE.TYPE2) {
       const variant = await productRepository.findSingleVariantByProductId(
          product.id
       );
@@ -39,16 +53,21 @@ const resolveItemDetails = async (product, payload) => {
          throw new AppError("Variant untuk produk ini belum tersedia", 422);
       }
 
+      // TYPE 2: user pilih flavor + dekorasi (custom image)
+      if (type === PRODUCT_TYPE.TYPE2) {
+         validateCustomFlavor(payload.flavor);
+      }
+
       return {
          variantId: null, // tidak disimpan di cart item, sesuai desain
-         flavor: null,
-         customImage: null,
+         flavor: type === PRODUCT_TYPE.TYPE2 ? payload.flavor : null,
+         customImage: type === PRODUCT_TYPE.TYPE2 ? payload.customImage : null,
          price: applyDiscount(variant.price, discount),
       };
    }
 
-   // TYPE 2
-   if (type === PRODUCT_TYPE.TYPE2 || type === PRODUCT_TYPE.TYPE3) {
+   // TYPE 3 & TYPE 4: user memilih shape + size lewat variant
+   if (type === PRODUCT_TYPE.TYPE3 || type === PRODUCT_TYPE.TYPE4) {
       if (!payload.variantId) {
          throw new AppError("variantId wajib diisi untuk tipe produk ini", 422);
       }
@@ -60,23 +79,15 @@ const resolveItemDetails = async (product, payload) => {
          throw new AppError("Variant tidak ditemukan untuk produk ini", 404);
       }
 
-      // TYPE 3
-      if (type === PRODUCT_TYPE.TYPE3) {
-         if (!payload.flavor) {
-            throw new AppError("flavor wajib diisi untuk tipe produk ini", 422);
-         }
-         if (!TYPE3_FLAVORS.includes(payload.flavor)) {
-            throw new AppError(
-               `flavor tidak valid, pilih salah satu: ${TYPE3_FLAVORS.join(", ")}`,
-               422
-            );
-         }
+      // TYPE 4: user juga pilih flavor + dekorasi (custom image)
+      if (type === PRODUCT_TYPE.TYPE4) {
+         validateCustomFlavor(payload.flavor);
       }
 
       return {
          variantId: variant.id,
-         flavor: type === PRODUCT_TYPE.TYPE3 ? payload.flavor : null,
-         customImage: type === PRODUCT_TYPE.TYPE3 ? payload.customImage : null,
+         flavor: type === PRODUCT_TYPE.TYPE4 ? payload.flavor : null,
+         customImage: type === PRODUCT_TYPE.TYPE4 ? payload.customImage : null,
          price: applyDiscount(variant.price, discount),
       };
    }

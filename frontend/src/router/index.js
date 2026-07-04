@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth.store'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
 const routes = [
   {
@@ -19,6 +21,11 @@ const routes = [
         path: 'cart',
         name: 'cart',
         component: () => import('@/views/CartView.vue'),
+      },
+      {
+        path: 'profile',
+        name: 'profile',
+        component: () => import('@/views/ProfileView.vue'),
         meta: { requiresAuth: true },
       },
       {
@@ -49,30 +56,34 @@ const routes = [
     ],
   },
 
-  // ===== ADMIN (belum dibungkus AdminLayout, masih flat dulu) =====
+  // ===== ADMIN =====
   {
-    path: '/admin/analytics',
-    name: 'admin-analytics',
-    component: () => import('@/views/admin/AdminAnalyticsView.vue'),
+    path: '/admin',
+    component: AdminLayout,
     meta: { requiresAuth: true, requiresAdmin: true },
-  },
-  {
-    path: '/admin/products',
-    name: 'admin-products',
-    component: () => import('@/views/admin/AdminProductsView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
-  },
-  {
-    path: '/admin/gallery',
-    name: 'admin-gallery',
-    component: () => import('@/views/admin/AdminGalleryView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
-  },
-  {
-    path: '/admin/orders',
-    name: 'admin-orders',
-    component: () => import('@/views/admin/AdminOrdersView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
+    children: [
+      { path: '', redirect: '/admin/analytics' },
+      {
+        path: 'analytics',
+        name: 'admin-analytics',
+        component: () => import('@/views/admin/AdminAnalyticsView.vue'),
+      },
+      {
+        path: 'products',
+        name: 'admin-products',
+        component: () => import('@/views/admin/AdminProductsView.vue'),
+      },
+      {
+        path: 'gallery',
+        name: 'admin-gallery',
+        component: () => import('@/views/admin/AdminGalleryView.vue'),
+      },
+      {
+        path: 'orders',
+        name: 'admin-orders',
+        component: () => import('@/views/admin/AdminOrdersView.vue'),
+      },
+    ],
   },
 
   // ===== 404 =====
@@ -82,6 +93,32 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+// Navigation guard: proteksi route berdasarkan meta requiresAuth / requiresAdmin
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+
+  // Tunggu sesi selesai dipulihkan (penting saat user refresh halaman admin)
+  if (!auth.isReady) {
+    await auth.restoreSession()
+  }
+
+  const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
+  const requiresAdmin = to.matched.some((r) => r.meta.requiresAdmin)
+
+  // Belum login -> arahkan ke login
+  if (requiresAuth && !auth.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  // Bukan admin tapi coba akses halaman admin -> lempar ke 404 / home
+  // (pakai 404 supaya user tidak "tahu" bahwa halaman admin itu ada)
+  if (requiresAdmin && !auth.isAdmin) {
+    return { name: 'not-found' }
+  }
+
+  return true
 })
 
 export default router

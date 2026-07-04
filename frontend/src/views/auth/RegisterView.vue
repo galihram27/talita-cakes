@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import logo from '@/assets/images/logo.jpeg'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -59,14 +60,23 @@ const handleSubmit = async () => {
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center px-6 py-16">
     <!-- LOGO -->
-    <RouterLink to="/" class="text-2xl font-extrabold tracking-tight mb-6">
-      Talita Cakes
+    <RouterLink to="/" class="flex flex-col items-center gap-3 mb-6">
+      <img
+        :src="logo"
+        alt="Logo Talita's Cake & Cupcakes"
+        class="h-20 w-20 rounded-full object-cover"
+      />
+      <span class="text-2xl font-extrabold tracking-tight text-brand-600">
+        Talita's Cake &amp; Cupcakes
+      </span>
     </RouterLink>
 
     <!-- HEADLINE -->
     <div class="mb-8 text-center">
       <h1 class="text-3xl font-extrabold mb-2">Sign Up</h1>
-      <div class="h-1 w-24 bg-gray-500 rounded-full mx-auto"></div>
+      <p class="text-sm text-gray-600">
+        Buat akun dan mulai pesan kue favoritmu.
+      </p>
     </div>
 
     <!-- CARD -->
@@ -81,7 +91,7 @@ const handleSubmit = async () => {
             type="text"
             placeholder="Name"
             autocomplete="name"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>
 
@@ -94,7 +104,7 @@ const handleSubmit = async () => {
             type="email"
             placeholder="Email"
             autocomplete="email"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>
 
@@ -107,7 +117,7 @@ const handleSubmit = async () => {
             type="tel"
             placeholder="Phone"
             autocomplete="tel"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>
 
@@ -120,7 +130,7 @@ const handleSubmit = async () => {
             type="password"
             placeholder="Password"
             autocomplete="new-password"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>
 
@@ -133,7 +143,7 @@ const handleSubmit = async () => {
             type="password"
             placeholder="Confirm Password"
             autocomplete="new-password"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>
 
@@ -142,7 +152,7 @@ const handleSubmit = async () => {
           <input
             v-model="acceptedTerms"
             type="checkbox"
-            class="mt-0.5 rounded border-gray-300 focus:ring-gray-900"
+            class="mt-0.5 rounded border-gray-300 focus:ring-brand-400"
           />
           <span>Saya menyetujui Terms of Use & Privacy Policy</span>
         </label>
@@ -156,7 +166,7 @@ const handleSubmit = async () => {
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="w-full rounded-full border border-gray-900 bg-gray-900 text-white py-2.5 text-sm font-semibold hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full rounded-full border border-brand-600 bg-brand-600 text-white py-2.5 text-sm font-semibold hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ isSubmitting ? 'Signing up...' : 'Sign Up' }}
         </button>
@@ -164,7 +174,7 @@ const handleSubmit = async () => {
         <!-- LOGIN LINK -->
         <p class="text-center text-sm text-gray-600">
           Already have an account?
-          <RouterLink to="/login" class="font-bold text-gray-900 hover:underline">
+          <RouterLink to="/login" class="font-bold text-brand-600 hover:underline">
             Login
           </RouterLink>
         </p>

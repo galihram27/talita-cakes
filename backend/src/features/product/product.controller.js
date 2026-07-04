@@ -23,7 +23,8 @@ export const getProductHandler = asyncHandler(async (req, res) => {
 });
 
 export const getAllProductsHandler = asyncHandler(async (req, res) => {
-  const products = await productService.getAllProducts();
+  // ?category=... opsional, dipakai filter kategori di halaman Menu
+  const products = await productService.getAllProducts(req.query.category);
 
   res.status(200).json({
     success: true,

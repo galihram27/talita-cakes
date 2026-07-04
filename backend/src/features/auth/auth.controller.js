@@ -4,8 +4,10 @@ import {
    verifyEmail,
    resendOtp,
    forgotPassword,
+   verifyResetOtp,
    resetPassword,
    refreshToken,
+   getMe,
    logout,
 } from "./auth.service.js";
 import { asyncHandler } from "../../middlewares/asyncHandler.js";
@@ -54,6 +56,15 @@ export const forgotPasswordController = asyncHandler(async (req, res) => {
   });
 });
 
+// VERIFY RESET OTP (cek OTP sebelum user diarahkan ke form password baru)
+export const verifyResetOtpController = asyncHandler(async (req, res) => {
+  await verifyResetOtp(req.body);
+
+  return res.status(200).json({
+    message: "Kode OTP valid",
+  });
+});
+
 // RESET PASSWORD
 export const resetPasswordController = asyncHandler(async (req, res) => {
   await resetPassword(req.body);
@@ -81,6 +92,16 @@ export const refreshTokenController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     message: "Token refreshed successfully",
     data: { accessToken: result.accessToken },
+  });
+});
+
+// GET ME
+export const getMeController = asyncHandler(async (req, res) => {
+  const user = await getMe(req.user.userId);
+
+  return res.status(200).json({
+    message: "User berhasil diambil",
+    data: { user },
   });
 });
 

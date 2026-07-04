@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import logo from '@/assets/images/logo.jpeg'
 
 const router = useRouter()
 const route = useRoute()
@@ -43,14 +44,23 @@ const handleSubmit = async () => {
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center px-6 py-16">
     <!-- LOGO -->
-    <RouterLink to="/" class="text-2xl font-extrabold tracking-tight mb-6">
-      Talita Cakes
+    <RouterLink to="/" class="flex flex-col items-center gap-3 mb-6">
+      <img
+        :src="logo"
+        alt="Logo Talita's Cake & Cupcakes"
+        class="h-20 w-20 rounded-full object-cover"
+      />
+      <span class="text-2xl font-extrabold tracking-tight text-brand-600">
+        Talita's Cake &amp; Cupcakes
+      </span>
     </RouterLink>
 
     <!-- HEADLINE -->
     <div class="mb-8 text-center">
       <h1 class="text-3xl font-extrabold mb-2">Sign In</h1>
-      <div class="h-1 w-24 bg-gray-500 rounded-full mx-auto"></div>
+      <p class="text-sm text-gray-600">
+        Selamat datang kembali! Masuk untuk melanjutkan pesananmu.
+      </p>
     </div>
 
     <!-- CARD -->
@@ -65,7 +75,7 @@ const handleSubmit = async () => {
             type="email"
             placeholder="Email"
             autocomplete="email"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>
 
@@ -78,9 +88,16 @@ const handleSubmit = async () => {
             type="password"
             placeholder="Password"
             autocomplete="current-password"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
         </div>
+
+        <!-- FORGOT PASSWORD LINK -->
+        <p class="text-right text-sm">
+          <RouterLink to="/forgot-password" class="font-medium text-brand-600 hover:text-brand-700 hover:underline">
+            Lupa password?
+          </RouterLink>
+        </p>
 
         <!-- ERROR -->
         <p v-if="errorMessage" class="text-sm text-red-600">
@@ -91,7 +108,7 @@ const handleSubmit = async () => {
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="w-full rounded-full border border-gray-900 bg-gray-900 text-white py-2.5 text-sm font-semibold hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full rounded-full border border-brand-600 bg-brand-600 text-white py-2.5 text-sm font-semibold hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ isSubmitting ? 'Signing in...' : 'Sign In' }}
         </button>
@@ -99,7 +116,7 @@ const handleSubmit = async () => {
         <!-- REGISTER LINK -->
         <p class="text-center text-sm text-gray-600">
           Don't have an account?
-          <RouterLink to="/register" class="font-bold text-gray-900 hover:underline">
+          <RouterLink to="/register" class="font-bold text-brand-600 hover:underline">
             Register
           </RouterLink>
         </p>

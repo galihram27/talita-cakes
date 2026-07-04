@@ -78,9 +78,10 @@ model RefreshToken {
 // ==========================================
 
 enum ProductType {
-  TYPE1
-  TYPE2
-  TYPE3
+  TYPE1 // fixed: shape, size, dan flavor sudah ditentukan
+  TYPE2 // shape & size fixed (1 variant), user pilih flavor + dekorasi
+  TYPE3 // flavor fixed, user pilih shape & size (variants)
+  TYPE4 // user pilih shape & size (variants) + flavor + dekorasi
 }
 
 enum Shape {
@@ -97,16 +98,20 @@ model Product {
   description String
   image       String
 
-  // hanya wajib untuk TYPE1 & TYPE2, null untuk TYPE3 (validasi di app layer)
+  // kategori per type, daftar valid ada di product.constant.js (PRODUCT_CATEGORIES)
+  // nullable di DB supaya aman untuk data lama, tapi wajib diisi via validasi app layer
+  category    String?
+
+  // flavor fixed, hanya wajib untuk TYPE1 & TYPE3,
+  // null untuk TYPE2 & TYPE4 karena user pilih sendiri (validasi di app layer)
   flavor      String?
 
   // diskon, opsional, default 0
   discount    Decimal     @default(0) @db.Decimal(5, 2)
 
   // relasi ke variant (shape + size + price)
-  // TYPE1  -> hanya 1 row variant
-  // TYPE2  -> banyak row, shape ROUND & SQUARE harus ada
-  // TYPE3  -> sama seperti TYPE2 tapi tanpa flavor
+  // TYPE1 & TYPE2 -> hanya 1 row variant (fixed)
+  // TYPE3 & TYPE4 -> banyak row, shape ROUND & SQUARE harus ada
   variants    ProductVariant[]
 
   createdAt   DateTime    @default(now())
@@ -170,16 +175,16 @@ model CartItem {
   productId   String
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  // hanya diisi untuk TYPE2 & TYPE3 (user memilih shape + size lewat variant)
-  // TYPE1 tidak perlu, karena variant-nya cuma 1 row
+  // hanya diisi untuk TYPE3 & TYPE4 (user memilih shape + size lewat variant)
+  // TYPE1 & TYPE2 tidak perlu, karena variant-nya cuma 1 row
   variantId   String?
   variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
-  // hanya diisi untuk TYPE3 (user memilih flavor sendiri di cart,
-  // beda dengan Product.flavor yg fixed untuk TYPE1 & TYPE2)
+  // hanya diisi untuk TYPE2 & TYPE4 (user memilih flavor sendiri di cart,
+  // beda dengan Product.flavor yg fixed untuk TYPE1 & TYPE3)
   flavor      String?
 
-  // hanya diisi untuk TYPE3 (upload gambar custom dari user)
+  // hanya diisi untuk TYPE2 & TYPE4 (upload gambar dekorasi custom dari user)
   customImage String?
 
   // opsional untuk semua tipe
@@ -281,11 +286,11 @@ model OrderItem {
   productId   String
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  // hanya diisi untuk TYPE2 & TYPE3 (sama seperti CartItem)
+  // hanya diisi untuk TYPE3 & TYPE4 (sama seperti CartItem)
   variantId   String?
   variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
-  // hanya diisi untuk TYPE3
+  // hanya diisi untuk TYPE2 & TYPE4
   flavor      String?
   customImage String?
 

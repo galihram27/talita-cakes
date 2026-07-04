@@ -1,11 +1,11 @@
 // src/features/cart/cart.validation.js
 import { z } from 'zod';
-import { TYPE3_FLAVORS } from '../product/product.constant.js';
+import { CUSTOM_FLAVORS } from '../product/product.constant.js';
 
 const baseAddItemSchema = z.object({
   productId: z.string().uuid({ message: 'productId tidak valid' }),
   variantId: z.string().uuid({ message: 'variantId tidak valid' }).optional(),
-   flavor: z.enum(TYPE3_FLAVORS, { message: `flavor harus salah satu dari: ${TYPE3_FLAVORS.join(', ')}` }).optional(),
+   flavor: z.enum(CUSTOM_FLAVORS, { message: `flavor harus salah satu dari: ${CUSTOM_FLAVORS.join(', ')}` }).optional(),
   customImage: z.string().min(1).optional(),
   textOnCake: z.string().optional(),
   notes: z.string().optional(),
@@ -14,7 +14,7 @@ const baseAddItemSchema = z.object({
 
 /**
  * Validasi ini hanya cek BENTUK payload secara umum.
- * Validasi "wajib per tipe produk" (mis. TYPE3 wajib flavor & customImage)
+ * Validasi "wajib per tipe produk" (mis. TYPE2 & TYPE4 wajib flavor)
  * tetap dilakukan di service layer, karena butuh data Product.type dari DB
  * yang baru diketahui setelah query, bukan dari body request semata.
  */

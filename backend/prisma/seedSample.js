@@ -2,18 +2,19 @@
 //
 // Script TAMBAHAN (di luar seed.js admin) untuk mengisi data dummy:
 // - 2 User (role USER)
-// - 3 Product: 1x TYPE1, 1x TYPE2, 1x TYPE3 (lengkap dengan variants)
+// - 4 Product: 1x TYPE1, 1x TYPE2, 1x TYPE3, 1x TYPE4 (lengkap dengan variants)
 //
 // Cara pakai:
 //   node prisma/seedSample.js
 //
 // Catatan:
-// - Variant ROUND & SQUARE dibuat LENGKAP dari minSize sampai 30 (kelipatan 2),
-//   sesuai aturan di product.helper.js (validateSizeCompleteness), supaya
-//   tidak kena error validasi kalau nanti di-update lewat endpoint TYPE2/TYPE3.
-// - TYPE1 cuma punya 1 variant manual (shape, size, price), size-nya bebas
-//   asal integer > 0 (isValidManualSize), TIDAK mengikuti aturan kelipatan 2.
-// - TYPE3 tidak punya flavor (flavor di-set null).
+// - TYPE1 & TYPE2 cuma punya 1 variant manual (shape, size, price), size-nya
+//   bebas asal integer > 0 (isValidManualSize), TIDAK mengikuti aturan kelipatan 2.
+// - TYPE3 & TYPE4: variant ROUND & SQUARE dibuat LENGKAP dari minSize sampai 30
+//   (kelipatan 2), sesuai aturan di product.helper.js (validateSizeCompleteness),
+//   supaya tidak kena error validasi kalau nanti di-update lewat endpoint.
+// - TYPE2 & TYPE4 tidak punya flavor fixed (flavor di-set null),
+//   user memilih flavor sendiri saat order.
 
 import bcrypt from "bcrypt";
 import prisma from "../src/lib/prisma.js";
@@ -62,7 +63,7 @@ async function main() {
 
   // =========================
   // 2. SEED PRODUCT TYPE1
-  // (single variant manual, size bebas asal positif & integer)
+  // (single variant manual, semua fixed: shape, size, flavor)
   // =========================
   const productType1 = await prisma.product.create({
     data: {
@@ -70,6 +71,7 @@ async function main() {
       name: "Brownies Coklat Mini",
       description: "Brownies coklat lembut ukuran mini, cocok untuk snack box.",
       image: "https://example.com/images/brownies-coklat-mini.jpg",
+      category: "Hampers",
       flavor: "Coklat",
       discount: 0,
       variants: {
@@ -83,7 +85,30 @@ async function main() {
 
   // =========================
   // 3. SEED PRODUCT TYPE2
-  // (flavor wajib, variants lengkap ROUND 16-30 & SQUARE 18-30)
+  // (single variant manual fixed, user pilih flavor + dekorasi saat order)
+  // =========================
+  const productType2 = await prisma.product.create({
+    data: {
+      type: "TYPE2",
+      name: "Kue Ulang Tahun Mini Custom",
+      description:
+        "Kue ukuran fixed dengan pilihan rasa dan dekorasi sesuai keinginanmu.",
+      image: "https://example.com/images/kue-ultah-mini-custom.jpg",
+      category: "Birthday",
+      flavor: null, // user pilih flavor sendiri saat order
+      discount: 0,
+      variants: {
+        create: [{ shape: "ROUND", size: 16, price: 85000 }],
+      },
+    },
+    include: { variants: true },
+  });
+
+  console.log("Product TYPE2 berhasil dibuat:", productType2.name);
+
+  // =========================
+  // 4. SEED PRODUCT TYPE3
+  // (flavor fixed, variants lengkap ROUND 16-30 & SQUARE 18-30)
   // =========================
   const round16to30 = [16, 18, 20, 22, 24, 26, 28, 30].map((size) => ({
     shape: "ROUND",
@@ -97,12 +122,13 @@ async function main() {
     price: 60000 + (size - 18) * 7500,
   }));
 
-  const productType2 = await prisma.product.create({
+  const productType3 = await prisma.product.create({
     data: {
-      type: "TYPE2",
+      type: "TYPE3",
       name: "Tart Buah Premium",
       description: "Tart lembut dengan topping buah segar, tersedia berbagai ukuran.",
       image: "https://example.com/images/tart-buah-premium.jpg",
+      category: "Wedding",
       flavor: "Vanilla",
       discount: 10,
       variants: {
@@ -112,11 +138,12 @@ async function main() {
     include: { variants: true },
   });
 
-  console.log("Product TYPE2 berhasil dibuat:", productType2.name);
+  console.log("Product TYPE3 berhasil dibuat:", productType3.name);
 
   // =========================
-  // 4. SEED PRODUCT TYPE3
-  // (tanpa flavor, variants lengkap ROUND 18-30 & SQUARE 20-30)
+  // 5. SEED PRODUCT TYPE4
+  // (tanpa flavor fixed, user pilih flavor + dekorasi,
+  //  variants lengkap ROUND 18-30 & SQUARE 20-30)
   // =========================
   const round18to30 = [18, 20, 22, 24, 26, 28, 30].map((size) => ({
     shape: "ROUND",
@@ -130,13 +157,15 @@ async function main() {
     price: 80000 + (size - 20) * 8000,
   }));
 
-  const productType3 = await prisma.product.create({
+  const productType4 = await prisma.product.create({
     data: {
-      type: "TYPE3",
-      name: "Cheesecake Spesial",
-      description: "Cheesecake creamy tanpa pilihan rasa, satu rasa original premium.",
-      image: "https://example.com/images/cheesecake-spesial.jpg",
-      flavor: null, // TYPE3 tidak punya flavor
+      type: "TYPE4",
+      name: "Custom Cake Spesial",
+      description:
+        "Kue fully custom: pilih ukuran, rasa, dan kirim referensi dekorasimu.",
+      image: "https://example.com/images/custom-cake-spesial.jpg",
+      category: "Custom",
+      flavor: null, // user pilih flavor sendiri saat order
       discount: 5,
       variants: {
         create: [...round18to30, ...square20to30],
@@ -145,11 +174,11 @@ async function main() {
     include: { variants: true },
   });
 
-  console.log("Product TYPE3 berhasil dibuat:", productType3.name);
+  console.log("Product TYPE4 berhasil dibuat:", productType4.name);
 
   console.log("\n=== Seeding selesai ===");
   console.log(`Total user dibuat/ditemukan: ${createdUsers.length}`);
-  console.log("Produk: TYPE1, TYPE2, TYPE3 berhasil dibuat.");
+  console.log("Produk: TYPE1, TYPE2, TYPE3, TYPE4 berhasil dibuat.");
 }
 
 main()

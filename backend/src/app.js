@@ -15,7 +15,9 @@ app.use(
   })
 );
 
-app.use(express.json());
+// limit dinaikkan supaya upload gambar produk (base64 data URL) muat,
+// karena belum ada endpoint upload file terpisah
+app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 app.use(visitorTrackingMiddleware);
 

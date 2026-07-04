@@ -65,6 +65,11 @@ export const forgotPasswordSchema = z.object({
    email: emailSchema,
 });
 
+export const verifyResetOtpSchema = z.object({
+   email: emailSchema,
+   code: z.string().length(6, "Kode OTP harus 6 digit"),
+});
+
 export const resetPasswordSchema = z.object({
    email: emailSchema,
    code: z.string().length(6, "Kode OTP harus 6 digit"),

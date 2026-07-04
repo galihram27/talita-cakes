@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PRODUCT_CATEGORIES } from './product.constant.js';
 import {
   isValidSize,
   isValidManualSize,
@@ -13,6 +14,16 @@ import {
 export const productIdParamSchema = z.object({
   id: z.string().uuid('Format id tidak valid'),
 });
+
+// category wajib diisi dan harus salah satu dari daftar kategori milik type tsb
+const categoryFieldFor = (type) =>
+  z
+    .string()
+    .trim()
+    .min(1, 'Category wajib diisi')
+    .refine((c) => PRODUCT_CATEGORIES[type].includes(c), {
+      message: `Category tidak valid untuk ${type}`,
+    });
 
 const baseFields = {
   name: z.string().trim().min(1, 'Nama wajib diisi'),
@@ -77,10 +88,11 @@ const refineVariantsCompleteness = (data, ctx) => {
   }
 };
 
-// ===== TYPE 1 =====
+// ===== TYPE 1 (semua fixed: shape, size, flavor) =====
 const type1Schema = z.object({
   type: z.literal('TYPE1'),
   ...baseFields,
+  category: categoryFieldFor('TYPE1'),
   flavor: z.string().trim().min(1, 'Flavor wajib diisi'),
   shape: z.enum(['ROUND', 'SQUARE']),
   size: z.coerce.number().int(),
@@ -90,18 +102,33 @@ const type1Schema = z.object({
   path: ['size'],
 });
 
-// ===== TYPE 2 =====
+// ===== TYPE 2 (shape & size fixed seperti TYPE1, tanpa flavor karena user pilih sendiri) =====
 const type2Schema = z.object({
   type: z.literal('TYPE2'),
   ...baseFields,
+  category: categoryFieldFor('TYPE2'),
+  shape: z.enum(['ROUND', 'SQUARE']),
+  size: z.coerce.number().int(),
+  price: z.coerce.number().positive('Price harus lebih dari 0'),
+}).refine((data) => isValidManualSize(data.size), {
+  message: 'Size harus berupa angka bulat positif',
+  path: ['size'],
+});
+
+// ===== TYPE 3 (flavor fixed, user pilih shape & size) =====
+const type3Schema = z.object({
+  type: z.literal('TYPE3'),
+  ...baseFields,
+  category: categoryFieldFor('TYPE3'),
   flavor: z.string().trim().min(1, 'Flavor wajib diisi'),
   variants: z.array(variantSchema).min(2, 'Minimal harus ada size Round dan Square'),
 }).superRefine(refineVariantsCompleteness);
 
-// ===== TYPE 3 =====
-const type3Schema = z.object({
-  type: z.literal('TYPE3'),
+// ===== TYPE 4 (user pilih shape & size + flavor + dekorasi, tanpa flavor fixed) =====
+const type4Schema = z.object({
+  type: z.literal('TYPE4'),
   ...baseFields,
+  category: categoryFieldFor('TYPE4'),
   variants: z.array(variantSchema).min(2, 'Minimal harus ada size Round dan Square'),
 }).superRefine(refineVariantsCompleteness);
 
@@ -109,6 +136,7 @@ export const createProductSchema = z.discriminatedUnion('type', [
   type1Schema,
   type2Schema,
   type3Schema,
+  type4Schema,
 ]);
 
 // ===== UPDATE SCHEMAS (semua field opsional, partial update) =====
@@ -116,6 +144,7 @@ export const createProductSchema = z.discriminatedUnion('type', [
 // TYPE1: admin boleh kirim sebagian saja, misal cuma { price: 60000 }
 const updateType1Schema = z.object({
   ...partialBaseFields,
+  category: categoryFieldFor('TYPE1').optional(),
   flavor: z.string().trim().min(1, 'Flavor tidak boleh kosong').optional(),
   shape: z.enum(['ROUND', 'SQUARE']).optional(),
   size: z.coerce.number().int().optional(),
@@ -125,17 +154,31 @@ const updateType1Schema = z.object({
   path: ['size'],
 });
 
-// TYPE2: variants & removeVariants opsional -> admin boleh hanya update beberapa size saja
+// TYPE2: sama seperti TYPE1 tapi tanpa flavor (user pilih flavor sendiri saat order)
 const updateType2Schema = z.object({
   ...partialBaseFields,
+  category: categoryFieldFor('TYPE2').optional(),
+  shape: z.enum(['ROUND', 'SQUARE']).optional(),
+  size: z.coerce.number().int().optional(),
+  price: z.coerce.number().positive('Price harus lebih dari 0').optional(),
+}).refine((data) => data.size === undefined || isValidManualSize(data.size), {
+  message: 'Size harus berupa angka bulat positif',
+  path: ['size'],
+});
+
+// TYPE3: variants & removeVariants opsional -> admin boleh hanya update beberapa size saja
+const updateType3Schema = z.object({
+  ...partialBaseFields,
+  category: categoryFieldFor('TYPE3').optional(),
   flavor: z.string().trim().min(1, 'Flavor tidak boleh kosong').optional(),
   variants: z.array(variantSchema).optional(),
   removeVariants: z.array(removeVariantSchema).optional(),
 });
 
-// TYPE3: sama seperti TYPE2 tapi tanpa flavor
-const updateType3Schema = z.object({
+// TYPE4: sama seperti TYPE3 tapi tanpa flavor
+const updateType4Schema = z.object({
   ...partialBaseFields,
+  category: categoryFieldFor('TYPE4').optional(),
   variants: z.array(variantSchema).optional(),
   removeVariants: z.array(removeVariantSchema).optional(),
 });
@@ -144,4 +187,5 @@ export const updateProductSchemaMap = {
   TYPE1: updateType1Schema,
   TYPE2: updateType2Schema,
   TYPE3: updateType3Schema,
+  TYPE4: updateType4Schema,
 };

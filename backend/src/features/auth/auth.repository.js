@@ -7,6 +7,13 @@ export const getUserByEmail = async (email) => {
    });
 };
 
+// Get user by id
+export const getUserById = async (id) => {
+   return await prisma.user.findUnique({
+      where: { id },
+   });
+};
+
 // Create user
 export const createUser = async (data) => {
    return await prisma.user.create({
@@ -22,7 +29,8 @@ export const createUser = async (data) => {
    });
 };
 
-// Update user
+// Update user — tambahkan termsAcceptedAt & termsVersion supaya re-register
+// (accept terms ulang) ikut ter-update
 export const updateUser = async (id, data) => {
    return await prisma.user.update({
       where: { id },
@@ -32,6 +40,20 @@ export const updateUser = async (id, data) => {
          password: data.password,
          phone: data.phone,
          role: data.role,
+         termsAcceptedAt: data.termsAcceptedAt,
+         termsVersion: data.termsVersion,
+      },
+   });
+};
+
+// =========================
+// CLEANUP (akun yang tidak pernah verifikasi)
+// =========================
+export const deleteUnverifiedUsersOlderThan = async (cutoffDate) => {
+   return prisma.user.deleteMany({
+      where: {
+         isVerified: false,
+         created_at: { lt: cutoffDate }, // field ini snake_case di schema User
       },
    });
 };

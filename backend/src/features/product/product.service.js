@@ -10,17 +10,17 @@ const pickDefined = (obj) =>
  * Membuat produk baru beserta variannya berdasarkan tipe produk.
  */
 export const createProduct = async (payload) => {
-  const { type, name, description, image, discount, flavor } = payload;
+  const { type, name, description, image, discount, flavor, category } = payload;
 
   let variantsData = [];
 
-  // Jika TYPE1, varian diambil langsung dari root payload (single variant)
-  if (type === 'TYPE1') {
+  // TYPE1 & TYPE2: varian diambil langsung dari root payload (single variant fixed)
+  if (type === 'TYPE1' || type === 'TYPE2') {
     variantsData = [
       { shape: payload.shape, size: payload.size, price: payload.price },
     ];
   } else {
-    // Jika tipe lain, varian berupa array yang di-mapping
+    // TYPE3 & TYPE4: varian berupa array yang di-mapping
     variantsData = payload.variants.map((v) => ({
       shape: v.shape,
       size: v.size,
@@ -34,7 +34,10 @@ export const createProduct = async (payload) => {
     name,
     description,
     image,
-    flavor: type === 'TYPE3' ? null : flavor, // TYPE3 tidak memiliki flavor
+    category,
+    // hanya TYPE1 & TYPE3 yang punya flavor fixed;
+    // TYPE2 & TYPE4 flavor dipilih user saat order
+    flavor: type === 'TYPE1' || type === 'TYPE3' ? flavor : null,
     discount,
     variants: {
       create: variantsData,
@@ -59,9 +62,10 @@ export const getProductById = async (id) => {
 
 /**
  * Mengambil semua daftar produk yang tersedia.
+ * Opsional: difilter berdasarkan category (untuk filter di halaman Menu).
  */
-export const getAllProducts = async () => {
-  return productRepository.findAllProducts();
+export const getAllProducts = async (category) => {
+  return productRepository.findAllProducts(category);
 };
 
 /**
@@ -95,14 +99,15 @@ export const updateProduct = async (id, body) => {
 
   const payload = parsed.data;
 
-  if (type === 'TYPE1') {
-    return updateType1(id, existing, payload);
+  if (type === 'TYPE1' || type === 'TYPE2') {
+    return updateSingleVariantType(id, existing, payload);
   }
 
-  return updateType2Or3(id, payload);
+  return updateVariantGridType(id, payload);
 };
 
-const updateType1 = async (id, existing, payload) => {
+// TYPE1 & TYPE2: produk dengan 1 variant fixed
+const updateSingleVariantType = async (id, existing, payload) => {
   const { shape, size, price, ...rest } = payload;
   const productFields = pickDefined(rest);
 
@@ -126,7 +131,8 @@ const updateType1 = async (id, existing, payload) => {
   );
 };
 
-const updateType2Or3 = async (id, payload) => {
+// TYPE3 & TYPE4: produk dengan grid variant (Round & Square wajib lengkap)
+const updateVariantGridType = async (id, payload) => {
   const { variants, removeVariants, ...rest } = payload;
   const productFields = pickDefined(rest);
 

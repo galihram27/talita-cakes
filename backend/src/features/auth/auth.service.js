@@ -17,6 +17,8 @@ import { sendOtpEmail } from "../../utils/email.js";
 import {
    getUserByEmail,
    createUser,
+   updateUser,
+   getUserById,
    findRefreshTokensByUserId,
    createRefreshToken,
    deleteRefreshToken,
@@ -27,6 +29,7 @@ import {
    deleteOtpsByUserAndPurpose,
    markUserVerified,
    updateUserPassword,
+   deleteUnverifiedUsersOlderThan,
 } from "./auth.repository.js";
 import { CURRENT_TERMS_VERSION } from "../../config/legal.config.js";
 
@@ -69,32 +72,69 @@ const issueAuthTokens = async (user) => {
    return { accessToken, refreshToken };
 };
 
+const UNVERIFIED_ACCOUNT_TTL_HOURS = 24;
+
 // REGISTER
 export const register = async (data) => {
    const { name, email, password, phone, acceptedTerms } = data;
 
-   const existingUser = await getUserByEmail(email);
-   if (existingUser) {
-      throw new AppError("Email already registered", 400);
+   if (!acceptedTerms) {
+      throw new AppError(
+         "Anda harus menyetujui Terms of Use & Privacy Policy",
+         422
+      );
    }
 
-   // acceptedTerms sudah pasti true di titik ini (divalidasi Zod),
-   // tapi tetap defensive check biar service ini aman dipanggil dari mana pun.
-   if (!acceptedTerms) {
-      throw new AppError("Anda harus menyetujui Terms of Use & Privacy Policy", 422);
+   const existingUser = await getUserByEmail(email);
+
+   // Email sudah terverifikasi -> memang benar-benar sudah dipakai, tolak.
+   if (existingUser && existingUser.isVerified) {
+      throw new AppError("Email sudah terdaftar", 400);
    }
 
    const hashedPassword = await bcrypt.hash(password, 10);
+   let user;
 
-   const user = await createUser({
-      name,
-      email,
-      password: hashedPassword,
-      phone,
-      role: ROLE.USER,
-      termsAcceptedAt: new Date(),
-      termsVersion: CURRENT_TERMS_VERSION,
-   });
+   if (existingUser && !existingUser.isVerified) {
+      // Re-register: cek cooldown OTP dulu biar tidak bisa dipakai spam email
+      const existingOtp = await findLatestOtpByUserAndPurpose(
+         existingUser.id,
+         OTP_PURPOSE.EMAIL_VERIFICATION
+      );
+      if (existingOtp) {
+         const secondsSinceCreated =
+            (Date.now() - existingOtp.createdAt.getTime()) / 1000;
+         if (secondsSinceCreated < OTP_RESEND_COOLDOWN_SECONDS) {
+            const waitSeconds = Math.ceil(
+               OTP_RESEND_COOLDOWN_SECONDS - secondsSinceCreated
+            );
+            throw new AppError(
+               `Tunggu ${waitSeconds} detik sebelum meminta kode baru`,
+               429
+            );
+         }
+      }
+
+      // Update data lama dengan data terbaru yang dikirim user
+      user = await updateUser(existingUser.id, {
+         name,
+         email,
+         password: hashedPassword,
+         phone,
+         termsAcceptedAt: new Date(),
+         termsVersion: CURRENT_TERMS_VERSION,
+      });
+   } else {
+      user = await createUser({
+         name,
+         email,
+         password: hashedPassword,
+         phone,
+         role: ROLE.USER,
+         termsAcceptedAt: new Date(),
+         termsVersion: CURRENT_TERMS_VERSION,
+      });
+   }
 
    await issueOtp(user, OTP_PURPOSE.EMAIL_VERIFICATION);
 
@@ -123,7 +163,27 @@ export const login = async (data) => {
    }
 
    if (!user.isVerified) {
-      throw new AppError("Email belum diverifikasi. Silakan cek email kamu.", 403);
+      // Auto-reissue OTP (hormati cooldown) supaya user bisa langsung lanjut
+      // ke halaman verifikasi tanpa perlu klik "kirim ulang" secara manual.
+      const existingOtp = await findLatestOtpByUserAndPurpose(
+         user.id,
+         OTP_PURPOSE.EMAIL_VERIFICATION
+      );
+      const cooldownActive =
+         existingOtp &&
+         (Date.now() - existingOtp.createdAt.getTime()) / 1000 <
+            OTP_RESEND_COOLDOWN_SECONDS;
+
+      if (!cooldownActive) {
+         await issueOtp(user, OTP_PURPOSE.EMAIL_VERIFICATION);
+      }
+
+      // Pesan ini HANYA untuk log/debug backend. Frontend jangan tampilkan
+      // err.response.data.message-nya langsung — cek details.code saja.
+      throw new AppError("Email belum diverifikasi", 403, {
+         code: "EMAIL_NOT_VERIFIED",
+         email: user.email,
+      });
    }
 
    if (!Object.values(ROLE).includes(user.role)) {
@@ -139,6 +199,7 @@ export const login = async (data) => {
          id: user.id,
          name: user.name,
          email: user.email,
+         phone: user.phone,
          role: user.role,
       },
    };
@@ -155,14 +216,23 @@ export const verifyEmail = async ({ email, code }) => {
       throw new AppError("Email sudah terverifikasi", 400);
    }
 
-   const otp = await findLatestOtpByUserAndPurpose(user.id, OTP_PURPOSE.EMAIL_VERIFICATION);
+   const otp = await findLatestOtpByUserAndPurpose(
+      user.id,
+      OTP_PURPOSE.EMAIL_VERIFICATION
+   );
    if (!otp) {
-      throw new AppError("Kode OTP tidak ditemukan, silakan minta kode baru", 400);
+      throw new AppError(
+         "Kode OTP tidak ditemukan, silakan minta kode baru",
+         400
+      );
    }
 
    if (otp.expiresAt < new Date()) {
       await deleteOtpById(otp.id);
-      throw new AppError("Kode OTP sudah kedaluwarsa, silakan minta kode baru", 400);
+      throw new AppError(
+         "Kode OTP sudah kedaluwarsa, silakan minta kode baru",
+         400
+      );
    }
 
    const isMatch = await compareOtpCode(code, otp.code);
@@ -183,6 +253,7 @@ export const verifyEmail = async ({ email, code }) => {
          id: user.id,
          name: user.name,
          email: user.email,
+         phone: user.phone,
          role: user.role,
       },
    };
@@ -199,10 +270,16 @@ export const resendOtp = async ({ email, purpose }) => {
 
    const existingOtp = await findLatestOtpByUserAndPurpose(user.id, purpose);
    if (existingOtp) {
-      const secondsSinceCreated = (Date.now() - existingOtp.createdAt.getTime()) / 1000;
+      const secondsSinceCreated =
+         (Date.now() - existingOtp.createdAt.getTime()) / 1000;
       if (secondsSinceCreated < OTP_RESEND_COOLDOWN_SECONDS) {
-         const waitSeconds = Math.ceil(OTP_RESEND_COOLDOWN_SECONDS - secondsSinceCreated);
-         throw new AppError(`Tunggu ${waitSeconds} detik sebelum meminta kode baru`, 429);
+         const waitSeconds = Math.ceil(
+            OTP_RESEND_COOLDOWN_SECONDS - secondsSinceCreated
+         );
+         throw new AppError(
+            `Tunggu ${waitSeconds} detik sebelum meminta kode baru`,
+            429
+         );
       }
    }
 
@@ -214,30 +291,76 @@ export const forgotPassword = async (email) => {
    const user = await getUserByEmail(email);
    if (!user) return; // jangan bocorin user terdaftar atau tidak
 
-   const existingOtp = await findLatestOtpByUserAndPurpose(user.id, OTP_PURPOSE.PASSWORD_RESET);
+   const existingOtp = await findLatestOtpByUserAndPurpose(
+      user.id,
+      OTP_PURPOSE.PASSWORD_RESET
+   );
    if (existingOtp) {
-      const secondsSinceCreated = (Date.now() - existingOtp.createdAt.getTime()) / 1000;
+      const secondsSinceCreated =
+         (Date.now() - existingOtp.createdAt.getTime()) / 1000;
       if (secondsSinceCreated < OTP_RESEND_COOLDOWN_SECONDS) return; // skip diam-diam
    }
 
    await issueOtp(user, OTP_PURPOSE.PASSWORD_RESET);
 };
 
-// RESET PASSWORD (step 2: verifikasi OTP + set password baru)
+// VERIFY RESET OTP (step 2: cek OTP valid, TANPA menghapusnya —
+// OTP baru dihapus setelah dipakai sungguhan di resetPassword)
+export const verifyResetOtp = async ({ email, code }) => {
+   const user = await getUserByEmail(email);
+   if (!user) {
+      throw new AppError("Kode OTP salah", 400); // jangan bocorin email terdaftar atau tidak
+   }
+
+   const otp = await findLatestOtpByUserAndPurpose(
+      user.id,
+      OTP_PURPOSE.PASSWORD_RESET
+   );
+   if (!otp) {
+      throw new AppError(
+         "Kode OTP tidak ditemukan, silakan minta kode baru",
+         400
+      );
+   }
+
+   if (otp.expiresAt < new Date()) {
+      await deleteOtpById(otp.id);
+      throw new AppError(
+         "Kode OTP sudah kedaluwarsa, silakan minta kode baru",
+         400
+      );
+   }
+
+   const isMatch = await compareOtpCode(code, otp.code);
+   if (!isMatch) {
+      throw new AppError("Kode OTP salah", 400);
+   }
+};
+
+// RESET PASSWORD (step 3: verifikasi OTP + set password baru)
 export const resetPassword = async ({ email, code, newPassword }) => {
    const user = await getUserByEmail(email);
    if (!user) {
       throw new AppError("Kode OTP tidak valid", 400);
    }
 
-   const otp = await findLatestOtpByUserAndPurpose(user.id, OTP_PURPOSE.PASSWORD_RESET);
+   const otp = await findLatestOtpByUserAndPurpose(
+      user.id,
+      OTP_PURPOSE.PASSWORD_RESET
+   );
    if (!otp) {
-      throw new AppError("Kode OTP tidak ditemukan, silakan minta kode baru", 400);
+      throw new AppError(
+         "Kode OTP tidak ditemukan, silakan minta kode baru",
+         400
+      );
    }
 
    if (otp.expiresAt < new Date()) {
       await deleteOtpById(otp.id);
-      throw new AppError("Kode OTP sudah kedaluwarsa, silakan minta kode baru", 400);
+      throw new AppError(
+         "Kode OTP sudah kedaluwarsa, silakan minta kode baru",
+         400
+      );
    }
 
    const isMatch = await compareOtpCode(code, otp.code);
@@ -305,6 +428,22 @@ export const refreshToken = async (refreshTokenInput) => {
    };
 };
 
+export const getMe = async (userId) => {
+   const user = await getUserById(userId);
+
+   if (!user) {
+      throw new AppError("User tidak ditemukan", 404);
+   }
+
+   return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+   };
+};
+
 export const logout = async (refreshTokenInput) => {
    if (!refreshTokenInput) return;
 
@@ -324,4 +463,12 @@ export const logout = async (refreshTokenInput) => {
          break;
       }
    }
+};
+
+// CLEAN UP (hapus akun yang tidak pernah verifikasi)
+export const cleanupUnverifiedUsers = async () => {
+   const cutoff = new Date(Date.now() - UNVERIFIED_ACCOUNT_TTL_HOURS * 60 * 60 * 1000);
+   const { count } = await deleteUnverifiedUsersOlderThan(cutoff);
+   if (count > 0) console.log(`[cleanup] Hapus ${count} akun belum verifikasi (>${UNVERIFIED_ACCOUNT_TTL_HOURS}h)`);
+   return count;
 };

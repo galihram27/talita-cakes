@@ -26,14 +26,29 @@ export const findProductById = async (id) => {
  * Mencari produk berdasarkan keyword pada nama, deskripsi, atau flavor.
  */
 export const searchProductsByKeyword = async (keyword) => {
+  // shape adalah enum, jadi keyword dicocokkan dulu ke nilai enum-nya.
+  // Hanya berlaku untuk TYPE1/TYPE2 (shape ditentukan admin); TYPE3/TYPE4
+  // selalu punya Round & Square sehingga tidak relevan untuk pencarian shape.
+  const matchedShapes = ['ROUND', 'SQUARE'].filter((s) =>
+    s.toLowerCase().includes(keyword.toLowerCase()),
+  );
+
+  const orConditions = [
+    { name: { contains: keyword, mode: 'insensitive' } },
+    { description: { contains: keyword, mode: 'insensitive' } },
+    { flavor: { contains: keyword, mode: 'insensitive' } },
+    { category: { contains: keyword, mode: 'insensitive' } },
+  ];
+
+  if (matchedShapes.length > 0) {
+    orConditions.push({
+      type: { in: ['TYPE1', 'TYPE2'] },
+      variants: { some: { shape: { in: matchedShapes } } },
+    });
+  }
+
   return await prisma.product.findMany({
-    where: {
-      OR: [
-        { name: { contains: keyword, mode: 'insensitive' } },
-        { description: { contains: keyword, mode: 'insensitive' } },
-        { flavor: { contains: keyword, mode: 'insensitive' } },
-      ],
-    },
+    where: { OR: orConditions },
     include: { variants: true },
     orderBy: { createdAt: 'desc' },
   });
@@ -41,9 +56,11 @@ export const searchProductsByKeyword = async (keyword) => {
 
 /**
  * Mengambil semua produk beserta variannya, diurutkan dari yang terbaru.
+ * Kalau category diisi, hanya produk dengan category tsb yang diambil.
  */
-export const findAllProducts = async () => {
+export const findAllProducts = async (category) => {
   return await prisma.product.findMany({
+    where: category ? { category } : undefined,
     include: { variants: true },
     orderBy: { createdAt: "desc" },
   });
