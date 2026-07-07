@@ -1,18 +1,26 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { ShoppingCart, Trash2 } from 'lucide-vue-next'
+import { Trash2 } from 'lucide-vue-next'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth.store'
+import { useCartStore } from '@/stores/cart.store'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { formatRupiah } from '@/utils/formatCurrency'
 
 const authStore = useAuthStore()
+const cartStore = useCartStore()
 const router = useRouter()
 
 // ===== STATE =====
-const cart = ref({ id: null, items: [], subtotal: 0 })
-const isLoading = ref(true)
+// Seed dari cache store kalau ada, supaya halaman langsung tampil tanpa spinner.
+const cart = ref({
+  id: null,
+  items: [...cartStore.items],
+  subtotal: cartStore.subtotal,
+})
+// Spinner hanya ditampilkan kalau cart belum pernah diambil sama sekali.
+const isLoading = ref(!cartStore.loaded)
 const errorMessage = ref('')
 
 // id item yang sedang di-update quantity-nya (disable tombol +/- item itu)
@@ -33,17 +41,24 @@ const fetchCart = async () => {
   // tampilkan langsung state cart kosong.
   if (!authStore.isAuthenticated) {
     cart.value = { id: null, items: [], subtotal: 0 }
+    cartStore.setFromItems([])
     isLoading.value = false
     return
   }
 
-  isLoading.value = true
+  // Kalau cache sudah ada, refresh dilakukan diam-diam di background (tidak
+  // menampilkan spinner penuh yang membuat isi cart berkedip hilang-muncul).
   errorMessage.value = ''
   try {
     const { data } = await api.get('/carts')
     cart.value = data.data
+    cartStore.setFromItems(cart.value.items)
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Gagal memuat keranjang'
+    // Hanya tampilkan error kalau memang belum ada data yang bisa ditampilkan.
+    if (!cartStore.loaded) {
+      errorMessage.value =
+        err.response?.data?.message || 'Gagal memuat keranjang'
+    }
   } finally {
     isLoading.value = false
   }
@@ -64,6 +79,7 @@ const changeQuantity = async (item, delta) => {
       (sum, i) => sum + i.lineTotal,
       0
     )
+    cartStore.setFromItems(cart.value.items)
   } catch (err) {
     errorMessage.value =
       err.response?.data?.message || 'Gagal mengubah jumlah item'
@@ -90,6 +106,7 @@ const confirmRemoveItem = async () => {
       (sum, i) => sum + i.lineTotal,
       0
     )
+    cartStore.setFromItems(cart.value.items)
     itemToDelete.value = null
   } catch (err) {
     errorMessage.value = err.response?.data?.message || 'Gagal menghapus item'
@@ -107,154 +124,166 @@ onMounted(fetchCart)
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 py-12">
+  <div class="tc-page max-w-[1160px] mx-auto px-5 md:px-8 pt-12 pb-20">
     <!-- LOADING -->
-    <div v-if="isLoading" class="text-center text-gray-500 py-24">
+    <div v-if="isLoading" class="text-center text-cocoa-400 py-24">
       Memuat keranjang...
     </div>
 
     <!-- ERROR (hanya bisa muncul untuk user yang sudah login) -->
-    <div v-else-if="errorMessage" class="text-center text-red-600 py-24">
+    <div v-else-if="errorMessage" class="text-center text-brand-600 py-24">
       {{ errorMessage }}
     </div>
 
-    <!-- EMPTY STATE (sesuai wireframe) -->
-    <div
-      v-else-if="!cart.items || cart.items.length === 0"
-      class="flex flex-col items-center justify-center text-center py-24"
-    >
-      <ShoppingCart class="w-16 h-16 mb-6" stroke-width="1.75" />
-
-      <h1 class="text-2xl font-extrabold mb-2">Your cart is empty</h1>
-      <p class="text-sm text-gray-500 mb-8">
-        Browse our menu and add some delicious cakes!
-      </p>
-
-      <RouterLink
-        to="/menu"
-        class="rounded-full border border-brand-600 text-brand-600 px-6 py-3 text-sm font-semibold hover:bg-brand-600 hover:text-white transition"
+    <!-- EMPTY STATE -->
+    <template v-else-if="!cart.items || cart.items.length === 0">
+      <h1 class="font-display text-[40px] mb-6">Cart</h1>
+      <div
+        class="text-center bg-white border border-dashed border-[#E4D3C1] rounded-[20px] px-6 py-16"
       >
-        Browse Menu
-      </RouterLink>
-    </div>
+        <div class="text-[40px] mb-3">🧺</div>
+        <div class="font-display text-2xl mb-2">Your cart is still empty</div>
+        <p class="text-[#6E5A4D] mb-5">Let's pick a cake for your special moment.</p>
+        <RouterLink
+          to="/menu"
+          class="inline-flex bg-brand-500 text-white font-bold text-[15px] px-6 py-3 rounded-full hover:bg-brand-600 transition-colors"
+        >
+          View Menu
+        </RouterLink>
+      </div>
+    </template>
 
-    <!-- CART DENGAN ISI (sesuai wireframe) -->
+    <!-- CART DENGAN ISI -->
     <div v-else>
-      <h1 class="text-3xl font-extrabold mb-8">Your Cart</h1>
+      <h1 class="font-display text-[40px] mb-6">Cart</h1>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start">
         <!-- DAFTAR ITEM -->
-        <div class="lg:col-span-2 space-y-6">
+        <div class="flex flex-col gap-4">
           <div
             v-for="item in cart.items"
             :key="item.id"
-            class="rounded-2xl border border-gray-300 p-5 flex gap-5"
+            class="flex gap-4 bg-white border border-cream-300 rounded-2xl p-4"
           >
             <!-- Gambar produk -->
-            <div
-              class="shrink-0 w-24 h-28 rounded-xl border border-gray-300 bg-gray-200 overflow-hidden"
+            <span
+              class="relative shrink-0 w-[84px] aspect-[3/4] rounded-[10px] overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_8px,#F0E3D6_8px_16px)]"
             >
               <img
                 v-if="item.productImage"
                 :src="item.productImage"
                 :alt="item.productName"
-                class="w-full h-full object-cover"
+                class="absolute inset-0 w-full h-full object-cover"
               />
-            </div>
+            </span>
 
             <!-- Detail item -->
-            <div class="flex-1 min-w-0 flex flex-col">
+            <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-3">
-                <h2 class="font-bold truncate">{{ item.productName }}</h2>
+                <h2 class="font-display text-[19px] leading-snug mt-0.5">
+                  {{ item.productName }}
+                </h2>
                 <button
                   type="button"
                   @click="askRemoveItem(item)"
-                  class="shrink-0 text-gray-700 hover:text-red-600 transition"
+                  class="shrink-0 inline-flex items-center justify-center p-2 rounded-[9px] bg-[#FBE9E7] text-brand-500 hover:bg-[#F5D6D2] transition-colors"
                   aria-label="Hapus item"
                 >
-                  <Trash2 class="w-5 h-5" />
+                  <Trash2 class="w-[17px] h-[17px]" stroke-width="1.8" />
                 </button>
               </div>
 
-              <div class="text-sm text-gray-600 mt-1 space-y-0.5">
-                <p v-if="item.flavor">Flavor: {{ item.flavor }}</p>
-                <p v-if="item.shape">Shape: {{ item.shape }}</p>
-                <p v-if="item.size">Size: {{ item.size }}</p>
+              <div class="flex flex-col gap-0.5 text-[13.5px] text-[#6E5A4D] mt-1">
+                <p v-if="item.flavor">
+                  <span class="text-cocoa-400">Flavor:</span>
+                  <strong class="text-[#4A3A30]"> {{ item.flavor }}</strong>
+                </p>
+                <p v-if="item.shape">
+                  <span class="text-cocoa-400">Shape:</span>
+                  <strong class="text-[#4A3A30]"> {{ item.shape }}</strong>
+                </p>
+                <p v-if="item.size">
+                  <span class="text-cocoa-400">Size:</span>
+                  <strong class="text-[#4A3A30]"> {{ item.size }}</strong>
+                </p>
                 <p v-if="item.textOnCake" class="truncate">
-                  Text: {{ item.textOnCake }}
+                  <span class="text-cocoa-400">Text:</span>
+                  <strong class="text-[#4A3A30]"> {{ item.textOnCake }}</strong>
                 </p>
               </div>
 
-              <div class="flex items-center justify-between mt-auto pt-4">
+              <div class="flex items-center justify-between gap-3 mt-3 flex-wrap">
                 <!-- Stepper quantity -->
-                <div class="flex items-center gap-3">
+                <div class="flex items-center border-[1.5px] border-[#E4D3C1] rounded-full bg-white">
                   <button
                     type="button"
                     :disabled="updatingItemId === item.id || item.quantity <= 1"
                     @click="changeQuantity(item, -1)"
-                    class="w-8 h-8 rounded-full border border-gray-400 flex items-center justify-center text-lg leading-none hover:bg-gray-100 transition disabled:opacity-40 disabled:hover:bg-transparent"
+                    class="w-[34px] h-[34px] text-[15px] text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
                     aria-label="Kurangi jumlah"
                   >
                     &minus;
                   </button>
-                  <span class="w-6 text-center text-sm font-medium">
+                  <span class="min-w-[26px] text-center font-extrabold text-sm">
                     {{ item.quantity }}
                   </span>
                   <button
                     type="button"
                     :disabled="updatingItemId === item.id"
                     @click="changeQuantity(item, 1)"
-                    class="w-8 h-8 rounded-full border border-gray-400 flex items-center justify-center text-lg leading-none hover:bg-gray-100 transition disabled:opacity-40 disabled:hover:bg-transparent"
+                    class="w-[34px] h-[34px] text-[15px] text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
                     aria-label="Tambah jumlah"
                   >
                     +
                   </button>
                 </div>
 
-                <p class="font-semibold">{{ formatRupiah(item.lineTotal) }}</p>
+                <p class="font-extrabold text-base text-brand-500">
+                  {{ formatRupiah(item.lineTotal) }}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- SUMMARY -->
-        <div class="rounded-2xl border border-gray-300 p-6 lg:sticky lg:top-24">
-          <h2 class="text-xl font-bold mb-5">Summary</h2>
+        <div
+          class="bg-white border border-cream-300 rounded-2xl p-6 lg:sticky lg:top-24"
+        >
+          <h2 class="font-display text-[21px] mb-4">Summary</h2>
 
-          <ul class="space-y-3 text-sm">
-            <li
-              v-for="item in cart.items"
-              :key="item.id"
-              class="flex items-start justify-between gap-4"
-            >
-              <span class="text-gray-700">
-                {{ item.productName }} x {{ item.quantity }}
-              </span>
-              <span class="shrink-0 font-medium">
-                {{ formatRupiah(item.lineTotal) }}
-              </span>
-            </li>
-          </ul>
-
-          <div class="flex items-center justify-between mt-6">
-            <span class="text-lg font-bold">Subtotal</span>
-            <span class="text-lg font-bold">
-              {{ formatRupiah(cart.subtotal) }}
-            </span>
+          <div
+            class="flex justify-between text-[14.5px] text-[#6E5A4D] py-2"
+          >
+            <span>Subtotal ({{ cart.items.length }} item)</span>
+            <strong class="text-cocoa-900">{{ formatRupiah(cart.subtotal) }}</strong>
           </div>
-          <p class="text-xs text-gray-500 mt-1">+ Delivery fee at checkout</p>
+          <div
+            class="flex justify-between text-[14.5px] text-[#6E5A4D] py-2 border-b border-cream-200"
+          >
+            <span>Delivery fee</span>
+            <span class="text-[13px]">calculated at checkout</span>
+          </div>
+          <div class="flex justify-between text-base font-extrabold pt-3.5 pb-4">
+            <span>Estimated total</span>
+            <span class="text-brand-500">{{ formatRupiah(cart.subtotal) }}</span>
+          </div>
 
           <button
             type="button"
             @click="goToCheckout"
-            class="w-full mt-6 rounded-full border-2 border-brand-600 text-brand-600 py-3 text-sm font-bold hover:bg-brand-600 hover:text-white transition"
+            class="w-full flex justify-center bg-brand-500 text-white font-extrabold text-[15.5px] py-[15px] rounded-full hover:bg-brand-600 transition-colors"
           >
-            Checkout
+            Continue to checkout
           </button>
+
+          <p class="text-[12.5px] text-cocoa-400 text-center mt-2.5">
+            Payment is confirmed manually via WhatsApp — no online payment.
+          </p>
 
           <RouterLink
             to="/menu"
-            class="block text-center text-sm text-gray-600 hover:text-gray-900 mt-4"
+            class="block text-center text-sm text-[#6E5A4D] hover:text-brand-500 mt-3 transition-colors"
           >
             + Add More Items
           </RouterLink>

@@ -15,10 +15,12 @@ export const visitorTrackingMiddleware = (req, res, next) => {
 
    if (!visitorId) {
       visitorId = uuidv4();
+      const isProd = process.env.NODE_ENV === "production";
       res.cookie(VISITOR_COOKIE_NAME, visitorId, {
          httpOnly: false, // boleh dibaca JS kalau nanti perlu dipakai frontend
-         secure: process.env.NODE_ENV === "production",
-         sameSite: "lax",
+         secure: isProd,
+         // beda domain di production (Vercel <-> Render) butuh "none" + secure
+         sameSite: isProd ? "none" : "lax",
          maxAge: VISITOR_COOKIE_MAX_AGE,
       });
    }

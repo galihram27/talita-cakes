@@ -2,7 +2,7 @@
 import { ref, onUnmounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import api from '@/lib/api'
-import logo from '@/assets/images/logo.jpeg'
+import logo from '@/assets/images/logo.png'
 
 const router = useRouter()
 
@@ -101,118 +101,124 @@ const handleVerifyOtp = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center px-6 py-16">
+  <div class="tc-page min-h-screen bg-page flex flex-col items-center justify-start px-5 pt-12 pb-20">
     <!-- LOGO -->
     <RouterLink to="/" class="flex flex-col items-center gap-3 mb-6">
       <img
         :src="logo"
         alt="Logo Talita's Cake & Cupcakes"
-        class="h-20 w-20 rounded-full object-cover"
+        class="h-20 w-20 object-contain"
       />
-      <span class="text-2xl font-extrabold tracking-tight text-brand-600">
+      <span class="font-display text-2xl text-cocoa-900">
         Talita's Cake &amp; Cupcakes
       </span>
     </RouterLink>
 
-    <!-- HEADLINE -->
-    <div class="mb-8 text-center">
-      <h1 class="text-3xl font-extrabold mb-2">Lupa Password</h1>
-      <p class="text-sm text-gray-600">
-        Tenang, kami bantu pulihkan akunmu.
-      </p>
-    </div>
-
     <!-- CARD -->
-    <div class="w-full max-w-md border border-gray-200 rounded-2xl p-8">
+    <div class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
       <!-- STEP 1: EMAIL -->
-      <form v-if="step === 'email'" @submit.prevent="handleSendOtp" class="space-y-5">
-        <p class="text-sm text-gray-600">
-          Masukkan email akun kamu. Kami akan mengirimkan kode OTP untuk mengatur ulang password.
-        </p>
+      <form v-if="step === 'email'" @submit.prevent="handleSendOtp" class="flex flex-col gap-3.5">
+        <div>
+          <h1 class="font-display text-[28px] mb-1.5">Forgot password</h1>
+          <p class="text-[#6E5A4D] text-[14.5px]">
+            Enter your account email — we'll send a reset code.
+          </p>
+        </div>
 
         <div>
-          <label for="email" class="block text-sm font-medium mb-1.5">Email</label>
+          <label for="email" class="block font-extrabold text-[13.5px] mb-1.5">Email</label>
           <input
             id="email"
             v-model="email"
             type="email"
-            placeholder="Email"
+            placeholder="name@email.com"
             autocomplete="email"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
         </div>
 
-        <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
+        <div
+          v-if="errorMessage"
+          class="bg-[#FBE9E7] border border-[#F0C9C4] text-brand-500 rounded-[10px] px-3.5 py-2.5 text-[13px] font-bold"
+        >
+          {{ errorMessage }}
+        </div>
 
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="w-full rounded-full border border-brand-600 bg-brand-600 text-white py-2.5 text-sm font-semibold hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full rounded-full bg-brand-500 text-white py-3.5 text-[15px] font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isSubmitting ? 'Mengirim...' : 'Kirim Kode OTP' }}
+          {{ isSubmitting ? 'Mengirim...' : 'Send reset code' }}
         </button>
 
-        <p class="text-center text-sm text-gray-600">
-          Ingat password kamu?
-          <RouterLink to="/login" class="font-bold text-brand-600 hover:underline">
-            Sign In
-          </RouterLink>
-        </p>
+        <RouterLink
+          to="/login"
+          class="text-center text-[#6E5A4D] font-bold text-[13.5px] p-1 hover:text-brand-500 transition-colors"
+        >
+          ← Back to sign in
+        </RouterLink>
       </form>
 
       <!-- STEP 2: OTP -->
-      <form v-else @submit.prevent="handleVerifyOtp" class="space-y-5">
-        <p class="text-sm text-gray-600">
-          Masukkan kode OTP 6 digit yang dikirim ke
-          <span class="font-semibold text-gray-900">{{ email }}</span>
-        </p>
-
+      <form v-else @submit.prevent="handleVerifyOtp" class="flex flex-col gap-3.5">
         <div>
-          <label for="code" class="block text-sm font-medium mb-1.5">Kode OTP</label>
-          <input
-            id="code"
-            v-model="code"
-            type="text"
-            inputmode="numeric"
-            maxlength="6"
-            placeholder="••••••"
-            autocomplete="one-time-code"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-center text-lg tracking-[0.5em] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
-          />
+          <h1 class="font-display text-[28px] mb-1.5">Enter reset code</h1>
+          <p class="text-[#6E5A4D] text-[14.5px]">
+            We sent a 6-digit code to
+            <strong class="text-cocoa-900">{{ email }}</strong
+            >. Enter it below.
+          </p>
         </div>
 
-        <p v-if="infoMessage" class="text-sm text-green-600">{{ infoMessage }}</p>
-        <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
+        <input
+          id="code"
+          v-model="code"
+          type="text"
+          inputmode="numeric"
+          maxlength="6"
+          placeholder="______"
+          autocomplete="one-time-code"
+          class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-[15px] text-[26px] tracking-[0.5em] text-center font-extrabold text-cocoa-900 placeholder-[#B7A18E]"
+        />
+
+        <div
+          v-if="infoMessage"
+          class="bg-[#E9F6EE] border border-[#C9E7D6] text-[#2E9E6B] rounded-[10px] px-3.5 py-2.5 text-[13px] font-bold"
+        >
+          {{ infoMessage }}
+        </div>
+        <div
+          v-if="errorMessage"
+          class="bg-[#FBE9E7] border border-[#F0C9C4] text-brand-500 rounded-[10px] px-3.5 py-2.5 text-[13px] font-bold"
+        >
+          {{ errorMessage }}
+        </div>
 
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="w-full rounded-full border border-brand-600 bg-brand-600 text-white py-2.5 text-sm font-semibold hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full rounded-full bg-brand-500 text-white py-3.5 text-[15px] font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isSubmitting ? 'Memeriksa...' : 'Verifikasi Kode' }}
+          {{ isSubmitting ? 'Memeriksa...' : 'Verify' }}
         </button>
 
-        <p class="text-center text-sm text-gray-600">
-          Tidak menerima kode?
-          <button
-            type="button"
-            @click="handleResendOtp"
-            :disabled="resendCooldown > 0 || isSubmitting"
-            class="font-bold text-brand-600 hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
-          >
-            {{ resendCooldown > 0 ? `Kirim ulang (${resendCooldown}s)` : 'Kirim ulang' }}
-          </button>
-        </p>
+        <button
+          type="button"
+          @click="handleResendOtp"
+          :disabled="resendCooldown > 0 || isSubmitting"
+          class="text-brand-500 font-bold text-[13.5px] p-1 hover:opacity-70 disabled:text-cocoa-400 disabled:cursor-not-allowed"
+        >
+          {{ resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code' }}
+        </button>
 
-        <p class="text-center text-sm text-gray-600">
-          <button
-            type="button"
-            @click="step = 'email'; errorMessage = ''; infoMessage = ''"
-            class="hover:underline"
-          >
-            Ganti email
-          </button>
-        </p>
+        <button
+          type="button"
+          @click="step = 'email'; errorMessage = ''; infoMessage = ''"
+          class="text-[#6E5A4D] font-bold text-[13.5px] p-1 hover:text-brand-500 transition-colors"
+        >
+          Ganti email
+        </button>
       </form>
     </div>
   </div>

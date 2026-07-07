@@ -28,7 +28,11 @@ const categoryFieldFor = (type) =>
 const baseFields = {
   name: z.string().trim().min(1, 'Nama wajib diisi'),
   description: z.string().trim().min(1, 'Deskripsi wajib diisi'),
-  image: z.string().trim().min(1, 'Image wajib diisi'),
+  // satu produk bisa punya banyak foto; elemen pertama dipakai sebagai cover.
+  // cover (Product.image) di-derive dari images[0] di service layer.
+  images: z
+    .array(z.string().trim().min(1, 'Image tidak boleh kosong'))
+    .min(1, 'Minimal 1 gambar wajib diunggah'),
   discount: z.coerce.number().min(0).max(100).optional().default(0),
 };
 
@@ -38,7 +42,10 @@ const baseFields = {
 const partialBaseFields = {
   name: z.string().trim().min(1, 'Nama tidak boleh kosong').optional(),
   description: z.string().trim().min(1, 'Deskripsi tidak boleh kosong').optional(),
-  image: z.string().trim().min(1, 'Image tidak boleh kosong').optional(),
+  images: z
+    .array(z.string().trim().min(1, 'Image tidak boleh kosong'))
+    .min(1, 'Minimal 1 gambar wajib diunggah')
+    .optional(),
   discount: z.coerce.number().min(0).max(100).optional(),
 };
 

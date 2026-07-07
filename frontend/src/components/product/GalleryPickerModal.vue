@@ -37,9 +37,16 @@ const handleSearchInput = () => {
   searchDebounceTimer = setTimeout(fetchGalleries, 400)
 }
 
+// Kunci scroll background selama modal terbuka supaya halaman di belakang
+// overlay tidak ikut ter-scroll.
+const lockBodyScroll = (lock) => {
+  document.body.style.overflow = lock ? 'hidden' : ''
+}
+
 watch(
   () => props.modelValue,
   (isOpen) => {
+    lockBodyScroll(isOpen)
     if (isOpen) {
       searchQuery.value = ''
       fetchGalleries()
@@ -47,7 +54,11 @@ watch(
   }
 )
 
-onUnmounted(() => clearTimeout(searchDebounceTimer))
+onUnmounted(() => {
+  clearTimeout(searchDebounceTimer)
+  // pastikan scroll tidak tetap terkunci kalau komponen di-unmount saat terbuka
+  lockBodyScroll(false)
+})
 
 const close = () => emit('update:modelValue', false)
 const choose = (item) => {
@@ -57,11 +68,15 @@ const choose = (item) => {
 </script>
 
 <template>
-  <div
-    v-if="modelValue"
-    class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6"
-    @click.self="close"
-  >
+  <!-- Teleport ke body: kalau ada leluhur yang punya transform/filter, elemen
+       fixed jadi relatif ke leluhur itu (tidak ke tengah layar). Dipindah ke
+       body supaya overlay selalu menutupi & terpusat di viewport. -->
+  <Teleport to="body">
+    <div
+      v-if="modelValue"
+      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6"
+      @click.self="close"
+    >
     <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-bold">Choose from Gallery</h2>
@@ -95,7 +110,8 @@ const choose = (item) => {
         >
           <img :src="item.imageUrl" :alt="item.title" class="w-full h-full object-cover" />
         </button>
+        </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>

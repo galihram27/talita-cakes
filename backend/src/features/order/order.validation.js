@@ -29,12 +29,22 @@ const checkoutBaseSchema = z.object({
   recipientName: z.string().trim().min(1).optional(),
   recipientPhone: z.string().trim().min(8).optional(),
   recipientDataConsent: strictBooleanSchema.optional(),
-  address: z.string().trim().min(1).optional(),
+  // string kosong dibiarkan lolos di sini (frontend mengirim "" saat alamat
+  // belum terisi otomatis) — wajib-tidaknya alamat ditegakkan di superRefine:
+  // wajib saat CONFIRM, tidak saat PREVIEW (ongkir cukup dari koordinat).
+  address: z.string().trim().optional(),
   addressLat: z.coerce.number().optional(),
   addressLng: z.coerce.number().optional(),
 });
 
-export const checkoutSchema = checkoutBaseSchema.superRefine((data, ctx) => {
+/**
+ * Refine bersama untuk checkout. `requireFullDetails`:
+ *   - true  (CONFIRM): alamat teks + data penerima wajib lengkap.
+ *   - false (PREVIEW): cukup titik lokasi (lat/lng) — ongkir dihitung murni
+ *     dari koordinat, jadi jangan blokir kalau teks alamat / data penerima
+ *     belum terisi (mis. alamat masih menunggu reverse-geocode dari peta).
+ */
+const makeCheckoutRefine = (requireFullDetails) => (data, ctx) => {
   // ===== validasi tanggal, berlaku untuk PICKUP maupun DELIVERY =====
   if (!isRequestCakeDateValid(data.requestCakeDate)) {
     ctx.addIssue({
@@ -47,6 +57,19 @@ export const checkoutSchema = checkoutBaseSchema.superRefine((data, ctx) => {
   if (data.fulfillmentType !== 'DELIVERY') return;
 
   // ===== validasi khusus DELIVERY =====
+  // Titik lokasi selalu wajib (dibutuhkan untuk hitung jarak/ongkir).
+  if (data.addressLat === undefined || data.addressLng === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Titik lokasi (map) wajib diisi untuk delivery',
+      path: ['addressLat'],
+    });
+    return;
+  }
+
+  // Selebihnya hanya wajib saat CONFIRM.
+  if (!requireFullDetails) return;
+
   if (!data.recipientType) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -56,10 +79,10 @@ export const checkoutSchema = checkoutBaseSchema.superRefine((data, ctx) => {
     return;
   }
 
-  if (!data.address || data.addressLat === undefined || data.addressLng === undefined) {
+  if (!data.address) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'address & titik lokasi (map) wajib diisi untuk delivery',
+      message: 'address wajib diisi untuk delivery',
       path: ['address'],
     });
     return;
@@ -90,7 +113,17 @@ export const checkoutSchema = checkoutBaseSchema.superRefine((data, ctx) => {
       });
     }
   }
-});
+};
+
+// CONFIRM: butuh alamat + data penerima lengkap (order benar-benar dibuat).
+export const checkoutSchema = checkoutBaseSchema.superRefine(
+  makeCheckoutRefine(true)
+);
+
+// PREVIEW: cukup titik lokasi untuk hitung ongkir (tanpa simpan apa pun).
+export const previewSchema = checkoutBaseSchema.superRefine(
+  makeCheckoutRefine(false)
+);
 
 export const orderIdParamSchema = z.object({
   id: z.string().uuid('Format id tidak valid'),

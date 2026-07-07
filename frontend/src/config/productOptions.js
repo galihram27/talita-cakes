@@ -3,19 +3,33 @@
 // hanya memunculkan pilihan yang pasti lolos validasi server.
 
 export const PRODUCT_TYPE_OPTIONS = [
-  { value: 'TYPE1', label: 'Type 1 (Fixed)' },
-  { value: 'TYPE2', label: 'Type 2 (Fixed Size, Custom Rasa & Dekorasi)' },
-  { value: 'TYPE3', label: 'Type 3 (Semi-Custom)' },
-  { value: 'TYPE4', label: 'Type 4 (Fully Custom)' },
+  { value: 'TYPE1', label: 'Type 1 (Signature Collection)' },
+  { value: 'TYPE2', label: 'Type 2 (Flavor & Design Choice)' },
+  { value: 'TYPE3', label: 'Type 3 (Choose Your Size)' },
+  { value: 'TYPE4', label: 'Type 4 (Fully Custom Cake)' },
 ]
 
 // mirror dari backend product.constant.js -> PRODUCT_CATEGORIES
 // (daftar kategori yang valid per product type)
 export const PRODUCT_CATEGORIES = {
-  TYPE1: ['Signature Shortcake Series'],
+  TYPE1: ['Signature Petite Cake Series', 'Signature Shortcake Series'],
   TYPE2: ['Simple Decor Petite Cake', 'Paper Topper Petite Cake', 'Custom 2D Petite Cake'],
-  TYPE3: ['Signature Original Cake'],
-  TYPE4: ['Signature Custom Cake'],
+  TYPE3: [
+    'Signature Original Cake Series',
+    'Signature Royal Cake',
+    'Signature Tropical Fruit Cake',
+  ],
+  TYPE4: [
+    'Custom Paper Topper Cake',
+    'Custom Edible Photo Cake',
+    'Custom Exclusive Figurine Cake',
+    'Custom Figurine Fondant Cake',
+    'Custom 3D Cake Fondant',
+    'Signature Simple Custom Decor',
+    'Signature Premium Custom Decor',
+    'Signature Royal Custom Decor',
+    'Signature Simple Roses Cake',
+  ],
 }
 
 export const SHAPE_OPTIONS = [

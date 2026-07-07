@@ -1,159 +1,186 @@
 <script setup>
-import { RouterLink } from 'vue-router'
-import { Heart, Cake, Sparkles, Clock, MessageCircle, Instagram, MapPin } from 'lucide-vue-next'
-import logo from '@/assets/images/logo.jpeg'
+import GoogleReviews from '@/components/common/GoogleReviews.vue'
+import logo from '@/assets/images/logo.png'
+import whatsappIcon from '@/assets/images/whatsapp-logo-png-2290.png'
+import instagramIcon from '@/assets/images/instagram-icon-33470.png'
+import threadsIcon from '@/assets/images/threads-logo-42594.png'
+import tiktokIcon from '@/assets/images/tik-tok-logo-33095.png'
+import addressIcon from '@/assets/images/pin-21504.png'
 import { STORE_INFO } from '@/config/constants'
 
-const yearsOfExperience = new Date().getFullYear() - STORE_INFO.since
-
-const values = [
-  {
-    icon: Heart,
-    title: 'Dibuat dengan Cinta',
-    description:
-      'Setiap kue dibuat satu per satu dengan penuh perhatian, seperti membuatkan kue untuk keluarga sendiri.',
-  },
-  {
-    icon: Cake,
-    title: 'Bahan Berkualitas',
-    description:
-      'Kami hanya memakai bahan pilihan — butter, cokelat, dan cream terbaik supaya rasanya selalu konsisten.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Custom Sesuai Keinginanmu',
-    description:
-      'Punya ide desain sendiri? Ceritakan saja! Kami bantu wujudkan kue impianmu, dari yang simpel sampai yang unik.',
-  },
-  {
-    icon: Clock,
-    title: 'Selalu Fresh',
-    description:
-      'Kue dibuat mendekati jadwal pengambilan atau pengantaran, jadi selalu sampai di tanganmu dalam kondisi segar.',
-  },
+const stats = [
+  { num: '12+', label: 'Years of Baking' },
+  { num: '3000+', label: 'Cakes Handcrafted' },
+  { num: 'Made by Order', label: 'Freshly Baked for Every Order' },
 ]
 </script>
 
 <template>
-  <div>
+  <div class="tc-page max-w-[1080px] mx-auto px-5 md:px-8 pt-14 pb-20">
     <!-- HERO -->
-    <section class="max-w-7xl mx-auto px-6 pt-16 pb-14 text-center">
-      <img
-        :src="logo"
-        alt="Logo Talita's Cake & Cupcakes"
-        class="h-28 w-28 rounded-full object-cover mx-auto mb-6"
-      />
-      <p class="text-sm font-semibold text-brand-600 mb-3">Sejak {{ STORE_INFO.since }} ❤</p>
-      <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">
-        Tentang <span class="text-brand-600">Talita's Cake &amp; Cupcakes</span>
-      </h1>
-      <p class="text-gray-600 max-w-2xl mx-auto leading-relaxed">
-        Toko kue rumahan yang percaya bahwa setiap momen spesial layak dirayakan
-        dengan kue yang lezat dan cantik.
-      </p>
-    </section>
-
-    <hr class="border-gray-200" />
-
-    <!-- CERITA KAMI -->
-    <section class="max-w-3xl mx-auto px-6 py-16">
-      <p class="text-sm font-semibold text-brand-600 mb-2">Cerita Kami</p>
-      <h2 class="text-3xl font-extrabold mb-6">
-        Berawal dari Dapur Rumah, {{ yearsOfExperience }} Tahun Menemani Momen Manismu
-      </h2>
-      <div class="space-y-4 text-gray-600 leading-relaxed">
-        <p>
-          Talita's Cake &amp; Cupcakes dimulai pada tahun {{ STORE_INFO.since }}
-          dari dapur rumah sederhana dan kecintaan pada baking. Dari pesanan
-          pertama untuk teman dan tetangga, satu per satu pelanggan datang
-          kembali — bukan hanya karena rasanya, tapi juga karena setiap kue
-          dibuat dengan sepenuh hati.
+    <div class="grid grid-cols-1 md:grid-cols-[1.15fr_0.85fr] gap-7 md:gap-11 items-center mb-14">
+      <div>
+        <h1 class="font-display text-[clamp(36px,5vw,46px)] leading-[1.08] mb-4">
+          Every Cake Begins <br />
+          with a <span class="italic text-brand-500">Story</span>
+        </h1>
+        <p class="font-display text-xl leading-normal text-cocoa-900 mb-4">
+          Every celebration deserves a cake as special as the moment itself.
         </p>
-        <p>
-          Kini kami melayani berbagai pesanan: kue ulang tahun, cupcakes, sampai
-          kue custom dengan desain sesuai keinginanmu. Meskipun pesanan terus
-          bertambah, cara kami bekerja tidak berubah — bahan pilihan, dibuat
-          fresh, dan diperlakukan seperti kue untuk keluarga sendiri.
+        <p class="text-[15.5px] leading-relaxed text-[#6E5A4D] mb-3.5">
+          Founded in {{ STORE_INFO.since }}, Talita's Cake &amp; Cupcakes began
+          as a small home kitchen with one simple mission: creating beautiful
+          homemade cakes that bring people together.
         </p>
-        <p>
-          Terima kasih sudah mempercayakan momen spesialmu kepada kami. Kami
-          tidak sabar membuatkan kue untuk perayaanmu berikutnya! 🎂
+        <p class="text-[15.5px] leading-relaxed text-[#6E5A4D]">
+          Unlike mass-produced cakes, every order is made one at a time —
+          designed specifically to match your theme, style, and special
+          requests.
         </p>
       </div>
-    </section>
-
-    <hr class="border-gray-200" />
-
-    <!-- KENAPA PILIH KAMI -->
-    <section class="max-w-7xl mx-auto px-6 py-16">
-      <p class="text-sm font-semibold text-brand-600 mb-2 text-center">Kenapa Pilih Kami</p>
-      <h2 class="text-3xl font-extrabold mb-10 text-center">
-        Yang Membuat Kue Kami Berbeda
-      </h2>
-
-      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="relative flex items-center justify-center py-6">
         <div
-          v-for="value in values"
-          :key="value.title"
-          class="rounded-2xl border border-gray-200 p-6"
+          class="absolute inset-0 m-auto w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle_at_50%_40%,#FBEFEC_0%,#F5E4DA_70%,transparent_100%)]"
+        ></div>
+        <div
+          class="relative w-[260px] h-[260px] rounded-full bg-white border border-cream-300 shadow-[0_18px_44px_rgba(185,58,60,0.12)] flex items-center justify-center"
         >
-          <div class="w-11 h-11 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center mb-4">
-            <component :is="value.icon" class="w-5 h-5" />
-          </div>
-          <h3 class="font-bold mb-1.5">{{ value.title }}</h3>
-          <p class="text-sm text-gray-600 leading-relaxed">{{ value.description }}</p>
+          <img
+            :src="logo"
+            alt="Talita's Cake"
+            class="w-40 h-40 object-contain"
+          />
         </div>
       </div>
-    </section>
+    </div>
 
-    <hr class="border-gray-200" />
-
-    <!-- KONTAK & CTA -->
-    <section class="max-w-3xl mx-auto px-6 py-16 text-center">
-      <h2 class="text-3xl font-extrabold mb-3">Siap Pesan Kue Impianmu?</h2>
-      <p class="text-gray-600 mb-8">
-        Lihat menu kami, atau hubungi kami kalau ada pertanyaan —
-        kami dengan senang hati membantu.
-      </p>
-
-      <div class="flex flex-wrap items-center justify-center gap-4">
-        <RouterLink
-          to="/menu"
-          class="rounded-full bg-brand-600 text-white px-6 py-3 text-sm font-semibold hover:bg-brand-700 transition"
-        >
-          Lihat Menu
-        </RouterLink>
-
-        <a
-          v-if="STORE_INFO.whatsappNumber"
-          :href="`https://wa.me/${STORE_INFO.whatsappNumber}`"
-          target="_blank"
-          rel="noopener"
-          class="rounded-full border border-brand-600 text-brand-600 px-6 py-3 text-sm font-semibold inline-flex items-center gap-2 hover:bg-brand-600 hover:text-white transition"
-        >
-          <MessageCircle class="w-4 h-4" />
-          Chat WhatsApp
-        </a>
-
-        <a
-          v-if="STORE_INFO.instagram"
-          :href="`https://instagram.com/${STORE_INFO.instagram}`"
-          target="_blank"
-          rel="noopener"
-          class="rounded-full border border-brand-600 text-brand-600 px-6 py-3 text-sm font-semibold inline-flex items-center gap-2 hover:bg-brand-600 hover:text-white transition"
-        >
-          <Instagram class="w-4 h-4" />
-          @{{ STORE_INFO.instagram }}
-        </a>
-      </div>
-
-      <p
-        v-if="STORE_INFO.address"
-        class="mt-8 text-sm text-gray-600 inline-flex items-center gap-1.5"
+    <!-- STAT BAND -->
+    <div
+      class="grid grid-cols-1 sm:grid-cols-3 bg-white border border-cream-300 rounded-[20px] overflow-hidden mb-8 shadow-[0_6px_22px_rgba(51,38,31,0.05)]"
+    >
+      <div
+        v-for="(st, i) in stats"
+        :key="st.label"
+        class="px-5 py-6 text-center border-cream-200"
+        :class="i < stats.length - 1 ? 'border-b sm:border-b-0 sm:border-r' : ''"
       >
-        <MapPin class="w-4 h-4 text-brand-600" />
-        {{ STORE_INFO.address }}
-      </p>
-    </section>
+        <div class="font-display text-[34px] text-brand-500 leading-none">{{ st.num }}</div>
+        <div class="mt-2 text-[13px] font-bold text-[#6E5A4D]">{{ st.label }}</div>
+      </div>
+    </div>
+
+    <!-- CERITA -->
+    <div class="bg-[#FBF3EA] border border-cream-300 rounded-[20px] p-6 md:p-8 mb-11">
+      <div class="text-[#6E5A4D] text-[15.5px] leading-[1.8] max-w-[760px] mx-auto">
+        <p class="mb-3.5">
+          Over the years, we have handcrafted cakes and desserts for birthdays,
+          weddings, anniversaries, baby showers, graduations, corporate events,
+          and countless meaningful celebrations. Every creation is made fresh
+          to order, carefully prepared with premium ingredients, and designed
+          to reflect each customer's unique story.
+        </p>
+        <p class="mb-3.5">
+          Whether you're looking for an elegant birthday cake, a custom
+          character cake, wedding cake, premium brownies, cupcakes, cinnamon
+          rolls, or handcrafted desserts, our goal is always the same —
+          creating desserts that look beautiful, taste delicious, and become
+          part of your happiest memories.
+        </p>
+        <p class="font-display text-xl text-brand-500 text-center">
+          Baked with Love since {{ STORE_INFO.since }}. Made Especially for You.
+        </p>
+      </div>
+    </div>
+
+    <!-- KONTAK -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <a
+        v-if="STORE_INFO.whatsappNumber"
+        :href="`https://wa.me/${STORE_INFO.whatsappNumber}`"
+        target="_blank"
+        rel="noopener"
+        class="flex flex-col gap-2 bg-white border border-cream-300 rounded-2xl p-5 text-cocoa-900 hover:border-brand-500 transition-colors"
+      >
+        <span class="w-11 h-11 flex items-center justify-center">
+          <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6 object-contain" />
+        </span>
+        <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
+          WhatsApp
+        </span>
+        <span class="font-bold text-[15px] leading-normal">
+          +{{ STORE_INFO.whatsappNumber }}
+        </span>
+      </a>
+      <a
+        v-if="STORE_INFO.instagram"
+        :href="`https://instagram.com/${STORE_INFO.instagram}`"
+        target="_blank"
+        rel="noopener"
+        class="flex flex-col gap-2 bg-white border border-cream-300 rounded-2xl p-5 text-cocoa-900 hover:border-brand-500 transition-colors"
+      >
+        <span class="w-11 h-11 flex items-center justify-center">
+          <img :src="instagramIcon" alt="Instagram" class="w-6 h-6 object-contain" />
+        </span>
+        <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
+          Instagram
+        </span>
+        <span class="font-bold text-[15px] leading-normal">
+          @{{ STORE_INFO.instagram }}
+        </span>
+      </a>
+      <a
+        v-if="STORE_INFO.threads"
+        :href="`https://threads.net/@${STORE_INFO.threads}`"
+        target="_blank"
+        rel="noopener"
+        class="flex flex-col gap-2 bg-white border border-cream-300 rounded-2xl p-5 text-cocoa-900 hover:border-brand-500 transition-colors"
+      >
+        <span class="w-11 h-11 flex items-center justify-center">
+          <img :src="threadsIcon" alt="Threads" class="w-6 h-6 object-contain" />
+        </span>
+        <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
+          Threads
+        </span>
+        <span class="font-bold text-[15px] leading-normal">
+          @{{ STORE_INFO.threads }}
+        </span>
+      </a>
+      <a
+        v-if="STORE_INFO.tiktok"
+        :href="`https://tiktok.com/@${STORE_INFO.tiktok}`"
+        target="_blank"
+        rel="noopener"
+        class="flex flex-col gap-2 bg-white border border-cream-300 rounded-2xl p-5 text-cocoa-900 hover:border-brand-500 transition-colors"
+      >
+        <span class="w-11 h-11 flex items-center justify-center">
+          <img :src="tiktokIcon" alt="TikTok" class="w-6 h-6 object-contain" />
+        </span>
+        <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
+          TikTok
+        </span>
+        <span class="font-bold text-[15px] leading-normal">
+          @{{ STORE_INFO.tiktok }}
+        </span>
+      </a>
+      <div
+        v-if="STORE_INFO.address"
+        class="flex flex-col gap-2 bg-white border border-cream-300 rounded-2xl p-5 text-cocoa-900"
+      >
+        <span class="w-11 h-11 flex items-center justify-center">
+          <img :src="addressIcon" alt="Store" class="w-6 h-6 object-contain" />
+        </span>
+        <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
+          Store
+        </span>
+        <span class="font-bold text-[15px] leading-normal">
+          {{ STORE_INFO.address }}
+        </span>
+      </div>
+    </div>
+
+    <!-- REVIEWS -->
+    <div class="mt-14">
+      <GoogleReviews />
+    </div>
   </div>
 </template>

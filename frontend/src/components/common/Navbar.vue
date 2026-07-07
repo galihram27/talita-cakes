@@ -1,125 +1,211 @@
 <script setup>
-import { ref } from "vue";
-import { ShoppingCart, CircleUserRound } from "lucide-vue-next";
+import { ref, watch } from "vue";
+import { ShoppingCart, ChevronDown, User, LogOut, Menu } from "lucide-vue-next";
 import { useAuthStore } from "@/stores/auth.store";
-import logo from "@/assets/images/logo.jpeg";
+import { useCartStore } from "@/stores/cart.store";
+import logo from "@/assets/images/logo.png";
 
 const authStore = useAuthStore();
+const cartStore = useCartStore();
 
-const isMenuOpen = ref(false);
-const toggleMenu = () => (isMenuOpen.value = !isMenuOpen.value);
-const closeMenu = () => (isMenuOpen.value = false);
+// Picu animasi "memantul" pada ikon + badge keranjang tiap kali jumlah item
+// bertambah (mis. setelah add to cart). Kelas dilepas lagi setelah animasi
+// selesai supaya bisa dipicu ulang di penambahan berikutnya.
+const isCartBumping = ref(false);
+watch(
+  () => cartStore.count,
+  (newCount, oldCount) => {
+    if (newCount > oldCount) {
+      isCartBumping.value = false;
+      // paksa reflow via nextTick microtask supaya animasi restart
+      requestAnimationFrame(() => (isCartBumping.value = true));
+    }
+  }
+);
+
+const isUserMenuOpen = ref(false);
+const isNavOpen = ref(false);
+const toggleUserMenu = () => (isUserMenuOpen.value = !isUserMenuOpen.value);
+const closeUserMenu = () => (isUserMenuOpen.value = false);
+const toggleNav = () => (isNavOpen.value = !isNavOpen.value);
+const closeNav = () => (isNavOpen.value = false);
+
+const userInitial = () =>
+  (authStore.user?.name || "?").trim().charAt(0).toUpperCase();
+const userFirst = () => (authStore.user?.name || "").trim().split(" ")[0];
 
 const handleLogout = async () => {
-  closeMenu();
+  closeUserMenu();
+  closeNav();
   await authStore.logout();
 };
+
+const navLinks = [
+  { to: "/", label: "Home", exact: true },
+  { to: "/menu", label: "Menu" },
+  { to: "/gallery", label: "Gallery" },
+  { to: "/about", label: "About Us" },
+];
 </script>
 
 <template>
-  <header class="bg-white border-b border-gray-200">
-    <div class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+  <header
+    class="sticky top-0 z-50 bg-cream-50/90 backdrop-blur-md border-b border-cream-300"
+  >
+    <div
+      class="max-w-[1160px] mx-auto flex items-center gap-7 px-5 md:px-8 h-[72px]"
+    >
       <!-- Logo -->
-      <RouterLink to="/" class="flex items-center gap-2.5">
+      <RouterLink
+        to="/"
+        class="flex items-center gap-3 text-cocoa-900 hover:opacity-70 transition-opacity"
+        @click="closeNav"
+      >
         <img
           :src="logo"
-          alt="Logo Talita's Cake & Cupcakes"
-          class="h-10 w-10 rounded-full object-cover"
+          alt="Talita's Cake & Cupcakes"
+          class="h-[46px] w-[46px] object-contain"
         />
-        <span class="text-xl font-extrabold tracking-tight text-brand-600">
-          Talita's Cake &amp; Cupcakes
+        <span class="flex flex-col leading-tight">
+          <span class="font-display text-[19px]">Talita's Cake &amp; Cupcakes</span>
+          <span
+            class="text-[10.5px] tracking-[0.14em] uppercase text-cocoa-400"
+          >
+            Since 2012
+          </span>
         </span>
       </RouterLink>
 
-      <!-- Nav links -->
+      <!-- Nav links (desktop) -->
       <nav
-        class="hidden md:flex items-center gap-8 text-base font-medium text-gray-700"
+        class="hidden md:flex items-center gap-2 mx-auto text-[15px] font-semibold"
       >
         <RouterLink
-          to="/"
-          class="hover:text-brand-600 transition-colors"
-          exact-active-class="text-brand-600 font-semibold"
+          v-for="link in navLinks"
+          :key="link.to"
+          :to="link.to"
+          class="px-3 py-1.5 rounded-full text-cocoa-900 hover:text-cocoa-500 hover:bg-[#F0E3D6] transition-colors"
+          :exact-active-class="'text-brand-500 bg-brand-100'"
+          :active-class="link.exact ? undefined : 'text-brand-500 bg-brand-100'"
         >
-          Home
-        </RouterLink>
-        <RouterLink
-          to="/menu"
-          class="hover:text-brand-600 transition-colors"
-          active-class="text-brand-600 font-semibold"
-        >
-          Menu
-        </RouterLink>
-        <RouterLink
-          to="/gallery"
-          class="hover:text-brand-600 transition-colors"
-          active-class="text-brand-600 font-semibold"
-        >
-          Gallery
-        </RouterLink>
-        <RouterLink
-          to="/about"
-          class="hover:text-brand-600 transition-colors"
-          active-class="text-brand-600 font-semibold"
-        >
-          About Us
+          {{ link.label }}
         </RouterLink>
         <RouterLink
           v-if="authStore.isAdmin"
           to="/admin/analytics"
-          class="hover:text-brand-600 transition-colors"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-brand-500 hover:bg-brand-100 transition-colors"
         >
-          Admin
+          🛠 Admin
         </RouterLink>
       </nav>
 
       <!-- Right side -->
-      <div class="flex items-center gap-4">
-        <RouterLink to="/cart" class="relative hover:text-brand-600 transition-colors">
-          <ShoppingCart class="w-5 h-5" />
+      <div class="flex items-center gap-2.5 ml-auto md:ml-2">
+        <!-- Cart -->
+        <RouterLink
+          to="/cart"
+          title="Cart"
+          class="relative inline-flex items-center justify-center w-[42px] h-[42px] rounded-full bg-white border border-[#EBDCCC] text-cocoa-900 hover:border-brand-500 hover:bg-brand-100 hover:text-brand-500 transition-colors"
+        >
+          <ShoppingCart
+            class="w-5 h-5"
+            :class="{ 'tc-cart-bump': isCartBumping }"
+            stroke-width="1.7"
+          />
+          <span
+            v-if="cartStore.count > 0"
+            class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-500 text-white text-[11px] font-extrabold flex items-center justify-center"
+            :class="{ 'tc-cart-bump': isCartBumping }"
+          >
+            {{ cartStore.count }}
+          </span>
         </RouterLink>
 
         <!-- GUEST -->
         <RouterLink
           v-if="!authStore.isAuthenticated"
           to="/login"
-          class="rounded-full border border-brand-600 text-brand-600 px-5 py-2 text-sm font-semibold hover:bg-brand-600 hover:text-white transition"
+          class="inline-flex items-center h-[42px] px-5 rounded-full bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 transition-colors"
         >
-          Login
+          Sign in
         </RouterLink>
 
-        <!-- LOGGED IN: icon user + nama, dengan dropdown logout -->
+        <!-- LOGGED IN -->
         <div v-else class="relative">
           <button
             type="button"
-            @click="toggleMenu"
-            class="flex items-center gap-2 text-sm font-medium hover:text-gray-900"
+            @click="toggleUserMenu"
+            class="inline-flex items-center gap-2 h-[42px] px-4 rounded-full bg-white border border-[#EBDCCC] text-cocoa-900 text-sm font-bold hover:border-brand-500 transition-colors"
           >
-            <CircleUserRound class="w-6 h-6" />
-            <span class="hidden sm:inline">{{ authStore.user?.name }}</span>
+            <span
+              class="w-6 h-6 rounded-full bg-brand-500 text-white flex items-center justify-center text-xs font-extrabold"
+            >
+              {{ userInitial() }}
+            </span>
+            <span class="hidden sm:inline">{{ userFirst() }}</span>
+            <ChevronDown
+              class="w-3.5 h-3.5 transition-transform"
+              :class="isUserMenuOpen ? 'rotate-180' : ''"
+              stroke-width="2.4"
+            />
           </button>
 
           <div
-            v-if="isMenuOpen"
-            class="absolute right-0 mt-2 w-40 rounded-lg border border-gray-200 bg-white shadow-lg py-1 z-50"
-            @click.away="closeMenu"
+            v-if="isUserMenuOpen"
+            class="absolute right-0 top-[calc(100%+8px)] min-w-[168px] bg-white border border-[#EBDCCC] rounded-2xl shadow-[0_14px_34px_-12px_rgba(51,38,31,0.35)] p-1.5 z-[60] overflow-hidden"
           >
             <RouterLink
               to="/profile"
-              class="block px-4 py-2 text-sm hover:bg-gray-100"
-              @click="closeMenu"
+              class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-cocoa-900 text-sm font-bold hover:bg-[#F7EEE6] transition-colors"
+              @click="closeUserMenu"
             >
+              <User class="w-4 h-4" stroke-width="1.8" />
               Profile
             </RouterLink>
             <button
               type="button"
               @click="handleLogout"
-              class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+              class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-brand-500 text-sm font-bold text-left hover:bg-brand-50 transition-colors"
             >
+              <LogOut class="w-4 h-4" stroke-width="1.8" />
               Logout
             </button>
           </div>
         </div>
+
+        <!-- Burger (mobile) -->
+        <button
+          type="button"
+          @click="toggleNav"
+          class="inline-flex md:hidden items-center justify-center w-[42px] h-[42px] rounded-full bg-white border border-[#EBDCCC] hover:border-brand-500 hover:bg-brand-100 transition-colors"
+        >
+          <Menu class="w-5 h-5" stroke-width="1.7" />
+        </button>
       </div>
     </div>
+
+    <!-- Mobile nav -->
+    <nav
+      v-if="isNavOpen"
+      class="md:hidden flex flex-col border-t border-cream-300 bg-cream-50 px-5 pt-2 pb-4"
+    >
+      <RouterLink
+        v-for="link in navLinks"
+        :key="link.to"
+        :to="link.to"
+        class="py-3 px-2 text-cocoa-900 font-bold border-b border-cream-200 hover:text-brand-500 transition-colors"
+        @click="closeNav"
+      >
+        {{ link.label }}
+      </RouterLink>
+      <RouterLink
+        v-if="authStore.isAdmin"
+        to="/admin/analytics"
+        class="py-3 px-2 text-brand-500 font-extrabold hover:opacity-70 transition-opacity"
+        @click="closeNav"
+      >
+        🛠 Admin Panel
+      </RouterLink>
+    </nav>
   </header>
 </template>

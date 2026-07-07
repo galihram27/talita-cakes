@@ -1,5 +1,15 @@
 <template>
-  <div class="p-8">
-    <h1 class="text-2xl font-bold">404 - Halaman Tidak Ditemukan</h1>
+  <div class="tc-page max-w-[560px] mx-auto px-8 py-24 text-center">
+    <div class="font-display text-[90px] text-[#E9D5C3] leading-none">404</div>
+    <h1 class="font-display text-[30px] mt-2.5 mb-3">Page not found</h1>
+    <p class="text-[#6E5A4D] mb-6">
+      Maybe the link is wrong, or the cake has been moved. 🍰
+    </p>
+    <RouterLink
+      to="/"
+      class="inline-flex bg-brand-500 text-white font-bold text-[15px] px-7 py-3 rounded-full hover:bg-brand-600 transition-colors"
+    >
+      Back to home
+    </RouterLink>
   </div>
 </template>

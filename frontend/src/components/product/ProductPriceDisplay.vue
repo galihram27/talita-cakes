@@ -9,13 +9,15 @@ defineProps({
 </script>
 
 <template>
-  <div class="mb-8">
-    <p v-if="price !== null" class="text-3xl font-extrabold">{{ formatRupiah(price) }}</p>
-    <p v-else class="text-lg text-gray-400">{{ placeholder }}</p>
+  <div class="mb-7 flex items-baseline gap-2.5 flex-wrap">
+    <p v-if="price !== null" class="text-[28px] font-bold tracking-tight text-brand-500">
+      {{ formatRupiah(price) }}
+    </p>
+    <p v-else class="text-lg text-[#B7A18E]">{{ placeholder }}</p>
 
     <p
       v-if="price !== null && originalPrice !== null && originalPrice > price"
-      class="text-sm text-gray-400 line-through mt-1"
+      class="text-[17px] text-[#B7A18E] line-through"
     >
       {{ formatRupiah(originalPrice) }}
     </p>

@@ -17,22 +17,22 @@ const sizeText = computed(() => {
 </script>
 
 <template>
-  <div class="grid grid-cols-2 gap-4 mb-6">
+  <div class="grid grid-cols-2 gap-3 mb-6 max-w-md">
     <!-- SHAPE -->
     <div
-      class="flex items-center gap-3.5 rounded-2xl border border-brand-100 bg-brand-50/60 px-5 py-4"
+      class="flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
     >
       <div
-        class="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-white border border-brand-200"
+        class="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-[#F4E7D8] text-[#6B4423]"
       >
         <span
-          class="block w-[18px] h-[18px] border-2 border-brand-500"
+          class="block w-[18px] h-[18px] border-2 border-[#6B4423]"
           :class="isRound ? 'rounded-full' : 'rounded-[3px]'"
         />
       </div>
       <div class="min-w-0">
-        <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Shape</p>
-        <p class="text-sm font-bold text-gray-900 truncate">
+        <p class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">Shape</p>
+        <p class="font-display text-[16.5px] text-cocoa-900 leading-tight truncate">
           {{ isRound ? 'Round' : 'Square' }}
         </p>
       </div>
@@ -40,16 +40,16 @@ const sizeText = computed(() => {
 
     <!-- SIZE -->
     <div
-      class="flex items-center gap-3.5 rounded-2xl border border-brand-100 bg-brand-50/60 px-5 py-4"
+      class="flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
     >
       <div
-        class="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-white border border-brand-200"
+        class="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-[#F4E7D8] text-[#6B4423]"
       >
-        <Ruler class="w-[18px] h-[18px] text-brand-500" />
+        <Ruler class="w-[18px] h-[18px]" />
       </div>
       <div class="min-w-0">
-        <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Size</p>
-        <p class="text-sm font-bold text-gray-900 truncate">{{ sizeText }}</p>
+        <p class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">Size</p>
+        <p class="font-display text-[16.5px] text-cocoa-900 leading-tight truncate">{{ sizeText }}</p>
       </div>
     </div>
   </div>

@@ -71,6 +71,7 @@ async function main() {
       name: "Brownies Coklat Mini",
       description: "Brownies coklat lembut ukuran mini, cocok untuk snack box.",
       image: "https://example.com/images/brownies-coklat-mini.jpg",
+      images: ["https://example.com/images/brownies-coklat-mini.jpg"],
       category: "Hampers",
       flavor: "Coklat",
       discount: 0,
@@ -94,6 +95,7 @@ async function main() {
       description:
         "Kue ukuran fixed dengan pilihan rasa dan dekorasi sesuai keinginanmu.",
       image: "https://example.com/images/kue-ultah-mini-custom.jpg",
+      images: ["https://example.com/images/kue-ultah-mini-custom.jpg"],
       category: "Birthday",
       flavor: null, // user pilih flavor sendiri saat order
       discount: 0,
@@ -128,6 +130,7 @@ async function main() {
       name: "Tart Buah Premium",
       description: "Tart lembut dengan topping buah segar, tersedia berbagai ukuran.",
       image: "https://example.com/images/tart-buah-premium.jpg",
+      images: ["https://example.com/images/tart-buah-premium.jpg"],
       category: "Wedding",
       flavor: "Vanilla",
       discount: 10,
@@ -164,6 +167,7 @@ async function main() {
       description:
         "Kue fully custom: pilih ukuran, rasa, dan kirim referensi dekorasimu.",
       image: "https://example.com/images/custom-cake-spesial.jpg",
+      images: ["https://example.com/images/custom-cake-spesial.jpg"],
       category: "Custom",
       flavor: null, // user pilih flavor sendiri saat order
       discount: 5,

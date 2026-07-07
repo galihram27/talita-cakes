@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CircleUserRound } from 'lucide-vue-next'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth.store'
 import { formatRupiah } from '@/utils/formatCurrency'
@@ -54,120 +53,104 @@ onMounted(fetchOrders)
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-6 py-12">
-    <h1 class="text-3xl font-extrabold text-gray-900 mb-8">My Profile</h1>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-      <!-- ===== KIRI: KARTU PROFIL ===== -->
-      <div class="space-y-4">
-        <div
-          class="rounded-2xl border border-gray-200 bg-white p-8 text-center"
+  <div class="tc-page max-w-[900px] mx-auto px-5 md:px-8 pt-12 pb-20">
+    <!-- HEADER PROFIL -->
+    <div class="flex items-center justify-between gap-4 flex-wrap mb-7">
+      <div class="flex items-center gap-4">
+        <span
+          class="w-14 h-14 rounded-full bg-brand-500 text-white flex items-center justify-center text-[22px] font-extrabold"
         >
-          <CircleUserRound
-            class="w-24 h-24 mx-auto text-gray-400"
-            stroke-width="1"
-          />
-
-          <p class="mt-4 text-lg font-bold text-gray-900">
+          {{ (authStore.user?.name || '?').trim().charAt(0).toUpperCase() }}
+        </span>
+        <div>
+          <h1 class="font-display text-[30px] leading-tight">
             {{ authStore.user?.name }}
-          </p>
-          <p class="mt-1 text-sm text-gray-600">{{ authStore.user?.email }}</p>
-          <p class="text-sm text-gray-600">{{ authStore.user?.phone }}</p>
-
-          <hr class="my-6 border-gray-200" />
-
-          <p class="text-3xl font-bold text-gray-900">{{ totalOrders }}</p>
-          <p class="text-sm text-gray-500">Total Pesanan</p>
-        </div>
-
-        <!-- Edit profile belum tersedia (belum ada endpoint update profile) -->
-        <button
-          type="button"
-          disabled
-          title="Fitur ini segera hadir"
-          class="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-400 cursor-not-allowed"
-        >
-          Edit Profile
-        </button>
-
-        <button
-          type="button"
-          :disabled="isLoggingOut"
-          @click="handleLogout"
-          class="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-red-600 hover:bg-red-50 transition disabled:opacity-60"
-        >
-          {{ isLoggingOut ? 'Keluar...' : 'Logout' }}
-        </button>
-      </div>
-
-      <!-- ===== KANAN: RIWAYAT PESANAN ===== -->
-      <div class="md:col-span-2">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">Riwayat Pesanan</h2>
-
-        <!-- LOADING -->
-        <div v-if="isLoading" class="text-center text-gray-500 py-16">
-          Memuat riwayat pesanan...
-        </div>
-
-        <!-- ERROR -->
-        <div v-else-if="errorMessage" class="text-center text-red-600 py-16">
-          {{ errorMessage }}
-        </div>
-
-        <!-- KOSONG -->
-        <div
-          v-else-if="orders.length === 0"
-          class="rounded-2xl border border-gray-200 bg-white p-12 text-center text-gray-500"
-        >
-          Belum ada pesanan.
-          <RouterLink to="/menu" class="text-brand-600 font-semibold hover:underline">
-            Lihat menu
-          </RouterLink>
-        </div>
-
-        <!-- LIST ORDER -->
-        <div v-else class="space-y-5">
-          <div
-            v-for="order in orders"
-            :key="order.id"
-            class="rounded-2xl border border-gray-200 bg-white p-6"
-          >
-            <!-- Header: tanggal + badge tipe pemesanan -->
-            <div class="flex items-center justify-between mb-4">
-              <p class="text-sm text-gray-600">
-                {{ formatDate(order.createdAt) }}
-              </p>
-              <span
-                class="rounded-full border px-4 py-1 text-xs font-semibold"
-                :class="
-                  order.fulfillmentType === 'DELIVERY'
-                    ? 'border-brand-600 text-brand-600'
-                    : 'border-gray-400 text-gray-600'
-                "
-              >
-                {{ order.fulfillmentType === 'DELIVERY' ? 'Delivery' : 'Pickup' }}
-              </span>
-            </div>
-
-            <!-- Item pesanan -->
-            <div class="space-y-2">
-              <div
-                v-for="item in order.items"
-                :key="item.id"
-                class="flex items-center justify-between text-sm text-gray-700"
-              >
-                <span>{{ item.productName }} x {{ item.quantity }}</span>
-                <span>{{ formatRupiah(item.price * item.quantity) }}</span>
-              </div>
-            </div>
-
-            <hr class="my-4 border-gray-200" />
-
-            <div class="flex items-center justify-between text-sm font-bold text-gray-900">
-              <span>Total</span>
-              <span>{{ formatRupiah(order.total) }}</span>
-            </div>
+          </h1>
+          <div class="text-cocoa-400 text-sm">
+            {{ authStore.user?.email }} · {{ authStore.user?.phone }}
           </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        :disabled="isLoggingOut"
+        @click="handleLogout"
+        class="border-[1.5px] border-[#E4D3C1] bg-white text-[#6E5A4D] font-bold text-sm px-5 py-2.5 rounded-full hover:border-brand-500 hover:text-brand-500 transition-colors disabled:opacity-60"
+      >
+        {{ isLoggingOut ? 'Keluar...' : 'Log out' }}
+      </button>
+    </div>
+
+    <!-- RIWAYAT PESANAN -->
+    <h2 class="font-display text-[23px] mb-4">
+      Order history
+      <span class="text-cocoa-400 text-sm font-sans font-bold">({{ totalOrders }})</span>
+    </h2>
+
+    <!-- LOADING -->
+    <div v-if="isLoading" class="text-center text-cocoa-400 py-16">
+      Memuat riwayat pesanan...
+    </div>
+
+    <!-- ERROR -->
+    <div v-else-if="errorMessage" class="text-center text-brand-600 py-16">
+      {{ errorMessage }}
+    </div>
+
+    <!-- KOSONG -->
+    <div
+      v-else-if="orders.length === 0"
+      class="bg-white border border-dashed border-[#E4D3C1] rounded-2xl p-10 text-center text-cocoa-400"
+    >
+      No orders yet.
+      <RouterLink to="/menu" class="text-brand-500 font-extrabold hover:opacity-70">
+        Start ordering →
+      </RouterLink>
+    </div>
+
+    <!-- LIST ORDER -->
+    <div v-else class="flex flex-col gap-3.5">
+      <div
+        v-for="order in orders"
+        :key="order.id"
+        class="bg-white border border-cream-300 rounded-2xl px-6 py-5"
+      >
+        <!-- Header: tanggal + badge tipe pemesanan -->
+        <div class="flex justify-between items-center gap-3 flex-wrap mb-2.5">
+          <p class="text-[13px] text-[#B7A18E] font-semibold">
+            created {{ formatDate(order.createdAt) }}
+          </p>
+          <span
+            class="rounded-full px-3 py-1 text-xs font-extrabold tracking-wide"
+            :class="
+              order.fulfillmentType === 'DELIVERY'
+                ? 'bg-brand-100 text-brand-500'
+                : 'bg-cream-100 text-[#6E5A4D]'
+            "
+          >
+            {{ order.fulfillmentType === 'DELIVERY' ? 'DELIVERY' : 'PICKUP' }}
+          </span>
+        </div>
+
+        <!-- Item pesanan -->
+        <div class="flex flex-col gap-1.5 mb-3">
+          <div
+            v-for="item in order.items"
+            :key="item.id"
+            class="flex items-center justify-between text-sm text-[#6E5A4D]"
+          >
+            <span>{{ item.productName }} ×{{ item.quantity }}</span>
+            <span>{{ formatRupiah(item.price * item.quantity) }}</span>
+          </div>
+        </div>
+
+        <div
+          class="flex items-center justify-between border-t border-cream-200 pt-3 text-sm"
+        >
+          <span class="font-bold">Total</span>
+          <span class="font-extrabold text-brand-500">
+            {{ formatRupiah(order.total) }}
+          </span>
         </div>
       </div>
     </div>

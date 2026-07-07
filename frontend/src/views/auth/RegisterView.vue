@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
-import logo from '@/assets/images/logo.jpeg'
+import logo from '@/assets/images/logo.png'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -58,127 +58,136 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center px-6 py-16">
+  <div class="tc-page min-h-screen bg-page flex flex-col items-center justify-start px-5 pt-12 pb-20">
     <!-- LOGO -->
     <RouterLink to="/" class="flex flex-col items-center gap-3 mb-6">
       <img
         :src="logo"
         alt="Logo Talita's Cake & Cupcakes"
-        class="h-20 w-20 rounded-full object-cover"
+        class="h-20 w-20 object-contain"
       />
-      <span class="text-2xl font-extrabold tracking-tight text-brand-600">
+      <span class="font-display text-2xl text-cocoa-900">
         Talita's Cake &amp; Cupcakes
       </span>
     </RouterLink>
 
-    <!-- HEADLINE -->
-    <div class="mb-8 text-center">
-      <h1 class="text-3xl font-extrabold mb-2">Sign Up</h1>
-      <p class="text-sm text-gray-600">
-        Buat akun dan mulai pesan kue favoritmu.
-      </p>
-    </div>
-
     <!-- CARD -->
-    <div class="w-full max-w-md border border-gray-200 rounded-2xl p-8">
-      <form @submit.prevent="handleSubmit" class="space-y-5">
+    <div class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
+      <h1 class="font-display text-[28px] mb-6">Create account</h1>
+
+      <form @submit.prevent="handleSubmit" class="flex flex-col gap-3.5">
         <!-- NAME -->
         <div>
-          <label for="name" class="block text-sm font-medium mb-1.5">Name</label>
+          <label for="name" class="block font-extrabold text-[13.5px] mb-1.5">Full name</label>
           <input
             id="name"
             v-model="name"
             type="text"
-            placeholder="Name"
+            placeholder="Your name"
             autocomplete="name"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
         </div>
 
         <!-- EMAIL -->
         <div>
-          <label for="email" class="block text-sm font-medium mb-1.5">Email</label>
+          <label for="email" class="block font-extrabold text-[13.5px] mb-1.5">Email</label>
           <input
             id="email"
             v-model="email"
             type="email"
-            placeholder="Email"
+            placeholder="name@email.com"
             autocomplete="email"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
         </div>
 
         <!-- PHONE -->
         <div>
-          <label for="phone" class="block text-sm font-medium mb-1.5">Phone</label>
+          <label for="phone" class="block font-extrabold text-[13.5px] mb-1.5">
+            Phone (active WhatsApp)
+          </label>
           <input
             id="phone"
             v-model="phone"
             type="tel"
-            placeholder="Phone"
+            placeholder="08xxxxxxxxxx"
             autocomplete="tel"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
         </div>
 
         <!-- PASSWORD -->
         <div>
-          <label for="password" class="block text-sm font-medium mb-1.5">Password</label>
+          <label for="password" class="block font-extrabold text-[13.5px] mb-1.5">Password</label>
           <input
             id="password"
             v-model="password"
             type="password"
-            placeholder="Password"
+            placeholder="At least 6 characters"
             autocomplete="new-password"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
         </div>
 
         <!-- CONFIRM PASSWORD -->
         <div>
-          <label for="confirmPassword" class="block text-sm font-medium mb-1.5">Confirm Password</label>
+          <label for="confirmPassword" class="block font-extrabold text-[13.5px] mb-1.5">
+            Confirm password
+          </label>
           <input
             id="confirmPassword"
             v-model="confirmPassword"
             type="password"
-            placeholder="Confirm Password"
+            placeholder="Repeat your password"
             autocomplete="new-password"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
         </div>
 
         <!-- TERMS -->
-        <label class="flex items-start gap-2 text-sm text-gray-600">
+        <label
+          class="flex items-start gap-2.5 text-[13px] text-[#6E5A4D] leading-relaxed cursor-pointer"
+        >
           <input
             v-model="acceptedTerms"
             type="checkbox"
-            class="mt-0.5 rounded border-gray-300 focus:ring-brand-400"
+            class="mt-0.5 w-4 h-4 accent-brand-500"
           />
-          <span>Saya menyetujui Terms of Use & Privacy Policy</span>
+          <span>
+            I agree to the
+            <span class="text-brand-500 font-bold">Terms &amp; Conditions</span>
+            and
+            <span class="text-brand-500 font-bold">Privacy Policy</span>
+            Talita's Cake.
+          </span>
         </label>
 
         <!-- ERROR -->
-        <p v-if="errorMessage" class="text-sm text-red-600">
+        <div
+          v-if="errorMessage"
+          class="bg-[#FBE9E7] border border-[#F0C9C4] text-brand-500 rounded-[10px] px-3.5 py-2.5 text-[13px] font-bold"
+        >
           {{ errorMessage }}
-        </p>
+        </div>
 
         <!-- SUBMIT -->
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="w-full rounded-full border border-brand-600 bg-brand-600 text-white py-2.5 text-sm font-semibold hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full rounded-full bg-brand-500 text-white py-3.5 text-[15px] font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isSubmitting ? 'Signing up...' : 'Sign Up' }}
+          {{ isSubmitting ? 'Signing up...' : 'Sign up & send verification code' }}
         </button>
-
-        <!-- LOGIN LINK -->
-        <p class="text-center text-sm text-gray-600">
-          Already have an account?
-          <RouterLink to="/login" class="font-bold text-brand-600 hover:underline">
-            Login
-          </RouterLink>
-        </p>
       </form>
+
+      <!-- LOGIN LINK -->
+      <p class="border-t border-cream-200 mt-5 pt-4 text-center text-sm text-[#6E5A4D]">
+        Already have an account?
+        <RouterLink to="/login" class="font-extrabold text-brand-500 hover:opacity-70">
+          Sign in
+        </RouterLink>
+      </p>
     </div>
   </div>
 </template>

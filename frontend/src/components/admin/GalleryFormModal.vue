@@ -72,8 +72,8 @@ const removeImage = () => {
 
 // ===== SUBMIT =====
 const validate = () => {
-  if (!form.title.trim()) return 'Title wajib diisi'
-  if (!form.imageUrl) return 'Gambar wajib diunggah'
+  if (!form.title.trim()) return 'Title is required'
+  if (!form.imageUrl) return 'Image is required'
   return null
 }
 
@@ -103,7 +103,7 @@ const handleSubmit = async () => {
     emit('close')
   } catch (err) {
     errorMessage.value =
-      err.response?.data?.message || 'Gagal menyimpan gambar. Coba lagi.'
+      err.response?.data?.message || 'Failed to save image. Please try again.'
   } finally {
     isSubmitting.value = false
   }
@@ -120,15 +120,15 @@ const close = () => {
     v-if="open"
     class="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 py-8 overflow-y-auto"
   >
-    <div class="bg-white rounded-2xl w-full max-w-md shadow-xl">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-[0_10px_40px_-12px_rgba(51,38,31,0.35)]">
       <!-- HEADER -->
-      <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-        <h2 class="text-lg font-extrabold tracking-tight truncate">{{ modalTitle }}</h2>
+      <div class="flex items-center justify-between px-6 py-5 border-b border-cream-200">
+        <h2 class="text-xl text-cocoa-900 truncate">{{ modalTitle }}</h2>
         <button
           type="button"
           @click="close"
-          class="p-1 text-gray-500 hover:text-gray-900 transition"
-          aria-label="Tutup"
+          class="p-1 text-cocoa-400 hover:text-cocoa-900 transition"
+          aria-label="Close"
         >
           <X class="w-5 h-5" />
         </button>
@@ -138,22 +138,22 @@ const close = () => {
       <form class="px-6 py-5 space-y-5" @submit.prevent="handleSubmit">
         <!-- TITLE -->
         <div>
-          <label class="block text-sm font-medium mb-1.5">Title</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Title</label>
           <input
             v-model="form.title"
             type="text"
             placeholder="Image Title..."
-            class="w-full rounded-full border border-gray-300 px-4 py-2.5 text-sm focus:outline-none"
+            class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
           />
         </div>
 
         <!-- IMAGE -->
         <div>
-          <label class="block text-sm font-medium mb-1.5">Image</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Image</label>
           <button
             type="button"
             @click="openFilePicker"
-            class="inline-flex items-center gap-2 rounded-full border border-gray-300 px-5 py-2 text-sm font-medium hover:bg-gray-50 transition"
+            class="inline-flex items-center gap-2 rounded-full border border-cream-300 px-5 py-2 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 hover:border-brand-400 transition"
           >
             <Upload class="w-4 h-4" />
             Upload Image
@@ -167,14 +167,14 @@ const close = () => {
           />
 
           <div v-if="form.imageUrl" class="flex items-center gap-3 mt-3">
-            <div class="w-16 h-16 rounded-lg border border-gray-300 overflow-hidden bg-gray-100">
+            <div class="w-16 h-16 rounded-lg border border-cream-300 overflow-hidden bg-cream-100">
               <img :src="form.imageUrl" alt="Preview" class="w-full h-full object-cover" />
             </div>
             <button
               type="button"
               @click="removeImage"
-              class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-500 transition"
-              aria-label="Hapus gambar"
+              class="w-8 h-8 rounded-full border border-cream-300 text-cocoa-500 flex items-center justify-center hover:border-brand-400 hover:text-brand-600 transition"
+              aria-label="Remove image"
             >
               <X class="w-4 h-4" />
             </button>
@@ -183,31 +183,31 @@ const close = () => {
 
         <!-- DESCRIPTION -->
         <div>
-          <label class="block text-sm font-medium mb-1.5">
-            Description <span class="text-gray-400 font-normal">(opsional)</span>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
+            Description <span class="text-cocoa-400 font-normal">(optional)</span>
           </label>
           <textarea
             v-model="form.description"
             rows="3"
-            class="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm focus:outline-none resize-none"
+            class="w-full rounded-2xl border border-cream-300 px-4 py-3 text-sm focus:outline-none resize-none"
           ></textarea>
         </div>
 
         <!-- TAGS -->
         <div>
-          <label class="block text-sm font-medium mb-1.5">
-            Tags <span class="text-gray-400 font-normal">(opsional, pisahkan dengan koma)</span>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
+            Tags <span class="text-cocoa-400 font-normal">(optional, separate with commas)</span>
           </label>
           <input
             v-model="form.tags"
             type="text"
             placeholder="birthday, wedding, custom..."
-            class="w-full rounded-full border border-gray-300 px-4 py-2.5 text-sm focus:outline-none"
+            class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
           />
         </div>
 
         <!-- ERROR -->
-        <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
+        <p v-if="errorMessage" class="text-sm text-brand-600">{{ errorMessage }}</p>
 
         <!-- ACTIONS -->
         <div class="flex items-center justify-end gap-3 pt-2">
@@ -215,16 +215,16 @@ const close = () => {
             type="button"
             @click="close"
             :disabled="isSubmitting"
-            class="rounded-full border border-gray-300 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
+            class="rounded-full border border-cream-300 px-5 py-2.5 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 transition disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             :disabled="isSubmitting"
-            class="rounded-full bg-brand-600 text-white px-6 py-2.5 text-sm font-medium hover:bg-brand-700 transition disabled:opacity-50"
+            class="rounded-full bg-brand-500 text-white px-6 py-2.5 text-sm font-bold hover:bg-brand-600 transition disabled:opacity-50"
           >
-            {{ isSubmitting ? 'Menyimpan...' : isEdit ? 'Save Changes' : 'Add Image' }}
+            {{ isSubmitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Image' }}
           </button>
         </div>
       </form>

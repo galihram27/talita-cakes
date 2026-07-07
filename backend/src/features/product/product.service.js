@@ -6,11 +6,20 @@ import { updateProductSchemaMap } from './product.validation.js';
 const pickDefined = (obj) =>
   Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 
+// helper: sinkronkan cover (image) dari images[0].
+// Dipakai supaya konsumen lama yang masih baca `image` tetap dapat foto utama.
+const withDerivedCover = (fields) => {
+  if (Array.isArray(fields.images) && fields.images.length > 0) {
+    return { ...fields, image: fields.images[0] };
+  }
+  return fields;
+};
+
 /**
  * Membuat produk baru beserta variannya berdasarkan tipe produk.
  */
 export const createProduct = async (payload) => {
-  const { type, name, description, image, discount, flavor, category } = payload;
+  const { type, name, description, images, discount, flavor, category } = payload;
 
   let variantsData = [];
 
@@ -33,7 +42,9 @@ export const createProduct = async (payload) => {
     type,
     name,
     description,
-    image,
+    // cover di-sync dari foto pertama; images menyimpan seluruh galeri
+    image: images[0],
+    images,
     category,
     // hanya TYPE1 & TYPE3 yang punya flavor fixed;
     // TYPE2 & TYPE4 flavor dipilih user saat order
@@ -109,7 +120,8 @@ export const updateProduct = async (id, body) => {
 // TYPE1 & TYPE2: produk dengan 1 variant fixed
 const updateSingleVariantType = async (id, existing, payload) => {
   const { shape, size, price, ...rest } = payload;
-  const productFields = pickDefined(rest);
+  // kalau images dikirim, cover (image) ikut di-update dari images[0]
+  const productFields = withDerivedCover(pickDefined(rest));
 
   const existingVariant = existing.variants[0];
 
@@ -134,7 +146,8 @@ const updateSingleVariantType = async (id, existing, payload) => {
 // TYPE3 & TYPE4: produk dengan grid variant (Round & Square wajib lengkap)
 const updateVariantGridType = async (id, payload) => {
   const { variants, removeVariants, ...rest } = payload;
-  const productFields = pickDefined(rest);
+  // kalau images dikirim, cover (image) ikut di-update dari images[0]
+  const productFields = withDerivedCover(pickDefined(rest));
 
   return productRepository.updatePartialProductWithVariants(
     id,

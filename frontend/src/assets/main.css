@@ -1,25 +1,96 @@
 @import "tailwindcss";
 
 /*
- * Warna brand Talita's Cake & Cupcakes — diambil dari merah logo.
- * Pakai kelas `brand-*` (mis. bg-brand-600, text-brand-600) untuk semua aksen,
- * jadi kalau suatu saat rebranding cukup ubah nilai di sini.
+ * Design tokens Talita's Cake — dari desain Claude Design (Talita Cakes.dc.html).
+ * Palet krem/coklat hangat dengan aksen merah bata.
+ * Pakai kelas `brand-*` untuk aksen merah, `cream-*` untuk permukaan/border,
+ * `cocoa-*` untuk teks — kalau rebranding cukup ubah nilai di sini.
  */
 @theme {
-  --color-brand-50: #fff5f5;
-  --color-brand-100: #ffe0e0;
-  --color-brand-200: #ffc2c2;
-  --color-brand-300: #ff9e9e;
-  --color-brand-400: #ff7070;
-  --color-brand-500: #ff4747;
-  --color-brand-600: #ff1f1f;
-  --color-brand-700: #e60000;
+  /* Aksen merah bata (tombol, link aktif, harga) */
+  --color-brand-50: #fbede8;
+  --color-brand-100: #f7e7e3;
+  --color-brand-200: #f0cfc9;
+  --color-brand-300: #e3a09b;
+  --color-brand-400: #c9433f;
+  --color-brand-500: #b93a3c;
+  --color-brand-600: #a82f31;
+  --color-brand-700: #8f2628;
 
-  /* Background pink muda seluruh halaman — pakai kelas bg-page */
-  --color-page: #ffeef4;
+  /* Permukaan & border krem */
+  --color-cream-50: #fbf6f0;
+  --color-cream-100: #f5ebe0;
+  --color-cream-200: #f2e7da;
+  --color-cream-300: #efe2d5;
+  --color-cream-400: #f0e1d2;
+  --color-cream-500: #e7c9b4;
+
+  /* Teks coklat */
+  --color-cocoa-400: #a5836b;
+  --color-cocoa-500: #6e4a32;
+  --color-cocoa-900: #33261f;
+
+  /* Aksen emas (bintang rating, dsb.) */
+  --color-gold-400: #f4b14c;
+
+  /* Background halaman — pakai kelas bg-page */
+  --color-page: #fbf6f0;
+
+  /* Font: heading serif, body sans */
+  --font-serif: "DM Serif Display", Georgia, serif;
+  --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Background pink muda untuk seluruh halaman (navbar tetap putih, di-set di Navbar.vue) */
 body {
   background-color: var(--color-page);
+  color: var(--color-cocoa-900);
+  font-family: var(--font-sans);
+}
+
+/* Heading default pakai serif display, weight normal (sesuai desain) */
+h1, h2, h3, .font-display {
+  font-family: var(--font-serif);
+  font-weight: 400;
+}
+
+/* Animasi masuk halaman (dari desain) */
+@keyframes tcPage {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.tc-page {
+  animation: tcPage 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes tcFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.tc-fade {
+  animation: tcFade 0.3s ease both;
+}
+
+/* "Memantul" untuk ikon & badge keranjang saat item bertambah */
+@keyframes tcCartBump {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.4); }
+  55% { transform: scale(0.85); }
+  75% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.tc-cart-bump {
+  animation: tcCartBump 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: 2px solid #b93a3c33;
+}
+
+/* Kursor tangan untuk semua tombol yang bisa diklik */
+button:not(:disabled), [role="button"]:not(:disabled), a {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }

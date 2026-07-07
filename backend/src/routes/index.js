@@ -6,6 +6,7 @@ import orderRoutes from "../features/order/order.routes.js";
 import galleryRoutes from "../features/gallery/gallery.routes.js";
 import analyticsRoutes from "../features/analytics/analytics.routes.js";
 import uploadRoutes from "../features/upload/upload.routes.js";
+import reviewRoutes from "../features/review/review.routes.js";
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use("/orders", orderRoutes);
 router.use("/galleries", galleryRoutes);
 router.use("/analytics", analyticsRoutes);
 router.use("/uploads", uploadRoutes);
+router.use("/reviews", reviewRoutes);
 
 export default router;

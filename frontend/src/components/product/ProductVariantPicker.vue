@@ -49,46 +49,50 @@ watch(
 </script>
 
 <template>
-  <div>
-    <div class="mb-6">
-      <p class="text-sm font-semibold mb-2">Shape</p>
-      <div class="grid grid-cols-2 gap-3">
-        <button
-          v-for="shape in availableShapes"
-          :key="shape"
-          type="button"
-          @click="selectShape(shape)"
-          :class="[
-            'rounded-xl border px-6 py-3.5 text-sm font-medium transition',
-            selectedShape === shape
-              ? 'border-brand-600 bg-brand-600 text-white'
-              : 'border-gray-300 hover:border-gray-500',
-          ]"
-        >
-          {{ shape === 'ROUND' ? '● Round' : '■ Square' }}
-        </button>
-      </div>
+  <div class="mb-6">
+    <p class="text-[15px] font-extrabold mb-2.5">
+      1 · Choose shape <span class="text-brand-500">*</span>
+    </p>
+    <div class="flex gap-2.5">
+      <button
+        v-for="shape in availableShapes"
+        :key="shape"
+        type="button"
+        @click="selectShape(shape)"
+        class="flex-1 rounded-xl border-2 p-3.5 flex flex-col items-center gap-1.5 transition-colors"
+        :class="selectedShape === shape
+          ? 'border-brand-500 bg-[#F4D6D1]'
+          : 'border-[#EBDCCC] bg-white hover:border-brand-500 hover:bg-[#F4D6D1]'"
+      >
+        <span
+          class="w-[22px] h-[22px] border-2 border-cocoa-900"
+          :class="shape === 'ROUND' ? 'rounded-full' : 'rounded-[4px]'"
+        />
+        <span class="font-extrabold text-[14.5px] text-cocoa-900">
+          {{ shape === 'ROUND' ? 'Round' : 'Square' }}
+        </span>
+      </button>
     </div>
 
-    <div class="mb-6">
-      <p class="text-sm font-semibold mb-2">Size</p>
-      <div class="space-y-3">
-        <button
-          v-for="v in sizesForSelectedShape"
-          :key="v.id"
-          type="button"
-          @click="selectVariant(v.id)"
-          :class="[
-            'w-full flex items-center justify-between rounded-xl border px-5 py-3.5 text-sm font-medium transition',
-            variantId === v.id
-              ? 'border-brand-600 ring-2 ring-brand-500'
-              : 'border-gray-300 hover:border-gray-500',
-          ]"
-        >
-          <span>{{ v.size }} cm</span>
-          <span>{{ formatRupiah(applyDiscount(v.price)) }}</span>
-        </button>
-      </div>
+    <p class="text-[15px] font-extrabold mt-5 mb-2.5">
+      2 · Choose size <span class="text-brand-500">*</span>
+    </p>
+    <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+      <button
+        v-for="v in sizesForSelectedShape"
+        :key="v.id"
+        type="button"
+        @click="selectVariant(v.id)"
+        class="rounded-[10px] border-2 px-1.5 py-2.5 flex flex-col items-center gap-0.5 transition-colors"
+        :class="variantId === v.id
+          ? 'border-brand-500 bg-[#F4D6D1]'
+          : 'border-[#EBDCCC] bg-white hover:border-brand-500 hover:bg-[#F4D6D1]'"
+      >
+        <span class="font-extrabold text-sm text-cocoa-900">{{ v.size }} cm</span>
+        <span class="text-[11.5px] text-cocoa-400">
+          {{ formatRupiah(applyDiscount(v.price)) }}
+        </span>
+      </button>
     </div>
   </div>
 </template>

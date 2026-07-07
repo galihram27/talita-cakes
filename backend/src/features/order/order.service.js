@@ -2,8 +2,8 @@
 import { AppError } from '../../utils/appError.js';
 import * as orderRepository from './order.repository.js';
 import * as cartRepository from '../cart/cart.repository.js';
-import { checkoutSchema } from './order.validation.js';
-import { calculateDeliveryFee } from './order.helper.js';
+import { checkoutSchema, previewSchema } from './order.validation.js';
+import { calculateDeliveryFee, MAX_DELIVERY_DISTANCE_KM } from './order.helper.js';
 import { calculateDistanceKm } from '../../utils/distance.js';
 import { STORE_LOCATION, OWNER_WHATSAPP_NUMBER } from '../../config/store.config.js';
 import { buildWhatsappMessage, buildWhatsappLink } from '../../utils/whatsapp.js';
@@ -13,8 +13,8 @@ import { buildWhatsappMessage, buildWhatsappLink } from '../../utils/whatsapp.js
  * Dipakai oleh preview & confirm, supaya logic hitungnya tidak duplikat.
  * TIDAK menyentuh database (selain read cart) — murni kalkulasi.
  */
-const buildOrderCalculation = async (userId, payload) => {
-  const parsed = checkoutSchema.safeParse(payload);
+const buildOrderCalculation = async (userId, payload, schema = checkoutSchema) => {
+  const parsed = schema.safeParse(payload);
   if (!parsed.success) {
     throw new AppError('Validasi gagal', 422, parsed.error.flatten());
   }
@@ -53,6 +53,14 @@ const buildOrderCalculation = async (userId, payload) => {
       data.addressLng
     );
     deliveryFee = calculateDeliveryFee(distanceKm);
+
+    // null = di luar radius layanan pengiriman
+    if (deliveryFee === null) {
+      throw new AppError(
+        `Alamat di luar radius pengiriman ${MAX_DELIVERY_DISTANCE_KM} km. Silakan hubungi kami untuk informasi biaya pengiriman.`,
+        422
+      );
+    }
   }
 
   const total = subtotal + deliveryFee;
@@ -67,7 +75,7 @@ const buildOrderCalculation = async (userId, payload) => {
  */
 export const previewCheckout = async (userId, payload) => {
   const { orderItemsData, subtotal, distanceKm, deliveryFee, total } =
-    await buildOrderCalculation(userId, payload);
+    await buildOrderCalculation(userId, payload, previewSchema);
 
   return {
     items: orderItemsData,

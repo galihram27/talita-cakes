@@ -62,8 +62,8 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="grid md:grid-cols-2 gap-12 md:gap-16 items-start">
-    <ProductImage :image="product.image" :alt="product.name" />
+  <div class="grid md:grid-cols-[minmax(0,384px)_minmax(0,448px)] justify-center gap-6 md:gap-8 items-start">
+    <ProductImage :image="product.image" :images="product.images" :alt="product.name" />
 
     <div>
       <ProductInfoHeader :type="product.type" :name="product.name" :description="product.description" />
@@ -73,12 +73,23 @@ const handleSubmit = async () => {
         :original-price="Number(product.discount) > 0 ? Number(selectedVariant?.price) : null"
       />
 
-      <!-- Flavor fixed untuk TYPE3, read-only -->
-      <div class="mb-6">
-        <p class="text-sm font-semibold mb-2">Flavor</p>
-        <div class="rounded-xl border border-gray-300 px-5 py-3.5 text-sm">
-          {{ product.flavor }}
-        </div>
+      <!-- Flavor fixed untuk TYPE3, read-only (gaya kartu spec desain) -->
+      <div
+        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
+      >
+        <span
+          class="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-[#F4E7D8] text-[19px] leading-none"
+        >
+          🍰
+        </span>
+        <span class="flex flex-col gap-0.5 min-w-0">
+          <span class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">
+            Flavor
+          </span>
+          <span class="font-display text-[16.5px] text-cocoa-900 leading-tight">
+            {{ product.flavor }}
+          </span>
+        </span>
       </div>
 
       <ProductVariantPicker

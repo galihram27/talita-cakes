@@ -1,39 +1,92 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { Users, ClipboardList, Package, ImageIcon } from 'lucide-vue-next'
+import { ChevronDown, X } from 'lucide-vue-next'
 import { useAnalyticsStore } from '@/stores/analytics.store'
 
 // ===== FILTER BULAN =====
 const selectedMonth = ref('all')
 
+// ===== FILTER RENTANG TANGGAL (custom) — menang atas dropdown bulan =====
+const dateFrom = ref('')
+const dateTo = ref('')
+
+// Rentang custom aktif hanya kalau kedua tanggal sudah diisi
+const isCustomRange = computed(() => !!dateFrom.value && !!dateTo.value)
+
 const monthOptions = computed(() => {
-  const options = [{ value: 'all', label: 'All Months' }]
+  const options = [{ value: 'all', label: 'All months' }]
   const now = new Date()
 
   for (let i = 0; i < 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     options.push({ value, label })
   }
 
   return options
 })
 
-const buildQueryParams = () => {
+// Label rentang: "1 Jul 2026" dari string ISO "YYYY-MM-DD" (parse lokal, hindari geser hari)
+const formatRangeLabel = (iso) => {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+// Filter aktif terpusat: rentang tanggal custom menang, kalau tidak jatuh ke dropdown bulan.
+// key dipakai sebagai kunci cache di store, params dikirim ke endpoint.
+const activeFilter = computed(() => {
+  if (isCustomRange.value) {
+    // pastikan from <= to walau user membalik urutannya
+    const [from, to] =
+      dateFrom.value <= dateTo.value
+        ? [dateFrom.value, dateTo.value]
+        : [dateTo.value, dateFrom.value]
+    return {
+      key: `range:${from}:${to}`,
+      params: { from, to, groupBy: 'day' },
+      groupBy: 'day',
+      periodLabel: `${formatRangeLabel(from)} – ${formatRangeLabel(to)}`,
+    }
+  }
+
   if (selectedMonth.value === 'all') {
-    return { groupBy: 'month' }
+    return { key: 'all', params: { groupBy: 'month' }, groupBy: 'month', periodLabel: 'Last 12 months' }
   }
 
   const [year, month] = selectedMonth.value.split('-').map(Number)
   const from = new Date(year, month - 1, 1)
   const to = new Date(year, month, 0, 23, 59, 59, 999)
-
   return {
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10),
+    key: selectedMonth.value,
+    params: {
+      from: from.toISOString().slice(0, 10),
+      to: to.toISOString().slice(0, 10),
+      groupBy: 'day',
+    },
     groupBy: 'day',
+    periodLabel: monthOptions.value.find((opt) => opt.value === selectedMonth.value)?.label || '',
   }
+})
+
+// Subtitle di kartu chart
+const periodLabel = computed(() => activeFilter.value.periodLabel)
+const chartTitleSuffix = computed(() => (activeFilter.value.groupBy === 'month' ? 'monthly' : 'daily'))
+
+// Ganti dropdown bulan → buang rentang custom biar tidak bentrok
+const onMonthChange = () => {
+  dateFrom.value = ''
+  dateTo.value = ''
+}
+
+// Reset rentang custom → balik ke filter bulan
+const clearRange = () => {
+  dateFrom.value = ''
+  dateTo.value = ''
 }
 
 // ===== STATE =====
@@ -42,32 +95,33 @@ const buildQueryParams = () => {
 const analyticsStore = useAnalyticsStore()
 const errorMessage = ref('')
 
-const dashboard = computed(() => analyticsStore.cache[selectedMonth.value])
-// Loading hanya saat belum ada cache untuk filter bulan yang dipilih
+const dashboard = computed(() => analyticsStore.cache[activeFilter.value.key])
+// Loading hanya saat belum ada cache untuk filter yang dipilih
 const isLoading = computed(() => !dashboard.value && !errorMessage.value)
 
 const visitorChart = computed(() => dashboard.value?.visitors ?? [])
 const orderChart = computed(() => dashboard.value?.orders ?? [])
 
 const statCards = computed(() => [
-  { label: 'Total Visitors', value: dashboard.value?.totalVisitors ?? 0, icon: Users },
-  { label: 'Total Orders', value: dashboard.value?.totalOrders ?? 0, icon: ClipboardList },
-  { label: 'Active Products', value: dashboard.value?.totalProducts ?? 0, icon: Package },
-  { label: 'Gallery Images', value: dashboard.value?.totalGalleryImages ?? 0, icon: ImageIcon },
+  { label: 'Total Visitors', value: dashboard.value?.totalVisitors ?? 0 },
+  { label: 'Total Orders', value: dashboard.value?.totalOrders ?? 0 },
+  { label: 'Total Products', value: dashboard.value?.totalProducts ?? 0 },
+  { label: 'Total Gallery Images', value: dashboard.value?.totalGalleryImages ?? 0 },
 ])
 
 // ===== FETCH =====
 const fetchDashboard = async () => {
   errorMessage.value = ''
   try {
-    await analyticsStore.ensureLoaded(selectedMonth.value, buildQueryParams())
+    await analyticsStore.ensureLoaded(activeFilter.value.key, activeFilter.value.params)
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Gagal memuat data analytics'
+    errorMessage.value = err.response?.data?.message || 'Failed to load analytics data'
   }
 }
 
 onMounted(fetchDashboard)
-watch(selectedMonth, fetchDashboard)
+// refetch tiap kali filter aktif berganti (dropdown bulan atau rentang tanggal)
+watch(() => activeFilter.value.key, fetchDashboard)
 
 // ===== CHART HELPERS =====
 const formatChartLabel = (raw) => {
@@ -75,11 +129,11 @@ const formatChartLabel = (raw) => {
   const date = new Date(raw)
   if (Number.isNaN(date.getTime())) return String(raw)
 
-  if (selectedMonth.value === 'all') {
-    return date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })
+  if (activeFilter.value.groupBy === 'month') {
+    return date.toLocaleDateString('en-US', { month: 'short' })
   }
 
-  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+  return date.toLocaleDateString('en-US', { day: 'numeric' })
 }
 
 const barHeight = (count, data) => {
@@ -92,73 +146,112 @@ const barHeight = (count, data) => {
   <div>
     <!-- HEADER -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-      <h1 class="text-3xl font-extrabold tracking-tight">Dashboard Analytics</h1>
+      <h1 class="text-4xl">Analytics</h1>
 
-      <select
-        v-model="selectedMonth"
-        class="rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 bg-white focus:outline-none focus:border-brand-500"
-      >
-        <option v-for="opt in monthOptions" :key="opt.value" :value="opt.value">
-          {{ opt.label }}
-        </option>
-      </select>
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+        <!-- Dropdown bulan -->
+        <div class="relative shrink-0 w-full sm:w-auto">
+          <select
+            v-model="selectedMonth"
+            @change="onMonthChange"
+            class="appearance-none w-full rounded-full border border-cream-300 bg-white pl-4 pr-10 py-2 text-sm font-semibold text-cocoa-500 focus:outline-none focus:border-brand-400 cursor-pointer"
+          >
+            <option v-for="opt in monthOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+          <ChevronDown
+            class="w-4 h-4 text-cocoa-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
+          />
+        </div>
+
+        <!-- Rentang tanggal custom -->
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <input
+            v-model="dateFrom"
+            type="date"
+            :max="dateTo || undefined"
+            aria-label="From date"
+            class="flex-1 sm:flex-none rounded-full border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-cocoa-500 focus:outline-none focus:border-brand-400 cursor-pointer"
+          />
+          <span class="text-cocoa-400 shrink-0">–</span>
+          <input
+            v-model="dateTo"
+            type="date"
+            :min="dateFrom || undefined"
+            aria-label="To date"
+            class="flex-1 sm:flex-none rounded-full border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-cocoa-500 focus:outline-none focus:border-brand-400 cursor-pointer"
+          />
+          <button
+            v-if="isCustomRange"
+            type="button"
+            @click="clearRange"
+            aria-label="Clear date range"
+            class="shrink-0 p-1.5 rounded-full text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+          >
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- LOADING -->
-    <div v-if="isLoading" class="text-center text-gray-500 py-24">
-      Memuat analytics...
+    <div v-if="isLoading" class="text-center text-cocoa-400 py-24">
+      Loading analytics...
     </div>
 
     <!-- ERROR -->
-    <div v-else-if="errorMessage" class="text-center text-red-600 py-24">
+    <div v-else-if="errorMessage" class="text-center text-brand-600 py-24">
       {{ errorMessage }}
     </div>
 
     <template v-else>
       <!-- STAT CARDS -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
         <div
           v-for="card in statCards"
           :key="card.label"
-          class="rounded-xl border border-gray-200 p-5 flex items-center gap-4"
+          class="bg-white rounded-2xl shadow-[0_2px_10px_-4px_rgba(51,38,31,0.12)] px-6 py-5"
         >
-          <div class="rounded-full bg-gray-100 p-3 shrink-0">
-            <component :is="card.icon" class="w-5 h-5 text-gray-700" />
-          </div>
-          <div>
-            <p class="text-2xl font-extrabold">{{ card.value.toLocaleString('id-ID') }}</p>
-            <p class="text-sm text-gray-500">{{ card.label }}</p>
-          </div>
+          <p class="text-[11px] font-sans font-bold tracking-[0.14em] uppercase text-cocoa-400">
+            {{ card.label }}
+          </p>
+          <p class="font-display text-4xl mt-2">{{ card.value.toLocaleString('en-US') }}</p>
         </div>
       </div>
 
       <!-- CHARTS -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Visitors Chart -->
-        <div class="rounded-xl border border-gray-200 p-6">
-          <h2 class="text-lg font-bold mb-6">Visitors per Month</h2>
+        <div class="bg-white rounded-2xl shadow-[0_2px_10px_-4px_rgba(51,38,31,0.12)] p-6">
+          <div class="flex items-baseline justify-between gap-4 mb-8">
+            <h2 class="text-xl capitalize">{{ chartTitleSuffix }} visitors</h2>
+            <span class="text-sm text-brand-400 font-semibold shrink-0">{{ periodLabel }}</span>
+          </div>
 
           <div
             v-if="visitorChart.length === 0"
-            class="h-48 flex items-center justify-center text-gray-400 text-sm border border-dashed border-gray-200 rounded-lg"
+            class="h-52 flex items-center justify-center text-cocoa-400 text-sm border border-dashed border-cream-300 rounded-xl"
           >
-            Chart
+            No data yet
           </div>
 
-          <div v-else class="h-48 flex items-end gap-1.5">
+          <div v-else class="h-52 flex items-end gap-1.5">
             <div
               v-for="(point, idx) in visitorChart"
               :key="idx"
               class="flex-1 flex flex-col items-center gap-1 min-w-0"
             >
-              <div class="w-full h-40 flex items-end">
+              <div class="w-full h-40 flex flex-col items-center justify-end gap-1">
+                <span class="text-[10px] font-semibold text-cocoa-500">{{ point.count }}</span>
                 <div
-                  class="w-full bg-gray-300 rounded-t-sm transition-all"
+                  class="w-full rounded-t-sm transition-all min-h-[4px]"
+                  :class="idx === visitorChart.length - 1 ? 'bg-brand-600' : 'bg-[#eeb2ab]'"
                   :style="{ height: barHeight(point.count, visitorChart) }"
                   :title="`${formatChartLabel(point.date)}: ${point.count}`"
                 />
               </div>
-              <span class="text-[10px] text-gray-400 truncate w-full text-center">
+              <span class="text-[10px] text-cocoa-400 truncate w-full text-center">
                 {{ formatChartLabel(point.date) }}
               </span>
             </div>
@@ -166,30 +259,35 @@ const barHeight = (count, data) => {
         </div>
 
         <!-- Orders Chart -->
-        <div class="rounded-xl border border-gray-200 p-6">
-          <h2 class="text-lg font-bold mb-6">Orders per Month</h2>
+        <div class="bg-white rounded-2xl shadow-[0_2px_10px_-4px_rgba(51,38,31,0.12)] p-6">
+          <div class="flex items-baseline justify-between gap-4 mb-8">
+            <h2 class="text-xl capitalize">{{ chartTitleSuffix }} orders</h2>
+            <span class="text-sm text-brand-400 font-semibold shrink-0">{{ periodLabel }}</span>
+          </div>
 
           <div
             v-if="orderChart.length === 0"
-            class="h-48 flex items-center justify-center text-gray-400 text-sm border border-dashed border-gray-200 rounded-lg"
+            class="h-52 flex items-center justify-center text-cocoa-400 text-sm border border-dashed border-cream-300 rounded-xl"
           >
-            Chart
+            No data yet
           </div>
 
-          <div v-else class="h-48 flex items-end gap-1.5">
+          <div v-else class="h-52 flex items-end gap-1.5">
             <div
               v-for="(point, idx) in orderChart"
               :key="idx"
               class="flex-1 flex flex-col items-center gap-1 min-w-0"
             >
-              <div class="w-full h-40 flex items-end">
+              <div class="w-full h-40 flex flex-col items-center justify-end gap-1">
+                <span class="text-[10px] font-semibold text-cocoa-500">{{ point.count }}</span>
                 <div
-                  class="w-full bg-brand-500 rounded-t-sm transition-all"
+                  class="w-full rounded-t-sm transition-all min-h-[4px]"
+                  :class="idx === orderChart.length - 1 ? 'bg-[#a9803f]' : 'bg-[#ecc98d]'"
                   :style="{ height: barHeight(point.count, orderChart) }"
                   :title="`${formatChartLabel(point.date)}: ${point.count}`"
                 />
               </div>
-              <span class="text-[10px] text-gray-400 truncate w-full text-center">
+              <span class="text-[10px] text-cocoa-400 truncate w-full text-center">
                 {{ formatChartLabel(point.date) }}
               </span>
             </div>

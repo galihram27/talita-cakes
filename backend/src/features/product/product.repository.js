@@ -88,20 +88,25 @@ export const findVariantById = async (id) => {
  * dengan field yang dikirim saja (merge dengan data lama).
  */
 export const updateType1ProductPartial = async (id, productFields, variantId, variantFields) => {
-  return prisma.$transaction(async (tx) => {
-    if (Object.keys(productFields).length > 0) {
-      await tx.product.update({ where: { id }, data: productFields });
-    }
+  return prisma.$transaction(
+    async (tx) => {
+      if (Object.keys(productFields).length > 0) {
+        await tx.product.update({ where: { id }, data: productFields });
+      }
 
-    if (variantFields) {
-      await tx.productVariant.update({
-        where: { id: variantId },
-        data: variantFields,
-      });
-    }
+      if (variantFields) {
+        await tx.productVariant.update({
+          where: { id: variantId },
+          data: variantFields,
+        });
+      }
 
-    return tx.product.findUnique({ where: { id }, include: { variants: true } });
-  });
+      return tx.product.findUnique({ where: { id }, include: { variants: true } });
+    },
+    // DB remote punya latency tinggi; default 5s kekecilan untuk beberapa
+    // round-trip dalam satu transaksi -> naikkan timeout & maxWait.
+    { maxWait: 15000, timeout: 30000 }
+  );
 };
 
 /**
@@ -111,40 +116,45 @@ export const updateType1ProductPartial = async (id, productFields, variantId, va
  * validasi ulang hasil akhirnya. Kalau tidak valid, transaksi rollback.
  */
 export const updatePartialProductWithVariants = async (id, productFields, variantsToUpsert = [], variantsToRemove = []) => {
-  return prisma.$transaction(async (tx) => {
-    if (Object.keys(productFields).length > 0) {
-      await tx.product.update({ where: { id }, data: productFields });
-    }
+  return prisma.$transaction(
+    async (tx) => {
+      if (Object.keys(productFields).length > 0) {
+        await tx.product.update({ where: { id }, data: productFields });
+      }
 
-    for (const v of variantsToUpsert) {
-      await tx.productVariant.upsert({
-        where: {
-          productId_shape_size: { productId: id, shape: v.shape, size: v.size },
-        },
-        update: { price: v.price },
-        create: { productId: id, shape: v.shape, size: v.size, price: v.price },
-      });
-    }
+      for (const v of variantsToUpsert) {
+        await tx.productVariant.upsert({
+          where: {
+            productId_shape_size: { productId: id, shape: v.shape, size: v.size },
+          },
+          update: { price: v.price },
+          create: { productId: id, shape: v.shape, size: v.size, price: v.price },
+        });
+      }
 
-    for (const r of variantsToRemove) {
-      await tx.productVariant.deleteMany({
-        where: { productId: id, shape: r.shape, size: r.size },
-      });
-    }
+      for (const r of variantsToRemove) {
+        await tx.productVariant.deleteMany({
+          where: { productId: id, shape: r.shape, size: r.size },
+        });
+      }
 
-    const result = await tx.product.findUnique({ where: { id }, include: { variants: true } });
+      const result = await tx.product.findUnique({ where: { id }, include: { variants: true } });
 
-    if (!hasRoundAndSquare(result.variants)) {
-      throw new AppError('Variants harus tetap memiliki minimal satu Round dan satu Square', 422);
-    }
+      if (!hasRoundAndSquare(result.variants)) {
+        throw new AppError('Variants harus tetap memiliki minimal satu Round dan satu Square', 422);
+      }
 
-    const completeness = validateAllVariantsCompleteness(result.variants);
-    if (!completeness.valid) {
-      throw new AppError(completeness.message, 422);
-    }
+      const completeness = validateAllVariantsCompleteness(result.variants);
+      if (!completeness.valid) {
+        throw new AppError(completeness.message, 422);
+      }
 
-    return result;
-  });
+      return result;
+    },
+    // DB remote punya latency tinggi + banyak variant di-upsert satu per satu
+    // (banyak round-trip). Default 5s kekecilan -> naikkan timeout & maxWait.
+    { maxWait: 15000, timeout: 30000 }
+  );
 };
 
 /**

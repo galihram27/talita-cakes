@@ -4,6 +4,7 @@ import ProductImage from './ProductImage.vue'
 import ProductInfoHeader from './ProductInfoHeader.vue'
 import ProductPriceDisplay from './ProductPriceDisplay.vue'
 import ProductFixedSpec from './ProductFixedSpec.vue'
+import ProductFlavorPicker from './ProductFlavorPicker.vue'
 import DesignReferencePicker from './DesignReferencePicker.vue'
 import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
@@ -65,8 +66,8 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="grid md:grid-cols-2 gap-12 md:gap-16 items-start">
-    <ProductImage :image="product.image" :alt="product.name" />
+  <div class="grid md:grid-cols-[minmax(0,384px)_minmax(0,448px)] justify-center gap-6 md:gap-8 items-start">
+    <ProductImage :image="product.image" :images="product.images" :alt="product.name" />
 
     <div>
       <ProductInfoHeader :type="product.type" :name="product.name" :description="product.description" />
@@ -79,16 +80,11 @@ const handleSubmit = async () => {
       <ProductFixedSpec :shape="variant?.shape" :size="variant?.size" />
 
       <!-- Flavor: pilihan user, khusus TYPE2 -->
-      <div class="mb-6">
-        <label class="block text-sm font-semibold mb-2">Flavor</label>
-        <select
-          v-model="selectedFlavor"
-          class="w-full rounded-xl border border-gray-300 px-5 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white"
-        >
-          <option value="" disabled>Choose Flavor</option>
-          <option v-for="f in CUSTOM_FLAVORS" :key="f" :value="f">{{ f }}</option>
-        </select>
-      </div>
+      <ProductFlavorPicker
+        v-model="selectedFlavor"
+        :flavors="CUSTOM_FLAVORS"
+        step-label="1 · Choose flavor"
+      />
 
       <DesignReferencePicker v-model="designImage" />
 

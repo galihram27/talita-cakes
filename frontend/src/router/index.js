@@ -93,6 +93,12 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  // Setiap pindah halaman, mulai dari atas. Saat back/forward (savedPosition),
+  // kembalikan ke posisi scroll sebelumnya.
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    return { top: 0 }
+  },
 })
 
 // Navigation guard: proteksi route berdasarkan meta requiresAuth / requiresAdmin

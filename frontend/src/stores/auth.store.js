@@ -53,6 +53,12 @@ export const useAuthStore = defineStore("auth", {
         await api.post("/auth/logout");
       } finally {
         this.clearSession();
+        // kosongkan badge keranjang (dynamic import supaya tidak circular)
+        const { useCartStore } = await import("@/stores/cart.store");
+        useCartStore().reset();
+        // hapus cache pesanan admin dari localStorage (data sensitif)
+        const { useAdminOrdersStore } = await import("@/stores/adminOrders.store");
+        useAdminOrdersStore().invalidate();
       }
     },
 

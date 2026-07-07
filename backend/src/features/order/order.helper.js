@@ -1,8 +1,10 @@
 // src/features/order/order.helper.js
 
 export const MIN_DAYS_BEFORE_CAKE_DATE = 7;
-export const DELIVERY_DISTANCE_UNIT_KM = 5;
-export const DELIVERY_RATE_PER_UNIT = 10000; // Rp10.000 per 5km, sementara
+
+// Batas maksimal radius pengiriman. Di luar ini user diarahkan
+// menghubungi toko langsung untuk info biaya pengiriman.
+export const MAX_DELIVERY_DISTANCE_KM = 25;
 
 /**
  * Validasi requestCakeDate minimal H+7 dari hari ini.
@@ -23,14 +25,21 @@ export const isRequestCakeDateValid = (date) => {
 };
 
 /**
- * Hitung ongkir berdasarkan jarak (km).
- * Rumus sementara: Rp10.000 per kelipatan 5km, dibulatkan ke atas.
- * Contoh: 1km -> 10rb, 5km -> 10rb, 5.1km -> 20rb, 12km -> 30rb.
- * GANTI logic ini kalau owner sudah punya rumus ongkir final.
+ * Hitung ongkir berdasarkan radius jarak (km) dari toko:
+ *   < 5 km    -> Rp30.000
+ *   5–10 km   -> Rp45.000
+ *   11–15 km  -> Rp55.000
+ *   16–20 km  -> Rp65.000
+ *   21–25 km  -> Rp75.000
+ *   > 25 km   -> null (di luar jangkauan, hubungi toko)
  */
 export const calculateDeliveryFee = (distanceKm) => {
   if (!distanceKm || distanceKm <= 0) return 0;
+  if (distanceKm > MAX_DELIVERY_DISTANCE_KM) return null;
 
-  const units = Math.ceil(distanceKm / DELIVERY_DISTANCE_UNIT_KM);
-  return units * DELIVERY_RATE_PER_UNIT;
+  if (distanceKm < 5) return 30000;
+  if (distanceKm <= 10) return 45000;
+  if (distanceKm <= 15) return 55000;
+  if (distanceKm <= 20) return 65000;
+  return 75000;
 };

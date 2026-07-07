@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import api from '@/lib/api'
-import logo from '@/assets/images/logo.jpeg'
+import logo from '@/assets/images/logo.png'
 
 const router = useRouter()
 
@@ -74,64 +74,66 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center px-6 py-16">
+  <div class="tc-page min-h-screen bg-page flex flex-col items-center justify-start px-5 pt-12 pb-20">
     <!-- LOGO -->
     <RouterLink to="/" class="flex flex-col items-center gap-3 mb-6">
       <img
         :src="logo"
         alt="Logo Talita's Cake & Cupcakes"
-        class="h-20 w-20 rounded-full object-cover"
+        class="h-20 w-20 object-contain"
       />
-      <span class="text-2xl font-extrabold tracking-tight text-brand-600">
+      <span class="font-display text-2xl text-cocoa-900">
         Talita's Cake &amp; Cupcakes
       </span>
     </RouterLink>
 
-    <!-- HEADLINE -->
-    <div class="mb-8 text-center">
-      <h1 class="text-3xl font-extrabold mb-2">Atur Password Baru</h1>
-      <p class="text-sm text-gray-600">
-        Satu langkah lagi — buat password baru untuk akunmu.
-      </p>
-    </div>
-
     <!-- CARD -->
-    <div class="w-full max-w-md border border-gray-200 rounded-2xl p-8">
+    <div class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
       <!-- SUKSES -->
-      <div v-if="isSuccess" class="text-center space-y-3">
-        <p class="text-sm text-green-600 font-semibold">
+      <div v-if="isSuccess" class="text-center flex flex-col gap-3">
+        <div
+          class="bg-[#E9F6EE] border border-[#C9E7D6] text-[#2E9E6B] rounded-[10px] px-3.5 py-2.5 text-[13px] font-bold"
+        >
           Password berhasil diubah! Mengarahkan ke halaman login...
-        </p>
-        <RouterLink to="/login" class="text-sm font-bold text-brand-600 hover:underline">
-          Sign In sekarang
+        </div>
+        <RouterLink
+          to="/login"
+          class="text-sm font-extrabold text-brand-500 hover:opacity-70"
+        >
+          Sign in sekarang
         </RouterLink>
       </div>
 
       <!-- FORM -->
-      <form v-else @submit.prevent="handleSubmit" class="space-y-5">
-        <p class="text-sm text-gray-600">
-          Buat password baru untuk akun
-          <span class="font-semibold text-gray-900">{{ email }}</span>
-        </p>
+      <form v-else @submit.prevent="handleSubmit" class="flex flex-col gap-3.5">
+        <div>
+          <h1 class="font-display text-[28px] mb-1.5">New password</h1>
+          <p class="text-[#6E5A4D] text-[14.5px]">
+            Code verified ✓ — now set a new password for
+            <strong class="text-cocoa-900">{{ email }}</strong>
+          </p>
+        </div>
 
         <div>
-          <label for="newPassword" class="block text-sm font-medium mb-1.5">Password Baru</label>
+          <label for="newPassword" class="block font-extrabold text-[13.5px] mb-1.5">
+            New password
+          </label>
           <input
             id="newPassword"
             v-model="newPassword"
             type="password"
-            placeholder="Password baru"
+            placeholder="New password (min. 6 characters)"
             autocomplete="new-password"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
-          <p class="mt-1.5 text-xs text-gray-500">
+          <p class="mt-1.5 text-xs text-cocoa-400">
             6–20 karakter, diawali huruf, dan mengandung minimal 1 angka
           </p>
         </div>
 
         <div>
-          <label for="confirmPassword" class="block text-sm font-medium mb-1.5">
-            Konfirmasi Password
+          <label for="confirmPassword" class="block font-extrabold text-[13.5px] mb-1.5">
+            Confirm password
           </label>
           <input
             id="confirmPassword"
@@ -139,18 +141,23 @@ const handleSubmit = async () => {
             type="password"
             placeholder="Ulangi password baru"
             autocomplete="new-password"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
         </div>
 
-        <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
+        <div
+          v-if="errorMessage"
+          class="bg-[#FBE9E7] border border-[#F0C9C4] text-brand-500 rounded-[10px] px-3.5 py-2.5 text-[13px] font-bold"
+        >
+          {{ errorMessage }}
+        </div>
 
         <button
           type="submit"
           :disabled="isSubmitting"
-          class="w-full rounded-full border border-brand-600 bg-brand-600 text-white py-2.5 text-sm font-semibold hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full rounded-full bg-brand-500 text-white py-3.5 text-[15px] font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isSubmitting ? 'Menyimpan...' : 'Simpan Password Baru' }}
+          {{ isSubmitting ? 'Menyimpan...' : 'Save & sign in' }}
         </button>
       </form>
     </div>

@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --exec tsx src/server.js"
+    "dev": "nodemon --exec tsx src/server.js",
+    "start": "node src/server.js",
+    "build": "prisma generate && prisma migrate deploy"
   },
   "keywords": [],
   "author": "",

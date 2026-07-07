@@ -3,8 +3,8 @@ import { AlertTriangle } from 'lucide-vue-next'
 
 defineProps({
   open: { type: Boolean, default: false },
-  title: { type: String, default: 'Konfirmasi' },
-  message: { type: String, default: 'Apakah Anda yakin?' },
+  title: { type: String, default: 'Confirmation' },
+  message: { type: String, default: 'Are you sure?' },
   confirmText: { type: String, default: 'Yes' },
   cancelText: { type: String, default: 'No' },
   // gaya tombol konfirmasi: 'danger' (merah) atau 'primary' (gelap)
@@ -50,7 +50,7 @@ const emit = defineEmits(['confirm', 'cancel'])
           class="rounded-full px-6 py-2 text-sm font-medium text-white transition disabled:opacity-50"
           :class="variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-600 hover:bg-brand-700'"
         >
-          {{ isLoading ? 'Memproses...' : confirmText }}
+          {{ isLoading ? 'Processing...' : confirmText }}
         </button>
       </div>
     </div>
