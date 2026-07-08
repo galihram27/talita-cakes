@@ -2,6 +2,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { X, Upload } from 'lucide-vue-next'
 import { createGallery, updateGallery } from '@/services/gallery.service'
+import { uploadImage } from '@/services/upload.service'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -51,19 +52,29 @@ watch(
   { immediate: true }
 )
 
-// ===== IMAGE UPLOAD (base64 data URL, belum ada endpoint upload) =====
+// ===== IMAGE UPLOAD (ke Cloudinary via /uploads/images) =====
+// Simpan URL Cloudinary, BUKAN base64 — base64 membengkakkan DB & bikin
+// fetch gallery lambat (1 gambar bisa bermega-mega byte).
+const isUploading = ref(false)
+
 const openFilePicker = () => fileInputRef.value?.click()
 
-const handleFileChange = (e) => {
+const handleFileChange = async (e) => {
   const file = e.target.files?.[0]
+  e.target.value = ''
   if (!file) return
 
-  const reader = new FileReader()
-  reader.onload = () => {
-    form.imageUrl = reader.result // data URL
+  isUploading.value = true
+  errorMessage.value = ''
+  try {
+    const { url } = await uploadImage(file)
+    form.imageUrl = url
+  } catch (err) {
+    errorMessage.value =
+      err.response?.data?.message || 'Failed to upload image. Please try again.'
+  } finally {
+    isUploading.value = false
   }
-  reader.readAsDataURL(file)
-  e.target.value = ''
 }
 
 const removeImage = () => {
@@ -153,10 +164,11 @@ const close = () => {
           <button
             type="button"
             @click="openFilePicker"
-            class="inline-flex items-center gap-2 rounded-full border border-cream-300 px-5 py-2 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 hover:border-brand-400 transition"
+            :disabled="isUploading"
+            class="inline-flex items-center gap-2 rounded-full border border-cream-300 px-5 py-2 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 hover:border-brand-400 transition disabled:opacity-50"
           >
             <Upload class="w-4 h-4" />
-            Upload Image
+            {{ isUploading ? 'Uploading...' : 'Upload Image' }}
           </button>
           <input
             ref="fileInputRef"
@@ -221,7 +233,7 @@ const close = () => {
           </button>
           <button
             type="submit"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || isUploading"
             class="rounded-full bg-brand-500 text-white px-6 py-2.5 text-sm font-bold hover:bg-brand-600 transition disabled:opacity-50"
           >
             {{ isSubmitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Image' }}

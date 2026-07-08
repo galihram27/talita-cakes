@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { MapPin, Phone, LocateFixed } from 'lucide-vue-next'
+import { MapPin, Phone, LocateFixed, Route } from 'lucide-vue-next'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import markImageUrl from '@/assets/images/pin-21504.png'
@@ -293,16 +293,25 @@ const buildPayload = () => ({
 })
 
 const fetchPreview = async () => {
-  // Preview (ongkir) cukup butuh tanggal valid + titik lokasi. Teks alamat
-  // TIDAK diperlukan di sini — jarak/ongkir dihitung murni dari koordinat,
-  // sehingga ongkir langsung muncul saat pin ditaruh (GPS / klik peta),
-  // tanpa menunggu reverse-geocode mengisi field alamat.
-  if (!requestCakeDate.value) return
+  // Preview (ongkir) hanya butuh titik lokasi — jarak/ongkir dihitung murni
+  // dari koordinat, jadi ongkir langsung muncul saat pin ditaruh (GPS / klik
+  // peta), tanpa menunggu tanggal dipilih ataupun reverse-geocode mengisi
+  // field alamat.
   if (isDelivery.value && (addressLat.value === null || addressLng.value === null))
     return
 
   try {
-    const { data } = await api.post('/orders/preview', buildPayload())
+    // JANGAN pakai buildPayload() di sini: field lain yang belum terisi
+    // (recipientName/recipientPhone kosong, tanggal belum dipilih) akan
+    // ditolak validasi backend (422) — ongkir jadi macet di "Pin lokasi dulu"
+    // padahal titik sudah dipin. Preview cukup koordinat saja.
+    const { data } = await api.post('/orders/preview', {
+      fulfillmentType: fulfillmentType.value,
+      ...(isDelivery.value && {
+        addressLat: addressLat.value,
+        addressLng: addressLng.value,
+      }),
+    })
     deliveryFee.value = data.data.deliveryFee
     distanceKm.value = data.data.distanceKm
     deliveryError.value = ''
@@ -322,7 +331,7 @@ watch(isDelivery, () => {
   deliveryError.value = ''
 })
 
-watch([fulfillmentType, requestCakeDate, addressLat, addressLng], () => {
+watch([fulfillmentType, addressLat, addressLng], () => {
   if (!isDelivery.value) {
     deliveryFee.value = 0
     distanceKm.value = null
@@ -581,11 +590,35 @@ onMounted(fetchCart)
             <template v-else>
               Geser marker atau klik peta untuk koreksi titik lokasi; alamat ikut
               diperbarui otomatis.
-              <span v-if="distanceKm !== null" class="font-bold text-[#3E7A4E]">
-                Jarak dari toko: ± {{ distanceKm.toFixed(1) }} km
-              </span>
             </template>
           </p>
+
+          <!-- Jarak dari toko — kotak tersendiri agar langsung terlihat user -->
+          <div
+            v-if="distanceKm !== null"
+            class="mt-3 flex items-center gap-3 rounded-xl border border-[#CDE3D2] bg-[#EDF6EF] px-4 py-3"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-[#3E7A4E] flex items-center justify-center shrink-0"
+            >
+              <Route class="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div
+                class="text-[11px] font-extrabold tracking-widest uppercase text-[#3E7A4E]"
+              >
+                Jarak dari toko
+              </div>
+              <div class="text-lg font-extrabold leading-tight text-cocoa-900">
+                ± {{ distanceKm.toFixed(1) }} km
+              </div>
+            </div>
+            <span
+              class="ml-auto text-[11px] font-bold text-[#3E7A4E] bg-white border border-[#CDE3D2] rounded-full px-2.5 py-1"
+            >
+              Dalam jangkauan ({{ MAX_DELIVERY_DISTANCE_KM }} km)
+            </span>
+          </div>
 
           <!-- Alamat di luar radius layanan pengiriman -->
           <div

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Search, Plus, Pencil, Trash2, ChevronDown } from 'lucide-vue-next'
 import { deleteProduct } from '@/services/product.service'
+import { cloudinaryThumb } from '@/utils/cloudinaryImage'
 import { useProductStore } from '@/stores/product.store'
 import { useAnalyticsStore } from '@/stores/analytics.store'
 import ProductFormModal from '@/components/admin/ProductFormModal.vue'
@@ -122,18 +123,18 @@ const categoryCell = (product) =>
 // Harga termurah setelah diskon (rumus sama dengan ProductCard)
 const priceLabel = (product) => {
   const prices = product.variants?.map((v) => Number(v.price)) ?? []
-  if (prices.length === 0) return '—'
+  if (prices.length === 0) return { value: '—', hasRange: false }
 
   const discount = Number(product.discount ?? 0)
   const applyDiscount = (price) =>
     discount > 0 ? Math.round((price - (price * discount) / 100) * 100) / 100 : price
 
   const min = applyDiscount(Math.min(...prices))
-  const formatted = `Rp${min.toLocaleString('id-ID')}`
+  const value = `Rp ${min.toLocaleString('id-ID')}`
+  const hasRange =
+    prices.length > 1 && Math.max(...prices) !== Math.min(...prices)
 
-  return prices.length > 1 && Math.max(...prices) !== Math.min(...prices)
-    ? `From ${formatted}`
-    : formatted
+  return { value, hasRange }
 }
 
 // konfirmasi hapus produk via pop-up (bukan confirm bawaan browser)
@@ -258,8 +259,9 @@ const confirmDelete = async () => {
                 >
                   <img
                     v-if="product.image"
-                    :src="product.image"
+                    :src="cloudinaryThumb(product.image, 112)"
                     :alt="product.name"
+                    loading="lazy"
                     class="w-full h-full object-cover"
                   />
                 </div>
@@ -282,7 +284,7 @@ const confirmDelete = async () => {
                 {{ categoryCell(product) }}
               </td>
               <td class="px-5 py-4 font-extrabold text-brand-600 whitespace-nowrap">
-                {{ priceLabel(product) }}
+                <span v-if="priceLabel(product).hasRange" class="text-cocoa-400 font-semibold">From </span>{{ priceLabel(product).value }}
               </td>
               <td class="px-5 py-4">
                 <div class="flex items-center justify-end gap-2">

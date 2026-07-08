@@ -4,7 +4,7 @@ import { formatRupiah } from '@/utils/formatCurrency'
 defineProps({
   price: { type: Number, default: null },
   originalPrice: { type: Number, default: null },
-  placeholder: { type: String, default: 'Pilih shape & size untuk melihat harga' },
+  placeholder: { type: String, default: 'Select shape & size to see the price' },
 })
 </script>
 

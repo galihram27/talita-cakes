@@ -67,7 +67,27 @@ const fetchCart = async () => {
 // ===== UPDATE QUANTITY =====
 const changeQuantity = async (item, delta) => {
   const newQuantity = item.quantity + delta
-  if (newQuantity < 1) return
+
+  // Jumlah 1 dikurangi lagi = item langsung dihapus dari keranjang
+  // (tanpa dialog konfirmasi — mengurangi sampai 0 sudah aksi yang disengaja).
+  if (newQuantity < 1) {
+    updatingItemId.value = item.id
+    try {
+      await api.delete(`/carts/items/${item.id}`)
+      cart.value.items = cart.value.items.filter((i) => i.id !== item.id)
+      cart.value.subtotal = cart.value.items.reduce(
+        (sum, i) => sum + i.lineTotal,
+        0
+      )
+      cartStore.setFromItems(cart.value.items)
+    } catch (err) {
+      errorMessage.value =
+        err.response?.data?.message || 'Gagal menghapus item'
+    } finally {
+      updatingItemId.value = null
+    }
+    return
+  }
 
   updatingItemId.value = item.id
   try {
@@ -217,7 +237,7 @@ onMounted(fetchCart)
                 <div class="flex items-center border-[1.5px] border-[#E4D3C1] rounded-full bg-white">
                   <button
                     type="button"
-                    :disabled="updatingItemId === item.id || item.quantity <= 1"
+                    :disabled="updatingItemId === item.id"
                     @click="changeQuantity(item, -1)"
                     class="w-[34px] h-[34px] text-[15px] text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
                     aria-label="Kurangi jumlah"

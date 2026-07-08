@@ -13,6 +13,17 @@ export const createProductWithVariants = async (data) => {
 };
 
 /**
+ * Menghitung jumlah produk (opsional difilter category).
+ * Dipakai dashboard analytics supaya tidak perlu menarik seluruh katalog
+ * hanya untuk mengambil angka totalnya.
+ */
+export const countProducts = async (category) => {
+  return await prisma.product.count({
+    where: category ? { category } : undefined,
+  });
+};
+
+/**
  * Mencari satu produk berdasarkan ID beserta variannya.
  */
 export const findProductById = async (id) => {

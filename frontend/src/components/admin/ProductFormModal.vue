@@ -11,6 +11,7 @@ import {
   sizeLabel,
 } from '@/config/productOptions'
 import { createProduct, updateProduct } from '@/services/product.service'
+import { uploadImage } from '@/services/upload.service'
 import PriceInput from '@/components/admin/PriceInput.vue'
 
 const props = defineProps({
@@ -151,24 +152,30 @@ watch(
   { immediate: true }
 )
 
-// ===== IMAGE UPLOAD (base64 data URL, belum ada endpoint upload) =====
-// mendukung banyak foto: setiap file yang dipilih ditambahkan ke form.images
-const openFilePicker = () => fileInputRef.value?.click()
+// ===== IMAGE UPLOAD (ke Cloudinary via /uploads/images) =====
+// Simpan URL Cloudinary, BUKAN base64 — base64 membengkakkan DB & bikin
+// fetch products lambat. Mendukung banyak foto: setiap file yang dipilih
+// di-upload lalu URL-nya ditambahkan ke form.images.
+const isUploading = ref(false)
 
-const readFileAsDataUrl = (file) =>
-  new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.readAsDataURL(file)
-  })
+const openFilePicker = () => fileInputRef.value?.click()
 
 const handleFileChange = async (e) => {
   const files = Array.from(e.target.files ?? [])
   e.target.value = ''
   if (!files.length) return
 
-  const dataUrls = await Promise.all(files.map(readFileAsDataUrl))
-  form.images.push(...dataUrls)
+  isUploading.value = true
+  errorMessage.value = ''
+  try {
+    const results = await Promise.all(files.map((file) => uploadImage(file)))
+    form.images.push(...results.map((r) => r.url))
+  } catch (err) {
+    errorMessage.value =
+      err.response?.data?.message || 'Failed to upload image. Please try again.'
+  } finally {
+    isUploading.value = false
+  }
 }
 
 const removeImage = (index) => {
@@ -378,10 +385,11 @@ const close = () => {
           <button
             type="button"
             @click="openFilePicker"
-            class="inline-flex items-center gap-2 rounded-full border border-cream-300 px-5 py-2 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 hover:border-brand-400 transition"
+            :disabled="isUploading"
+            class="inline-flex items-center gap-2 rounded-full border border-cream-300 px-5 py-2 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 hover:border-brand-400 transition disabled:opacity-50"
           >
             <Upload class="w-4 h-4" />
-            Upload Image
+            {{ isUploading ? 'Uploading...' : 'Upload Image' }}
           </button>
           <input
             ref="fileInputRef"
@@ -583,7 +591,7 @@ const close = () => {
           </button>
           <button
             type="submit"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || isUploading"
             class="rounded-full bg-brand-500 text-white px-6 py-2.5 text-sm font-bold hover:bg-brand-600 transition disabled:opacity-50"
           >
             {{ isSubmitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Product' }}

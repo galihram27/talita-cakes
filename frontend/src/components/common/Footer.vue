@@ -32,33 +32,6 @@ const year = new Date().getFullYear();
           <div
             class="text-xs font-extrabold tracking-[0.12em] uppercase text-[#8A7160] mb-3"
           >
-            Explore
-          </div>
-          <div class="flex flex-col gap-2 text-sm">
-            <RouterLink
-              to="/menu"
-              class="text-[#E6D3C2] hover:text-white transition-colors"
-            >
-              Menu
-            </RouterLink>
-            <RouterLink
-              to="/gallery"
-              class="text-[#E6D3C2] hover:text-white transition-colors"
-            >
-              Gallery
-            </RouterLink>
-            <RouterLink
-              to="/about"
-              class="text-[#E6D3C2] hover:text-white transition-colors"
-            >
-              About us
-            </RouterLink>
-          </div>
-        </div>
-        <div>
-          <div
-            class="text-xs font-extrabold tracking-[0.12em] uppercase text-[#8A7160] mb-3"
-          >
             Contact
           </div>
           <div class="flex flex-col gap-2 text-sm">
@@ -79,6 +52,24 @@ const year = new Date().getFullYear();
               class="text-[#E6D3C2] hover:text-white transition-colors"
             >
               Instagram @{{ STORE_INFO.instagram }}
+            </a>
+            <a
+              v-if="STORE_INFO.threads"
+              :href="`https://threads.net/@${STORE_INFO.threads}`"
+              target="_blank"
+              rel="noopener"
+              class="text-[#E6D3C2] hover:text-white transition-colors"
+            >
+              Threads @{{ STORE_INFO.threads }}
+            </a>
+            <a
+              v-if="STORE_INFO.tiktok"
+              :href="`https://tiktok.com/@${STORE_INFO.tiktok}`"
+              target="_blank"
+              rel="noopener"
+              class="text-[#E6D3C2] hover:text-white transition-colors"
+            >
+              TikTok @{{ STORE_INFO.tiktok }}
             </a>
             <span v-if="STORE_INFO.address" class="max-w-[320px]">
               {{ STORE_INFO.address }}

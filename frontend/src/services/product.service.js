@@ -6,6 +6,15 @@ export const getAllProducts = async () => {
   return data.data
 }
 
+// Hanya mengambil ANGKA jumlah produk (untuk stat card dashboard),
+// tanpa menarik seluruh katalog + varian + gambar.
+export const getProductCount = async (category) => {
+  const { data } = await api.get('/products/count', {
+    params: category ? { category } : undefined,
+  })
+  return data.data.count
+}
+
 export const getProductById = async (id) => {
   const { data } = await api.get(`/products/${id}`)
   return data.data

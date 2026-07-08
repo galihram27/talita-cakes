@@ -32,6 +32,16 @@ export const getAllProductsHandler = asyncHandler(async (req, res) => {
   });
 });
 
+export const getProductCountHandler = asyncHandler(async (req, res) => {
+  // ?category=... opsional; dipakai dashboard analytics untuk angka "Total Products"
+  const count = await productService.getProductCount(req.query.category);
+
+  res.status(200).json({
+    success: true,
+    data: { count },
+  });
+});
+
 export const searchProductsHandler = asyncHandler(async (req, res) => {
   const { keyword } = req.query;
   const products = await productService.searchProducts(keyword);

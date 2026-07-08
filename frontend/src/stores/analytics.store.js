@@ -1,7 +1,7 @@
 // src/stores/analytics.store.js
 import { defineStore } from 'pinia'
-import api from '@/lib/api'
 import { getDashboardStats } from '@/services/analytics.service'
+import { getProductCount } from '@/services/product.service'
 import { getGalleries } from '@/services/gallery.service'
 
 // Cache data dashboard analytics per filter bulan supaya balik ke halaman
@@ -31,16 +31,16 @@ export const useAnalyticsStore = defineStore('analytics', {
       if (!this._inflight[key]) {
         this._inflight[key] = Promise.all([
           getDashboardStats(params),
-          api.get('/products'),
+          getProductCount(),
           getGalleries({ page: 1, limit: 1 }),
         ])
-          .then(([stats, productsRes, galleryRes]) => {
+          .then(([stats, productCount, galleryRes]) => {
             this.cache[key] = {
               totalVisitors: stats.totalVisitors ?? 0,
               totalOrders: stats.totalOrders ?? 0,
               visitors: stats.visitors ?? [],
               orders: stats.orders ?? [],
-              totalProducts: productsRes.data.data?.length ?? 0,
+              totalProducts: productCount ?? 0,
               totalGalleryImages: galleryRes.meta?.total ?? 0,
             }
           })

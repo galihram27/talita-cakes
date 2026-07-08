@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { formatRupiah } from '@/utils/formatCurrency'
+import { sizeLabel } from '@/config/productOptions'
 
 const props = defineProps({
   variants: { type: Array, required: true },
@@ -88,7 +89,7 @@ watch(
           ? 'border-brand-500 bg-[#F4D6D1]'
           : 'border-[#EBDCCC] bg-white hover:border-brand-500 hover:bg-[#F4D6D1]'"
       >
-        <span class="font-extrabold text-sm text-cocoa-900">{{ v.size }} cm</span>
+        <span class="font-extrabold text-sm text-cocoa-900">{{ sizeLabel(v.shape, v.size) }}</span>
         <span class="text-[11.5px] text-cocoa-400">
           {{ formatRupiah(applyDiscount(v.price)) }}
         </span>

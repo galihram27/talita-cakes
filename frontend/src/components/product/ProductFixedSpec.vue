@@ -10,9 +10,11 @@ const props = defineProps({
 
 const isRound = computed(() => props.shape === 'ROUND')
 
+const isSquareSize = computed(() => props.size != null && !isRound.value)
+
 const sizeText = computed(() => {
   if (props.size == null) return '-'
-  return isRound.value ? `${props.size} cm` : `${props.size}×${props.size} cm`
+  return `${props.size} cm`
 })
 </script>
 
@@ -49,7 +51,13 @@ const sizeText = computed(() => {
       </div>
       <div class="min-w-0">
         <p class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">Size</p>
-        <p class="font-display text-[16.5px] text-cocoa-900 leading-tight truncate">{{ sizeText }}</p>
+        <p class="font-display text-[16.5px] text-cocoa-900 leading-tight truncate">
+          <template v-if="isSquareSize"
+            >{{ size }}<span class="font-sans font-bold text-[#6B4423] mx-0.5">×</span
+            >{{ size }} cm</template
+          >
+          <template v-else>{{ sizeText }}</template>
+        </p>
       </div>
     </div>
   </div>

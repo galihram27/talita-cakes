@@ -3,6 +3,7 @@ import {
    createProductHandler,
    getProductHandler,
    getAllProductsHandler,
+   getProductCountHandler,
    searchProductsHandler,
    updateProductHandler,
    deleteProductHandler,
@@ -18,6 +19,8 @@ import {
 const router = Router();
 
 router.get("/", getAllProductsHandler);
+// harus di atas "/:id" supaya "count" tidak tertangkap sebagai id produk
+router.get("/count", getProductCountHandler);
 router.get("/search", searchProductsHandler);
 router.get("/:id", validate(productIdParamSchema, "params"), getProductHandler);
 

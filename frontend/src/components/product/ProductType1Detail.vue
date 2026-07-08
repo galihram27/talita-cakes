@@ -66,6 +66,26 @@ const handleSubmit = async () => {
         :original-price="Number(product.discount) > 0 ? Number(variant?.price) : null"
       />
 
+      <!-- Flavor fixed untuk TYPE1, read-only (gaya kartu spec desain) -->
+      <div
+        v-if="product.flavor"
+        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
+      >
+        <span
+          class="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-[#F4E7D8] text-[19px] leading-none"
+        >
+          🍰
+        </span>
+        <span class="flex flex-col gap-0.5 min-w-0">
+          <span class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">
+            Flavor
+          </span>
+          <span class="font-display text-[16.5px] text-cocoa-900 leading-tight">
+            {{ product.flavor }}
+          </span>
+        </span>
+      </div>
+
       <ProductFixedSpec :shape="variant?.shape" :size="variant?.size" />
 
       <ProductOrderForm

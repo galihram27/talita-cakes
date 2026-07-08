@@ -3,19 +3,45 @@ import { defineStore } from 'pinia'
 import { getGalleries } from '@/services/gallery.service'
 
 const LIMIT = 20
+const STORAGE_KEY = 'tc.adminGallery'
+
+// Persist hanya view default (page 1, tanpa search) supaya setelah refresh (F5)
+// gallery admin langsung tampil tanpa loading; data baru di-refresh diam-diam.
+const loadPersisted = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+const savePersisted = (items, totalPages, totalItems) => {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ items, totalPages, totalItems })
+    )
+  } catch {
+    // storage penuh / privat mode — abaikan, cache in-memory tetap jalan
+  }
+}
 
 // Cache list gallery untuk halaman ADMIN (terpisah dari gallery.store publik
 // karena posisi search & pagination-nya beda). Pola: stale-while-revalidate —
 // balik ke halaman admin gallery langsung tampil tanpa loading.
 export const useAdminGalleryStore = defineStore('adminGallery', {
-  state: () => ({
-    items: [],
-    search: '',
-    page: 1,
-    totalPages: 1,
-    totalItems: 0,
-    hasLoaded: false, // true setelah fetch pertama sukses
-  }),
+  state: () => {
+    const persisted = loadPersisted()
+    return {
+      items: persisted?.items || [],
+      search: '',
+      page: 1,
+      totalPages: persisted?.totalPages ?? 1,
+      totalItems: persisted?.totalItems ?? 0,
+      hasLoaded: !!persisted, // true kalau ada cache localStorage → skip loading
+    }
+  },
 
   getters: {
     hasMore: (state) => state.page < state.totalPages,
@@ -32,6 +58,11 @@ export const useAdminGalleryStore = defineStore('adminGallery', {
       this.totalPages = result.meta?.totalPages ?? 1
       this.totalItems = result.meta?.total ?? this.items.length
       this.hasLoaded = true
+
+      // simpan hanya view default (page 1, tanpa search) sebagai cache instan
+      if (this.page === 1 && !this.search) {
+        savePersisted(this.items, this.totalPages, this.totalItems)
+      }
     },
 
     // Dipanggil dari onMounted view. Hanya throw saat first load (belum ada

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { getGalleries } from '@/services/gallery.service'
 
@@ -47,12 +47,12 @@ watch(
   () => props.modelValue,
   (isOpen) => {
     lockBodyScroll(isOpen)
-    if (isOpen) {
-      searchQuery.value = ''
-      fetchGalleries()
-    }
   }
 )
+
+// Prefetch gallery saat komponen mount supaya begitu modal dibuka gambarnya
+// langsung tampil tanpa loading.
+onMounted(fetchGalleries)
 
 onUnmounted(() => {
   clearTimeout(searchDebounceTimer)
@@ -95,9 +95,8 @@ const choose = (item) => {
         />
       </div>
 
-      <div v-if="isLoading" class="text-center py-10 text-gray-500 text-sm">Memuat gallery...</div>
-      <div v-else-if="error" class="text-center py-10 text-red-600 text-sm">{{ error }}</div>
-      <div v-else-if="galleryItems.length === 0" class="text-center py-10 text-gray-500 text-sm">
+      <div v-if="error" class="text-center py-10 text-red-600 text-sm">{{ error }}</div>
+      <div v-else-if="!isLoading && galleryItems.length === 0" class="text-center py-10 text-gray-500 text-sm">
         {{ searchQuery ? `Tidak ada hasil untuk '${searchQuery}'` : 'Belum ada gambar di gallery.' }}
       </div>
       <div v-else class="grid grid-cols-3 gap-3">

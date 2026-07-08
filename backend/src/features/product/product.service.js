@@ -80,6 +80,13 @@ export const getAllProducts = async (category) => {
 };
 
 /**
+ * Menghitung jumlah produk (opsional difilter category).
+ */
+export const getProductCount = async (category) => {
+  return productRepository.countProducts(category);
+};
+
+/**
  * Mencari produk berdasarkan keyword (nama, description, atau flavor).
  */
 export const searchProducts = async (keyword) => {

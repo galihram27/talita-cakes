@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Search, Plus, Pencil, Trash2 } from 'lucide-vue-next'
 import { deleteGallery } from '@/services/gallery.service'
+import { cloudinaryThumb } from '@/utils/cloudinaryImage'
 import { useGalleryStore } from '@/stores/gallery.store'
 import { useAdminGalleryStore } from '@/stores/adminGallery.store'
 import { useAnalyticsStore } from '@/stores/analytics.store'
@@ -174,8 +175,9 @@ const handleDelete = async () => {
         >
           <img
             v-if="item.imageUrl"
-            :src="item.imageUrl"
+            :src="cloudinaryThumb(item.imageUrl, 400)"
             :alt="item.title"
+            loading="lazy"
             class="w-full h-full object-cover"
           />
 

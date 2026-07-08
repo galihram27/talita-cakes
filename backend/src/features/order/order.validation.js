@@ -46,7 +46,9 @@ const checkoutBaseSchema = z.object({
  */
 const makeCheckoutRefine = (requireFullDetails) => (data, ctx) => {
   // ===== validasi tanggal, berlaku untuk PICKUP maupun DELIVERY =====
-  if (!isRequestCakeDateValid(data.requestCakeDate)) {
+  // Di PREVIEW tanggal boleh belum diisi (ongkir hanya butuh koordinat) —
+  // validasi H+7 hanya dijalankan kalau tanggalnya memang dikirim.
+  if (data.requestCakeDate !== undefined && !isRequestCakeDateValid(data.requestCakeDate)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Request cake date minimal 7 hari dari sekarang',
@@ -121,9 +123,15 @@ export const checkoutSchema = checkoutBaseSchema.superRefine(
 );
 
 // PREVIEW: cukup titik lokasi untuk hitung ongkir (tanpa simpan apa pun).
-export const previewSchema = checkoutBaseSchema.superRefine(
-  makeCheckoutRefine(false)
-);
+// requestCakeDate dibuat opsional supaya ongkir bisa langsung tampil begitu
+// user pin lokasi, meskipun tanggal kue belum dipilih.
+export const previewSchema = checkoutBaseSchema
+  .extend({
+    requestCakeDate: z.coerce
+      .date({ message: 'requestCakeDate tidak valid' })
+      .optional(),
+  })
+  .superRefine(makeCheckoutRefine(false));
 
 export const orderIdParamSchema = z.object({
   id: z.string().uuid('Format id tidak valid'),

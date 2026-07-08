@@ -35,7 +35,7 @@ const getDiscountedPrice = () => {
 const getDisplaySize = () => {
   if (isSingleVariantType(props.product.type) && props.product.variants?.[0]) {
     const v = props.product.variants[0]
-    return `${v.shape === 'ROUND' ? 'Round' : 'Square'} ${v.size}cm`
+    return `${v.shape === 'ROUND' ? 'Round' : 'Square'} ${v.size} cm`
   }
   return null
 }
