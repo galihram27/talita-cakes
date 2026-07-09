@@ -37,6 +37,12 @@ const routes = [
         component: () => import('@/views/CheckoutView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'order-success',
+        name: 'order-success',
+        component: () => import('@/views/OrderSuccessView.vue'),
+        meta: { requiresAuth: true },
+      },
 
       // ===== AUTH (dipindah ke sini supaya Navbar dari DefaultLayout ikut tampil) =====
       { path: 'login', name: 'login', component: () => import('@/views/auth/LoginView.vue') },

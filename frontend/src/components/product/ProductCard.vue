@@ -80,7 +80,7 @@ const getDisplaySize = () => {
       >
         {{ typeLabel(product.type) }}
       </span>
-      <h3 class="font-display text-lg leading-snug group-hover:text-brand-500 transition-colors">
+      <h3 class="font-display text-lg leading-snug">
         {{ product.name }}
       </h3>
 

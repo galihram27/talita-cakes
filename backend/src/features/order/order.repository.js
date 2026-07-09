@@ -16,6 +16,7 @@ export const createOrderWithItems = async (data) => {
           variant: true,
         },
       },
+      user: true,
     },
   });
 };

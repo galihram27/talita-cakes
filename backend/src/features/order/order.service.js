@@ -118,7 +118,9 @@ export const confirmCheckout = async (userId, payload) => {
     },
   });
 
-  const whatsappMessage = buildWhatsappMessage(order);
+  const whatsappMessage = buildWhatsappMessage(order, {
+    includeEmail: data.includeEmail === true,
+  });
   await orderRepository.updateWhatsappMessage(order.id, whatsappMessage);
 
   // cart baru dihapus di titik ini, bukan saat preview

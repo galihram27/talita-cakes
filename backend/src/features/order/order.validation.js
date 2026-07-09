@@ -29,6 +29,8 @@ const checkoutBaseSchema = z.object({
   recipientName: z.string().trim().min(1).optional(),
   recipientPhone: z.string().trim().min(8).optional(),
   recipientDataConsent: strictBooleanSchema.optional(),
+  // opsional: user boleh memilih menyertakan emailnya di pesan WhatsApp
+  includeEmail: strictBooleanSchema.optional(),
   // string kosong dibiarkan lolos di sini (frontend mengirim "" saat alamat
   // belum terisi otomatis) — wajib-tidaknya alamat ditegakkan di superRefine:
   // wajib saat CONFIRM, tidak saat PREVIEW (ongkir cukup dari koordinat).

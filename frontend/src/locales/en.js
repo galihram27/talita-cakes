@@ -502,6 +502,7 @@ export default {
     dateTitle: "Cake date",
     dateHint1: "All cakes are pre-order — earliest",
     dateHint2: "(7 days ahead).",
+    dateTooEarly: "The earliest date is {date} (7 days ahead). Please pick another date.",
     fulfillTitle: "Pickup or delivery?",
     pickup: "Pickup",
     pickupDesc: "Pick up at the store — free",
@@ -542,6 +543,8 @@ export default {
     outOfRange: "Out of range",
     pinFirst: "Pin your location first",
     total: "Total",
+    includeEmail:
+      "Include my email — if you share your email, we can send you promos & new menu info:",
     importantTitle: "Important",
     important: {
       i1: "Min. 50% down payment before production",
@@ -553,6 +556,13 @@ export default {
     submit: "Save & continue to WhatsApp",
     afterSave:
       "After saving, your order summary is automatically prepared to be sent to the owner's WhatsApp.",
+  },
+  orderSuccess: {
+    title: "Order created successfully!",
+    desc: "Your order summary is ready to send to the owner's WhatsApp. Please continue the chat for confirmation and payment.",
+    orderNo: "Order number:",
+    reopenWhatsApp: "Open WhatsApp again",
+    backToMenu: "Back to menu",
   },
   auth: {
     login: {

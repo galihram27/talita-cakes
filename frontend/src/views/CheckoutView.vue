@@ -8,6 +8,7 @@ import 'leaflet/dist/leaflet.css'
 import markImageUrl from '@/assets/images/pin-21504.png'
 import api from '@/lib/api'
 import { useCartStore } from '@/stores/cart.store'
+import { useAuthStore } from '@/stores/auth.store'
 import { formatRupiah } from '@/utils/formatCurrency'
 import {
   DELIVERY_FEE_TIERS,
@@ -17,6 +18,7 @@ import {
 
 const { t } = useI18n()
 const cartStore = useCartStore()
+const authStore = useAuthStore()
 
 // Icon marker custom (gambar pin sendiri, bukan icon default Leaflet).
 // Gambarnya square; ujung pin ada di ~88% tinggi gambar -> anchor [24, 42].
@@ -62,6 +64,9 @@ const address = ref('')
 const addressLat = ref(null)
 const addressLng = ref(null)
 const requestCakeDate = ref('')
+// opsional: user boleh memilih menyertakan emailnya di pesan WhatsApp.
+// Dengan menyertakan email, user sekaligus setuju menerima promo/info menu.
+const includeEmail = ref(false)
 
 // ===== CART / SUMMARY STATE =====
 // Seed dari cache store supaya ringkasan pesanan langsung tampil tanpa spinner.
@@ -86,6 +91,15 @@ const minDate = computed(() => {
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 })
+
+// Pesan error tanggal: tampil begitu user memilih tanggal lebih awal dari
+// batas minimal (H+7). Input date bisa saja diisi manual sehingga atribut
+// `min` tidak selalu mencegahnya — validasi ini memberi tahu user langsung.
+const dateError = computed(() =>
+  requestCakeDate.value && requestCakeDate.value < minDate.value
+    ? t('checkout.dateTooEarly', { date: minDate.value })
+    : ''
+)
 
 const isDelivery = computed(() => fulfillmentType.value === 'DELIVERY')
 const isForSomeoneElse = computed(
@@ -281,6 +295,7 @@ const useMyLocation = () => {
 const buildPayload = () => ({
   fulfillmentType: fulfillmentType.value,
   requestCakeDate: requestCakeDate.value,
+  includeEmail: includeEmail.value,
   ...(isDelivery.value && {
     recipientType: recipientType.value,
     address: address.value,
@@ -349,7 +364,20 @@ const submitOrder = async () => {
   errorMessage.value = ''
   try {
     const { data } = await api.post('/orders/confirm', buildPayload())
-    const { whatsappLink } = data.data
+    const { order, whatsappLink } = data.data
+
+    // Cart sudah dikosongkan backend saat confirm — samakan cache lokal biar
+    // badge Navbar langsung ikut kosong.
+    cartStore.reset()
+
+    // Taruh halaman sukses di history SEBELUM pindah ke WhatsApp, supaya saat
+    // user menekan back dari WhatsApp mereka mendarat di halaman sukses
+    // (bukan balik ke checkout dengan cart kosong). whatsappLink & orderId
+    // dibawa via history.state agar halaman sukses bisa menampilkannya.
+    await router.push({
+      name: 'order-success',
+      state: { whatsappLink, orderId: order?.id ?? '' },
+    })
 
     // Navigasi di tab yang sama, bukan window.open: setelah await, browser
     // sudah tidak menganggapnya hasil klik user sehingga popup diblokir.
@@ -414,8 +442,12 @@ onMounted(fetchCart)
             v-model="requestCakeDate"
             type="date"
             :min="minDate"
-            class="w-full max-w-[280px] rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[15px] text-cocoa-900"
+            class="w-full max-w-[280px] rounded-xl border-[1.5px] bg-white px-4 py-3 text-[15px] text-cocoa-900"
+            :class="dateError ? 'border-brand-500' : 'border-[#E4D3C1]'"
           />
+          <p v-if="dateError" class="text-[13px] text-brand-500 font-bold mt-2">
+            {{ dateError }}
+          </p>
         </section>
 
         <!-- 2. Pickup / Delivery -->
@@ -701,6 +733,26 @@ onMounted(fetchCart)
             <span class="text-brand-500">{{ formatRupiah(total) }}</span>
           </div>
         </div>
+
+        <!-- Sertakan email (opsional) -->
+        <label
+          class="flex items-start gap-2.5 rounded-xl bg-cream-50 border border-cream-300 p-4 mb-4 cursor-pointer"
+        >
+          <input
+            v-model="includeEmail"
+            type="checkbox"
+            class="mt-0.5 w-4 h-4 accent-brand-500"
+          />
+          <span class="text-[13px] text-[#6E5A4D] leading-relaxed">
+            {{ t('checkout.includeEmail') }}
+            <strong
+              v-if="authStore.user?.email"
+              class="block mt-1 text-cocoa-900 break-all"
+            >
+              {{ authStore.user.email }}
+            </strong>
+          </span>
+        </label>
 
         <!-- Important -->
         <div class="rounded-xl bg-cream-50 border border-cream-300 p-4 mb-4">

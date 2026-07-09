@@ -28,6 +28,10 @@ const errorMessage = ref('')
 // id item yang sedang di-update quantity-nya (disable tombol +/- item itu)
 const updatingItemId = ref(null)
 
+// Ubah "SQUARE"/"ROUND" jadi "Square"/"Round" agar lebih rapi dibaca.
+const formatShape = (shape) =>
+  shape ? shape.charAt(0).toUpperCase() + shape.slice(1).toLowerCase() : ''
+
 // state dialog hapus item
 const itemToDelete = ref(null)
 const isDeleting = ref(false)
@@ -218,19 +222,19 @@ onMounted(fetchCart)
               <div class="flex flex-col gap-0.5 text-[13.5px] text-[#6E5A4D] mt-1">
                 <p v-if="item.flavor">
                   <span class="text-cocoa-400">{{ t('cart.flavor') }}</span>
-                  <strong class="text-[#4A3A30]"> {{ item.flavor }}</strong>
+                  <strong class="text-[#4A3A30] ml-1">{{ item.flavor }}</strong>
                 </p>
                 <p v-if="item.shape">
                   <span class="text-cocoa-400">{{ t('cart.shape') }}</span>
-                  <strong class="text-[#4A3A30]"> {{ item.shape }}</strong>
+                  <strong class="text-[#4A3A30] ml-1">{{ formatShape(item.shape) }}</strong>
                 </p>
                 <p v-if="item.size">
                   <span class="text-cocoa-400">{{ t('cart.size') }}</span>
-                  <strong class="text-[#4A3A30]"> {{ item.size }}</strong>
+                  <strong class="text-[#4A3A30] ml-1">{{ item.size }}</strong>
                 </p>
                 <p v-if="item.textOnCake" class="truncate">
                   <span class="text-cocoa-400">{{ t('cart.text') }}</span>
-                  <strong class="text-[#4A3A30]"> {{ item.textOnCake }}</strong>
+                  <strong class="text-[#4A3A30] ml-1">{{ item.textOnCake }}</strong>
                 </p>
               </div>
 

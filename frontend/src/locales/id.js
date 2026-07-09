@@ -502,6 +502,7 @@ export default {
     dateTitle: "Tanggal kue",
     dateHint1: "Semua kue pre-order — paling cepat",
     dateHint2: "(H+7).",
+    dateTooEarly: "Tanggal minimal {date} (H+7). Silakan pilih tanggal lain.",
     fulfillTitle: "Ambil sendiri atau diantar?",
     pickup: "Pickup",
     pickupDesc: "Ambil di toko — gratis",
@@ -542,6 +543,8 @@ export default {
     outOfRange: "Di luar radius",
     pinFirst: "Pin lokasi dulu",
     total: "Total",
+    includeEmail:
+      "Sertakan email saya — jika Anda mengirimkan email, kami bisa kirimkan info promo & menu baru:",
     importantTitle: "Penting",
     important: {
       i1: "DP min. 50% sebelum produksi",
@@ -553,6 +556,13 @@ export default {
     submit: "Simpan & lanjut ke WhatsApp",
     afterSave:
       "Setelah disimpan, rangkuman pesanan otomatis disiapkan untuk dikirim ke WhatsApp owner.",
+  },
+  orderSuccess: {
+    title: "Pesanan berhasil dibuat!",
+    desc: "Rangkuman pesanan sudah disiapkan untuk dikirim ke WhatsApp owner. Silakan lanjutkan chat untuk konfirmasi dan pembayaran.",
+    orderNo: "Nomor pesanan:",
+    reopenWhatsApp: "Buka WhatsApp lagi",
+    backToMenu: "Kembali pilih menu",
   },
   auth: {
     login: {

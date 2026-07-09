@@ -523,7 +523,7 @@ const close = () => {
                 class="appearance-none w-full rounded-full border border-cream-300 pl-4 pr-10 py-2.5 text-sm bg-white focus:outline-none cursor-pointer"
               >
                 <option :value="null" disabled>{{ t('admin.productForm.minSizePlaceholder') }}</option>
-                <option v-for="m in ROUND_MIN_OPTIONS" :key="m" :value="m">{{ m }} - 30 cm</option>
+                <option v-for="m in ROUND_MIN_OPTIONS" :key="m" :value="m">{{ m }} cm</option>
               </select>
               <ChevronDown
                 class="w-4 h-4 text-cocoa-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -554,7 +554,7 @@ const close = () => {
               >
                 <option :value="null" disabled>{{ t('admin.productForm.minSizePlaceholder') }}</option>
                 <option v-for="m in SQUARE_MIN_OPTIONS" :key="m" :value="m">
-                  {{ m }}×{{ m }} - 30×30 cm
+                  {{ m }}×{{ m }} cm
                 </option>
               </select>
               <ChevronDown
@@ -567,7 +567,7 @@ const close = () => {
               class="mt-3 rounded-2xl border border-cream-300 p-4 space-y-3"
             >
               <div v-for="s in squareSizes" :key="`s-${s}`">
-                <p class="text-sm mb-1">{{ sizeLabel('SQUARE', s) }} - 30×30 cm</p>
+                <p class="text-sm mb-1">{{ sizeLabel('SQUARE', s) }}</p>
                 <PriceInput
                   v-model="squarePrices[s]"
                   class="w-full rounded-full border border-cream-300 px-4 py-2 text-sm focus:outline-none"
