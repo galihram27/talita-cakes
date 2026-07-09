@@ -1,6 +1,15 @@
 import { AppError } from '../../utils/appError.js';
 import * as productRepository from './product.repository.js';
 import { updateProductSchemaMap } from './product.validation.js';
+import { cached, cacheDeleteByPrefix } from '../../lib/cache.js';
+
+// Semua key cache produk diawali prefix ini, supaya sekali invalidasi
+// (cacheDeleteByPrefix) langsung membersihkan list, detail, dan count.
+const PRODUCT_CACHE_PREFIX = 'product:';
+
+// Dipanggil setiap kali data produk berubah (create/update/delete) supaya
+// pembaca berikutnya mendapat data terbaru, bukan versi cache lama.
+const invalidateProductCache = () => cacheDeleteByPrefix(PRODUCT_CACHE_PREFIX);
 
 // helper: buang key yang value-nya undefined (field yang tidak dikirim admin)
 const pickDefined = (obj) =>
@@ -55,6 +64,7 @@ export const createProduct = async (payload) => {
     },
   });
 
+  invalidateProductCache();
   return product;
 };
 
@@ -62,7 +72,11 @@ export const createProduct = async (payload) => {
  * Mengambil satu produk berdasarkan ID. Melempar error 404 jika tidak ada.
  */
 export const getProductById = async (id) => {
-  const product = await productRepository.findProductById(id);
+  // cache detail per id; error 404 dilempar di luar cache supaya "tidak ada"
+  // tidak ikut tersimpan.
+  const product = await cached(`${PRODUCT_CACHE_PREFIX}one:${id}`, () =>
+    productRepository.findProductById(id)
+  );
 
   if (!product) {
     throw new AppError('Product tidak ditemukan', 404);
@@ -76,14 +90,19 @@ export const getProductById = async (id) => {
  * Opsional: difilter berdasarkan category (untuk filter di halaman Menu).
  */
 export const getAllProducts = async (category) => {
-  return productRepository.findAllProducts(category);
+  // key dibedakan per category; tanpa filter memakai penanda "all".
+  return cached(`${PRODUCT_CACHE_PREFIX}all:${category ?? 'all'}`, () =>
+    productRepository.findAllProducts(category)
+  );
 };
 
 /**
  * Menghitung jumlah produk (opsional difilter category).
  */
 export const getProductCount = async (category) => {
-  return productRepository.countProducts(category);
+  return cached(`${PRODUCT_CACHE_PREFIX}count:${category ?? 'all'}`, () =>
+    productRepository.countProducts(category)
+  );
 };
 
 /**
@@ -117,11 +136,13 @@ export const updateProduct = async (id, body) => {
 
   const payload = parsed.data;
 
-  if (type === 'TYPE1' || type === 'TYPE2') {
-    return updateSingleVariantType(id, existing, payload);
-  }
+  const updated =
+    type === 'TYPE1' || type === 'TYPE2'
+      ? await updateSingleVariantType(id, existing, payload)
+      : await updateVariantGridType(id, payload);
 
-  return updateVariantGridType(id, payload);
+  invalidateProductCache();
+  return updated;
 };
 
 // TYPE1 & TYPE2: produk dengan 1 variant fixed
@@ -175,4 +196,5 @@ export const removeProduct = async (id) => {
   }
 
   await productRepository.deleteProduct(id);
+  invalidateProductCache();
 };

@@ -6,6 +6,13 @@ import {
    updateGallery,
    deleteGallery,
 } from "./gallery.repository.js";
+import { cached, cacheDeleteByPrefix } from "../../lib/cache.js";
+
+// Prefix untuk semua key cache gallery (list per kombinasi search/page/limit
+// + detail per id). Sekali invalidasi membersihkan semuanya.
+const GALLERY_CACHE_PREFIX = "gallery:";
+
+const invalidateGalleryCache = () => cacheDeleteByPrefix(GALLERY_CACHE_PREFIX);
 
 // =========================
 // GET ALL (user & admin)
@@ -13,26 +20,35 @@ import {
 // =========================
 export const getAllGalleries = async ({ search = "", page = 1, limit = 10 } = {}) => {
    const take = Math.min(Number(limit) || 10, 100); // max 100 per page
-   const skip = (Math.max(Number(page) || 1, 1) - 1) * take;
+   const currentPage = Math.max(Number(page) || 1, 1);
+   const skip = (currentPage - 1) * take;
 
-   const { data, total } = await findAllGalleries({ search, skip, take });
+   // key dibedakan per kombinasi search + page + limit supaya tiap halaman
+   // punya cache sendiri.
+   const cacheKey = `${GALLERY_CACHE_PREFIX}all:${search}:${currentPage}:${take}`;
 
-   return {
-      data,
-      meta: {
-         total,
-         page: Math.max(Number(page) || 1, 1),
-         limit: take,
-         totalPages: Math.ceil(total / take),
-      },
-   };
+   return cached(cacheKey, async () => {
+      const { data, total } = await findAllGalleries({ search, skip, take });
+
+      return {
+         data,
+         meta: {
+            total,
+            page: currentPage,
+            limit: take,
+            totalPages: Math.ceil(total / take),
+         },
+      };
+   });
 };
 
 // =========================
 // GET ONE
 // =========================
 export const getGalleryById = async (id) => {
-   const gallery = await findGalleryById(id);
+   const gallery = await cached(`${GALLERY_CACHE_PREFIX}one:${id}`, () =>
+      findGalleryById(id)
+   );
 
    if (!gallery) {
       throw new AppError("Gallery not found", 404);
@@ -48,7 +64,9 @@ export const createGalleryItem = async (data) => {
    // tags bisa dikirim sebagai string "a,b,c" atau array ["a","b","c"]
    const tags = normalizeTags(data.tags);
 
-   return createGallery({ ...data, tags });
+   const created = await createGallery({ ...data, tags });
+   invalidateGalleryCache();
+   return created;
 };
 
 // =========================
@@ -65,7 +83,9 @@ export const updateGalleryItem = async (id, data) => {
       payload.tags = normalizeTags(data.tags);
    }
 
-   return updateGallery(id, payload);
+   const updated = await updateGallery(id, payload);
+   invalidateGalleryCache();
+   return updated;
 };
 
 // =========================
@@ -76,6 +96,7 @@ export const deleteGalleryItem = async (id) => {
    await getGalleryById(id);
 
    await deleteGallery(id);
+   invalidateGalleryCache();
 };
 
 // =========================
