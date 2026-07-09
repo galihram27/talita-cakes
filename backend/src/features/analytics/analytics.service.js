@@ -6,13 +6,52 @@ import * as analyticsRepository from "./analytics.repository.js";
 // VISITOR TRACKING (dipanggil dari middleware, bukan dari controller)
 // =========================
 
+/**
+ * Penjaga dedupe di memory: menyimpan visitorId yang SUDAH tercatat hari ini,
+ * supaya request berikutnya dari visitor yang sama tidak menyentuh DB lagi.
+ *
+ * Tanpa ini, setiap request menjalankan satu transaksi upsert ke DB (walau
+ * hasilnya "update kosong" karena unique constraint) -> boros egress/quota.
+ * Dengan ini, DB hanya ditulis maksimal 1x per visitor per hari per instance.
+ *
+ * Set di-reset otomatis saat ganti hari, jadi memory tidak tumbuh tanpa batas
+ * (paling banyak menampung unique visitor dalam 1 hari).
+ */
+let seenDayKey = null;
+let seenVisitorsToday = new Set();
+
+const toDayKey = (date) =>
+   `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+
 export const recordVisit = async (visitorId, userId = null) => {
    if (!visitorId) return;
 
    const today = new Date();
    today.setHours(0, 0, 0, 0);
 
-   await analyticsRepository.upsertVisitorLog(visitorId, today, userId);
+   const dayKey = toDayKey(today);
+
+   // ganti hari -> buang catatan kemarin, mulai set baru
+   if (dayKey !== seenDayKey) {
+      seenDayKey = dayKey;
+      seenVisitorsToday = new Set();
+   }
+
+   // sudah tercatat hari ini -> tidak perlu menyentuh DB sama sekali
+   if (seenVisitorsToday.has(visitorId)) return;
+
+   // tandai lebih dulu supaya request paralel dari visitor yang sama
+   // tidak sama-sama menembak DB (at-most-once per hari per instance)
+   seenVisitorsToday.add(visitorId);
+
+   try {
+      await analyticsRepository.upsertVisitorLog(visitorId, today, userId);
+   } catch (err) {
+      // gagal tulis (mis. kuota DB habis) -> lepas lagi supaya bisa dicoba
+      // ulang di kesempatan berikutnya, bukan hilang seharian
+      seenVisitorsToday.delete(visitorId);
+      throw err;
+   }
 };
 
 // =========================

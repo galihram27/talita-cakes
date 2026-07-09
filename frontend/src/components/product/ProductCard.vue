@@ -1,14 +1,16 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
+
 const props = defineProps({
   product: { type: Object, required: true },
 })
 
+const { t } = useI18n()
+
 // Label tipe, sama dengan section di halaman Menu
-const TYPE_LABELS = {
-  TYPE1: 'Signature Collection',
-  TYPE2: 'Flavor & Design Choice',
-  TYPE3: 'Choose Your Size',
-  TYPE4: 'Fully Custom Cake',
+const typeLabel = (type) => {
+  const num = { TYPE1: 1, TYPE2: 2, TYPE3: 3, TYPE4: 4 }[type]
+  return num ? t(`home.types.t${num}.tag`) : type
 }
 
 // type dengan 1 variant fixed (tidak ada pilihan shape & size)
@@ -35,7 +37,7 @@ const getDiscountedPrice = () => {
 const getDisplaySize = () => {
   if (isSingleVariantType(props.product.type) && props.product.variants?.[0]) {
     const v = props.product.variants[0]
-    return `${v.shape === 'ROUND' ? 'Round' : 'Square'} ${v.size} cm`
+    return `${v.shape === 'ROUND' ? t('product.round') : t('product.square')} ${v.size} cm`
   }
   return null
 }
@@ -76,7 +78,7 @@ const getDisplaySize = () => {
       <span
         class="text-[11.5px] font-extrabold tracking-[0.1em] uppercase text-cocoa-400"
       >
-        {{ TYPE_LABELS[product.type] || product.type }}
+        {{ typeLabel(product.type) }}
       </span>
       <h3 class="font-display text-lg leading-snug group-hover:text-brand-500 transition-colors">
         {{ product.name }}
@@ -88,7 +90,7 @@ const getDisplaySize = () => {
             v-if="!isSingleVariantType(product.type)"
             class="text-[10px] text-cocoa-400"
           >
-            mulai dari
+            {{ t('product.startingFrom') }}
           </span>
           <template v-if="Number(product.discount) > 0">
             <span class="font-bold text-base text-brand-500 tracking-tight">
@@ -102,7 +104,7 @@ const getDisplaySize = () => {
             {{ formatRupiah(getDisplayPrice()) }}
           </span>
         </template>
-        <span v-else class="font-bold text-base text-brand-500">Price</span>
+        <span v-else class="font-bold text-base text-brand-500">{{ t('product.price') }}</span>
 
         <span
           v-if="getDisplaySize()"

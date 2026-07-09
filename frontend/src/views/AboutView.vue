@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import GoogleReviews from '@/components/common/GoogleReviews.vue'
 import logo from '@/assets/images/logo.png'
 import whatsappIcon from '@/assets/images/whatsapp-logo-png-2290.png'
@@ -8,11 +10,13 @@ import tiktokIcon from '@/assets/images/tik-tok-logo-33095.png'
 import addressIcon from '@/assets/images/pin-21504.png'
 import { STORE_INFO } from '@/config/constants'
 
-const stats = [
-  { num: '12+', label: 'Years of Baking' },
-  { num: '3000+', label: 'Cakes Handcrafted' },
-  { num: 'Made by Order', label: 'Freshly Baked for Every Order' },
-]
+const { t } = useI18n()
+
+const stats = computed(() => [
+  { num: '12+', label: t('about.stats.years') },
+  { num: '3000+', label: t('about.stats.cakes') },
+  { num: t('about.stats.madeNum'), label: t('about.stats.made') },
+])
 </script>
 
 <template>
@@ -21,21 +25,17 @@ const stats = [
     <div class="grid grid-cols-1 md:grid-cols-[1.15fr_0.85fr] gap-7 md:gap-11 items-center mb-14">
       <div>
         <h1 class="font-display text-[clamp(36px,5vw,46px)] leading-[1.08] mb-4">
-          Every Cake Begins <br />
-          with a <span class="italic text-brand-500">Story</span>
+          {{ t('about.heading1') }} <br />
+          {{ t('about.heading2') }} <span class="italic text-brand-500">{{ t('about.heading3') }}</span>
         </h1>
         <p class="font-display text-xl leading-normal text-cocoa-900 mb-4">
-          Every celebration deserves a cake as special as the moment itself.
+          {{ t('about.tagline') }}
         </p>
         <p class="text-[15.5px] leading-relaxed text-[#6E5A4D] mb-3.5">
-          Founded in {{ STORE_INFO.since }}, Talita's Cake &amp; Cupcakes began
-          as a small home kitchen with one simple mission: creating beautiful
-          homemade cakes that bring people together.
+          {{ t('about.intro1', { since: STORE_INFO.since }) }}
         </p>
         <p class="text-[15.5px] leading-relaxed text-[#6E5A4D]">
-          Unlike mass-produced cakes, every order is made one at a time —
-          designed specifically to match your theme, style, and special
-          requests.
+          {{ t('about.intro2') }}
         </p>
       </div>
       <div class="relative flex items-center justify-center py-6">
@@ -73,21 +73,13 @@ const stats = [
     <div class="bg-[#FBF3EA] border border-cream-300 rounded-[20px] p-6 md:p-8 mb-11">
       <div class="text-[#6E5A4D] text-[15.5px] leading-[1.8] max-w-[760px] mx-auto">
         <p class="mb-3.5">
-          Over the years, we have handcrafted cakes and desserts for birthdays,
-          weddings, anniversaries, baby showers, graduations, corporate events,
-          and countless meaningful celebrations. Every creation is made fresh
-          to order, carefully prepared with premium ingredients, and designed
-          to reflect each customer's unique story.
+          {{ t('about.story1') }}
         </p>
         <p class="mb-3.5">
-          Whether you're looking for an elegant birthday cake, a custom
-          character cake, wedding cake, premium brownies, cupcakes, cinnamon
-          rolls, or handcrafted desserts, our goal is always the same —
-          creating desserts that look beautiful, taste delicious, and become
-          part of your happiest memories.
+          {{ t('about.story2') }}
         </p>
         <p class="font-display text-xl text-brand-500 text-center">
-          Baked with Love since {{ STORE_INFO.since }}. Made Especially for You.
+          {{ t('about.storyClosing', { since: STORE_INFO.since }) }}
         </p>
       </div>
     </div>
@@ -170,7 +162,7 @@ const stats = [
           <img :src="addressIcon" alt="Store" class="w-6 h-6 object-contain" />
         </span>
         <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
-          Store
+          {{ t('about.store') }}
         </span>
         <span class="font-bold text-[15px] leading-normal">
           {{ STORE_INFO.address }}

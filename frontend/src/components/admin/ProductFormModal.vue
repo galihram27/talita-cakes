@@ -1,10 +1,9 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { X, Upload, ChevronDown } from 'lucide-vue-next'
 import {
-  PRODUCT_TYPE_OPTIONS,
   PRODUCT_CATEGORIES,
-  SHAPE_OPTIONS,
   ROUND_MIN_OPTIONS,
   SQUARE_MIN_OPTIONS,
   generateSizeRange,
@@ -21,8 +20,21 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'saved'])
+const { t } = useI18n()
 
 const isEdit = computed(() => !!props.product)
+
+// label tipe & bentuk mengikuti bahasa aktif (nilai tetap sinkron dengan backend)
+const PRODUCT_TYPE_OPTIONS = computed(() =>
+  [1, 2, 3, 4].map((num) => ({
+    value: `TYPE${num}`,
+    label: `${t('admin.products.type', { num })} (${t(`home.types.t${num}.tag`)})`,
+  }))
+)
+const SHAPE_OPTIONS = computed(() => [
+  { value: 'ROUND', label: t('admin.productForm.round') },
+  { value: 'SQUARE', label: t('admin.productForm.square') },
+])
 
 // ===== STATE FORM =====
 const form = reactive({
@@ -76,7 +88,9 @@ const usesSingleVariant = computed(() => form.type === 'TYPE1' || form.type === 
 const usesVariantGrid = computed(() => form.type === 'TYPE3' || form.type === 'TYPE4')
 
 const modalTitle = computed(() =>
-  isEdit.value ? `Edit: ${props.product.name}` : 'Add Product'
+  isEdit.value
+    ? t('admin.productForm.editTitle', { name: props.product.name })
+    : t('admin.productForm.addTitle')
 )
 
 // ===== RESET / PREFILL saat modal dibuka =====
@@ -172,7 +186,7 @@ const handleFileChange = async (e) => {
     form.images.push(...results.map((r) => r.url))
   } catch (err) {
     errorMessage.value =
-      err.response?.data?.message || 'Failed to upload image. Please try again.'
+      err.response?.data?.message || t('admin.productForm.uploadFailed')
   } finally {
     isUploading.value = false
   }
@@ -202,27 +216,27 @@ const buildVariantList = () => {
 }
 
 const validate = () => {
-  if (!form.name.trim()) return 'Product name is required'
-  if (!form.description.trim()) return 'Description is required'
-  if (!form.images.length) return 'At least 1 product image is required'
-  if (!form.category) return 'Category is required'
-  if (showFlavor.value && !form.flavor.trim()) return 'Flavor is required'
+  if (!form.name.trim()) return t('admin.productForm.nameRequired')
+  if (!form.description.trim()) return t('admin.productForm.descriptionRequired')
+  if (!form.images.length) return t('admin.productForm.imageRequired')
+  if (!form.category) return t('admin.productForm.categoryRequired')
+  if (showFlavor.value && !form.flavor.trim()) return t('admin.productForm.flavorRequired')
 
   if (usesSingleVariant.value) {
     const size = Number(type1.size)
     if (!Number.isInteger(size) || size <= 0 || size > 100)
-      return 'Size must be a positive whole number (max 100)'
-    if (!(Number(type1.price) > 0)) return 'Price must be greater than 0'
+      return t('admin.productForm.sizeInvalid')
+    if (!(Number(type1.price) > 0)) return t('admin.productForm.priceInvalid')
     return null
   }
 
   // TYPE3 / TYPE4
-  if (!roundMinSize.value) return 'Select a minimum size for Round'
-  if (!squareMinSize.value) return 'Select a minimum size for Square'
+  if (!roundMinSize.value) return t('admin.productForm.roundMinRequired')
+  if (!squareMinSize.value) return t('admin.productForm.squareMinRequired')
 
   const variants = buildVariantList()
   const incomplete = variants.some((v) => !(v.price > 0))
-  if (incomplete) return 'All size prices are required and must be greater than 0'
+  if (incomplete) return t('admin.productForm.pricesIncomplete')
 
   return null
 }
@@ -290,7 +304,7 @@ const handleSubmit = async () => {
     emit('close')
   } catch (err) {
     errorMessage.value =
-      err.response?.data?.message || 'Failed to save product. Please try again.'
+      err.response?.data?.message || t('admin.productForm.saveFailed')
   } finally {
     isSubmitting.value = false
   }
@@ -315,7 +329,7 @@ const close = () => {
           type="button"
           @click="close"
           class="p-1 text-cocoa-400 hover:text-cocoa-900 transition"
-          aria-label="Close"
+          :aria-label="t('common.close')"
         >
           <X class="w-5 h-5" />
         </button>
@@ -325,7 +339,7 @@ const close = () => {
       <form class="px-6 py-5 space-y-5" @submit.prevent="handleSubmit">
         <!-- PRODUCT TYPE (hanya saat Add) -->
         <div v-if="!isEdit">
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Product Type</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.productType') }}</label>
           <div class="relative">
             <select
               v-model="form.type"
@@ -343,13 +357,13 @@ const close = () => {
 
         <!-- CATEGORY (pilihan mengikuti type) -->
         <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Category</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.category') }}</label>
           <div class="relative">
             <select
               v-model="form.category"
               class="appearance-none w-full rounded-full border border-cream-300 pl-4 pr-10 py-2.5 text-sm bg-white focus:outline-none cursor-pointer"
             >
-              <option value="" disabled>Select a category...</option>
+              <option value="" disabled>{{ t('admin.productForm.selectCategory') }}</option>
               <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
             </select>
             <ChevronDown
@@ -360,18 +374,18 @@ const close = () => {
 
         <!-- NAME -->
         <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Product Name</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.name') }}</label>
           <input
             v-model="form.name"
             type="text"
-            placeholder="Product Name..."
+            :placeholder="t('admin.productForm.namePlaceholder')"
             class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
           />
         </div>
 
         <!-- DESCRIPTION -->
         <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Description</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.description') }}</label>
           <textarea
             v-model="form.description"
             rows="3"
@@ -381,7 +395,7 @@ const close = () => {
 
         <!-- IMAGE (banyak foto; foto pertama = cover) -->
         <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Images</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.images') }}</label>
           <button
             type="button"
             @click="openFilePicker"
@@ -389,7 +403,7 @@ const close = () => {
             class="inline-flex items-center gap-2 rounded-full border border-cream-300 px-5 py-2 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 hover:border-brand-400 transition disabled:opacity-50"
           >
             <Upload class="w-4 h-4" />
-            {{ isUploading ? 'Uploading...' : 'Upload Image' }}
+            {{ isUploading ? t('admin.productForm.uploading') : t('admin.productForm.upload') }}
           </button>
           <input
             ref="fileInputRef"
@@ -401,7 +415,7 @@ const close = () => {
           />
 
           <p v-if="form.images.length" class="text-xs text-cocoa-400 mt-2">
-            The first photo is used as the cover. Click a photo to make it the cover.
+            {{ t('admin.productForm.coverHint') }}
           </p>
 
           <div v-if="form.images.length" class="grid grid-cols-4 gap-3 mt-3">
@@ -411,7 +425,7 @@ const close = () => {
               class="relative aspect-square rounded-lg border overflow-hidden bg-cream-100 group"
               :class="index === 0 ? 'border-brand-500 ring-1 ring-brand-500' : 'border-cream-300'"
             >
-              <button type="button" @click="makeCover(index)" class="w-full h-full" title="Set as cover">
+              <button type="button" @click="makeCover(index)" class="w-full h-full" :title="t('admin.productForm.setAsCover')">
                 <img :src="img" alt="Preview" class="w-full h-full object-cover" />
               </button>
 
@@ -419,14 +433,14 @@ const close = () => {
                 v-if="index === 0"
                 class="absolute bottom-0 inset-x-0 bg-brand-500 text-white text-[10px] font-semibold text-center py-0.5"
               >
-                Cover
+                {{ t('admin.productForm.cover') }}
               </span>
 
               <button
                 type="button"
                 @click.stop="removeImage(index)"
                 class="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/90 border border-cream-300 text-cocoa-500 flex items-center justify-center hover:border-brand-400 hover:text-brand-600 transition"
-                aria-label="Remove image"
+                :aria-label="t('admin.productForm.removeImage')"
               >
                 <X class="w-3.5 h-3.5" />
               </button>
@@ -436,11 +450,11 @@ const close = () => {
 
         <!-- FLAVOR fixed (TYPE1 & TYPE3) -->
         <div v-if="showFlavor">
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Flavor</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.flavor') }}</label>
           <input
             v-model="form.flavor"
             type="text"
-            placeholder="Flavor Name..."
+            :placeholder="t('admin.productForm.flavorPlaceholder')"
             class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
           />
         </div>
@@ -449,7 +463,7 @@ const close = () => {
         <template v-if="usesSingleVariant">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Shape</label>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.shape') }}</label>
               <div class="relative">
                 <select
                   v-model="type1.shape"
@@ -465,12 +479,12 @@ const close = () => {
               </div>
             </div>
             <div>
-              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Size (cm)</label>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.size') }}</label>
               <input
                 v-model.number="type1.size"
                 type="number"
                 min="1"
-                placeholder="Size"
+                :placeholder="t('admin.productForm.sizePlaceholder')"
                 class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
               />
             </div>
@@ -478,20 +492,20 @@ const close = () => {
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Price (Rp)</label>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.price') }}</label>
               <PriceInput
                 v-model="type1.price"
                 class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
               />
             </div>
             <div>
-              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Discount (%)</label>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.discount') }}</label>
               <input
                 v-model.number="form.discount"
                 type="number"
                 min="0"
                 max="100"
-                placeholder="Discount"
+                :placeholder="t('admin.productForm.discountPlaceholder')"
                 class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
               />
             </div>
@@ -502,13 +516,13 @@ const close = () => {
         <template v-if="usesVariantGrid">
           <!-- ROUND -->
           <div>
-            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Round</label>
+            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.round') }}</label>
             <div class="relative">
               <select
                 v-model.number="roundMinSize"
                 class="appearance-none w-full rounded-full border border-cream-300 pl-4 pr-10 py-2.5 text-sm bg-white focus:outline-none cursor-pointer"
               >
-                <option :value="null" disabled>(Min Size) - 30 cm</option>
+                <option :value="null" disabled>{{ t('admin.productForm.minSizePlaceholder') }}</option>
                 <option v-for="m in ROUND_MIN_OPTIONS" :key="m" :value="m">{{ m }} - 30 cm</option>
               </select>
               <ChevronDown
@@ -532,13 +546,13 @@ const close = () => {
 
           <!-- SQUARE -->
           <div>
-            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Square</label>
+            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.square') }}</label>
             <div class="relative">
               <select
                 v-model.number="squareMinSize"
                 class="appearance-none w-full rounded-full border border-cream-300 pl-4 pr-10 py-2.5 text-sm bg-white focus:outline-none cursor-pointer"
               >
-                <option :value="null" disabled>(Min Size) - 30 cm</option>
+                <option :value="null" disabled>{{ t('admin.productForm.minSizePlaceholder') }}</option>
                 <option v-for="m in SQUARE_MIN_OPTIONS" :key="m" :value="m">
                   {{ m }}×{{ m }} - 30×30 cm
                 </option>
@@ -564,13 +578,13 @@ const close = () => {
 
           <!-- DISCOUNT -->
           <div>
-            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Discount (%)</label>
+            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.discount') }}</label>
             <input
               v-model.number="form.discount"
               type="number"
               min="0"
               max="100"
-              placeholder="Discount"
+              :placeholder="t('admin.productForm.discountPlaceholder')"
               class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
             />
           </div>
@@ -587,14 +601,14 @@ const close = () => {
             :disabled="isSubmitting"
             class="rounded-full border border-cream-300 px-5 py-2.5 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 transition disabled:opacity-50"
           >
-            Cancel
+            {{ t('admin.productForm.cancel') }}
           </button>
           <button
             type="submit"
             :disabled="isSubmitting || isUploading"
             class="rounded-full bg-brand-500 text-white px-6 py-2.5 text-sm font-bold hover:bg-brand-600 transition disabled:opacity-50"
           >
-            {{ isSubmitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Product' }}
+            {{ isSubmitting ? t('admin.productForm.saving') : isEdit ? t('admin.productForm.saveChanges') : t('admin.productForm.addProduct') }}
           </button>
         </div>
       </form>

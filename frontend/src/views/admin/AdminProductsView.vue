@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Search, Plus, Pencil, Trash2, ChevronDown } from 'lucide-vue-next'
 import { deleteProduct } from '@/services/product.service'
 import { cloudinaryThumb } from '@/utils/cloudinaryImage'
@@ -9,13 +10,15 @@ import ProductFormModal from '@/components/admin/ProductFormModal.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Toast from '@/components/common/Toast.vue'
 
-const TYPE_OPTIONS = [
-  { value: 'ALL', label: 'All types' },
-  { value: 'TYPE1', label: 'Type 1' },
-  { value: 'TYPE2', label: 'Type 2' },
-  { value: 'TYPE3', label: 'Type 3' },
-  { value: 'TYPE4', label: 'Type 4' },
-]
+const { t } = useI18n()
+
+const TYPE_OPTIONS = computed(() => [
+  { value: 'ALL', label: t('admin.products.allTypes') },
+  { value: 'TYPE1', label: t('admin.products.type', { num: 1 }) },
+  { value: 'TYPE2', label: t('admin.products.type', { num: 2 }) },
+  { value: 'TYPE3', label: t('admin.products.type', { num: 3 }) },
+  { value: 'TYPE4', label: t('admin.products.type', { num: 4 }) },
+])
 
 // Nama singkat per tipe untuk kolom "Tipe" (mis. "Tipe 1 · Shortcake Series")
 const TYPE_SHORT_NAMES = {
@@ -68,8 +71,8 @@ const isLoading = computed(() => !productStore.hasLoaded && !errorMessage.value)
 const handleSaved = () => {
   // editingProduct masih menyimpan mode saat modal ter-submit (null = tambah)
   toastMessage.value = editingProduct.value
-    ? 'Edit product successfully'
-    : 'Add product successfully'
+    ? t('admin.products.editSuccess')
+    : t('admin.products.addSuccess')
   // refresh cache bersama tanpa mengosongkannya — halaman Menu ikut ter-update
   productStore.refresh().catch(() => {})
   analyticsStore.invalidate() // angka "Jumlah Produk" di dashboard ikut segar
@@ -80,7 +83,7 @@ const fetchProducts = async () => {
   try {
     await productStore.ensureLoaded()
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Failed to load product data'
+    errorMessage.value = err.response?.data?.message || t('admin.products.loadFailed')
   }
 }
 
@@ -114,7 +117,9 @@ const filteredProducts = computed(() => {
 const typeCell = (product) => {
   const num = product.type?.replace('TYPE', '')
   const shortName = TYPE_SHORT_NAMES[product.type]
-  return shortName ? `Type ${num} · ${shortName}` : product.type
+  return shortName
+    ? `${t('admin.products.type', { num })} · ${shortName}`
+    : product.type
 }
 
 const categoryCell = (product) =>
@@ -162,7 +167,7 @@ const confirmDelete = async () => {
     analyticsStore.invalidate()
     productToDelete.value = null
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to delete product')
+    alert(err.response?.data?.message || t('admin.products.deleteFailed'))
   } finally {
     deletingId.value = null
   }
@@ -173,7 +178,7 @@ const confirmDelete = async () => {
   <div>
     <!-- HEADER -->
     <div class="flex items-center justify-between gap-4 mb-8">
-      <h1 class="text-4xl">Products</h1>
+      <h1 class="text-4xl">{{ t('admin.products.title') }}</h1>
 
       <button
         type="button"
@@ -181,7 +186,7 @@ const confirmDelete = async () => {
         class="inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-5 py-2.5 text-sm font-bold hover:bg-brand-600 transition-colors shrink-0"
       >
         <Plus class="w-4 h-4" stroke-width="2.4" />
-        Add product
+        {{ t('admin.products.add') }}
       </button>
     </div>
 
@@ -192,7 +197,7 @@ const confirmDelete = async () => {
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Search products..."
+          :placeholder="t('admin.products.searchPlaceholder')"
           class="w-full rounded-full border border-cream-300 bg-white pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-400"
         />
       </div>
@@ -213,7 +218,7 @@ const confirmDelete = async () => {
     </div>
 
     <!-- LOADING -->
-    <div v-if="isLoading" class="text-center text-cocoa-400 py-24">Loading products...</div>
+    <div v-if="isLoading" class="text-center text-cocoa-400 py-24">{{ t('admin.products.loading') }}</div>
 
     <!-- ERROR -->
     <div v-else-if="errorMessage" class="text-center text-brand-600 py-24">
@@ -225,7 +230,7 @@ const confirmDelete = async () => {
       v-else-if="filteredProducts.length === 0"
       class="text-center text-cocoa-400 py-24 bg-white rounded-2xl border border-dashed border-cream-300"
     >
-      No matching products
+      {{ t('admin.products.empty') }}
     </div>
 
     <!-- TABEL PRODUK -->
@@ -239,12 +244,12 @@ const confirmDelete = async () => {
             <tr
               class="bg-cocoa-900 text-left text-[11px] font-sans font-bold tracking-[0.12em] uppercase text-cream-50"
             >
-              <th class="px-5 py-3.5">Photo</th>
-              <th class="px-5 py-3.5">Name</th>
-              <th class="px-5 py-3.5">Type</th>
-              <th class="px-5 py-3.5">Category</th>
-              <th class="px-5 py-3.5">Price</th>
-              <th class="px-5 py-3.5"><span class="sr-only">Actions</span></th>
+              <th class="px-5 py-3.5">{{ t('admin.products.photo') }}</th>
+              <th class="px-5 py-3.5">{{ t('admin.products.name') }}</th>
+              <th class="px-5 py-3.5">{{ t('admin.products.typeCol') }}</th>
+              <th class="px-5 py-3.5">{{ t('admin.products.category') }}</th>
+              <th class="px-5 py-3.5">{{ t('admin.products.price') }}</th>
+              <th class="px-5 py-3.5"><span class="sr-only">{{ t('admin.products.actions') }}</span></th>
             </tr>
           </thead>
           <tbody>
@@ -284,7 +289,7 @@ const confirmDelete = async () => {
                 {{ categoryCell(product) }}
               </td>
               <td class="px-5 py-4 font-extrabold text-brand-600 whitespace-nowrap">
-                <span v-if="priceLabel(product).hasRange" class="text-cocoa-400 font-semibold">From </span>{{ priceLabel(product).value }}
+                <span v-if="priceLabel(product).hasRange" class="text-cocoa-400 font-semibold">{{ t('admin.products.from') }}</span>{{ priceLabel(product).value }}
               </td>
               <td class="px-5 py-4">
                 <div class="flex items-center justify-end gap-2">
@@ -292,7 +297,7 @@ const confirmDelete = async () => {
                     type="button"
                     @click="openEditModal(product)"
                     class="p-2 rounded-lg border border-cream-300 text-brand-500 hover:bg-brand-50 transition-colors"
-                    :aria-label="`Edit ${product.name}`"
+                    :aria-label="t('admin.products.editAria', { name: product.name })"
                   >
                     <Pencil class="w-4 h-4" />
                   </button>
@@ -300,7 +305,7 @@ const confirmDelete = async () => {
                     type="button"
                     :disabled="deletingId === product.id"
                     class="p-2 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-50"
-                    :aria-label="`Delete ${product.name}`"
+                    :aria-label="t('admin.products.deleteAria', { name: product.name })"
                     @click="askDelete(product)"
                   >
                     <Trash2 class="w-4 h-4" />
@@ -324,10 +329,10 @@ const confirmDelete = async () => {
     <!-- DELETE CONFIRMATION -->
     <ConfirmDialog
       :open="!!productToDelete"
-      title="Delete Product"
-      :message="`Are you sure you want to delete the product “${productToDelete?.name}”? This action cannot be undone.`"
-      confirm-text="Yes"
-      cancel-text="No"
+      :title="t('admin.products.deleteTitle')"
+      :message="t('admin.products.deleteMessage', { name: productToDelete?.name })"
+      :confirm-text="t('common.yes')"
+      :cancel-text="t('common.no')"
       variant="danger"
       :is-loading="!!deletingId"
       @confirm="confirmDelete"

@@ -28,7 +28,7 @@ export const buildWhatsappMessage = (order) => {
     const flavorInfo = item.flavor ? ` - ${item.flavor}` : '';
 
     lines.push(`${idx + 1}. ${item.productName}${variantInfo}${flavorInfo}`);
-    lines.push(`   Qty: ${item.quantity} x ${formatRupiah(item.price)}`);
+    lines.push(`   Quantity: ${item.quantity} x ${formatRupiah(item.price)}`);
     if (item.textOnCake) lines.push(`   Text on cake: ${item.textOnCake}`);
     if (item.notes) lines.push(`   Notes: ${item.notes}`);
     if (item.customImage) lines.push(`   Custom image: ${item.customImage}`);

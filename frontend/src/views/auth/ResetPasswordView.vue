@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import api from '@/lib/api'
 import logo from '@/assets/images/logo.png'
 
+const { t } = useI18n()
 const router = useRouter()
 
 // email + code dikirim dari halaman lupa password lewat history state
@@ -28,10 +30,10 @@ onMounted(() => {
 })
 
 const validatePassword = (password) => {
-  if (password.length < 6) return 'Password minimal 6 karakter'
-  if (password.length > 20) return 'Password maksimal 20 karakter'
-  if (!/^[A-Za-z]/.test(password)) return 'Password harus diawali huruf'
-  if (!/\d/.test(password)) return 'Password harus mengandung minimal 1 angka'
+  if (password.length < 6) return t('auth.reset.minLength')
+  if (password.length > 20) return t('auth.reset.maxLength')
+  if (!/^[A-Za-z]/.test(password)) return t('auth.reset.startWithLetter')
+  if (!/\d/.test(password)) return t('auth.reset.needNumber')
   return null
 }
 
@@ -39,7 +41,7 @@ const handleSubmit = async () => {
   errorMessage.value = ''
 
   if (!newPassword.value || !confirmPassword.value) {
-    errorMessage.value = 'Semua field wajib diisi'
+    errorMessage.value = t('auth.reset.allRequired')
     return
   }
 
@@ -50,7 +52,7 @@ const handleSubmit = async () => {
   }
 
   if (newPassword.value !== confirmPassword.value) {
-    errorMessage.value = 'Konfirmasi password tidak sama'
+    errorMessage.value = t('auth.reset.mismatch')
     return
   }
 
@@ -66,7 +68,7 @@ const handleSubmit = async () => {
     setTimeout(() => router.push({ name: 'login' }), 2000)
   } catch (err) {
     errorMessage.value =
-      err.response?.data?.message || 'Gagal mengatur ulang password'
+      err.response?.data?.message || t('auth.reset.failed')
   } finally {
     isSubmitting.value = false
   }
@@ -94,52 +96,52 @@ const handleSubmit = async () => {
         <div
           class="bg-[#E9F6EE] border border-[#C9E7D6] text-[#2E9E6B] rounded-[10px] px-3.5 py-2.5 text-[13px] font-bold"
         >
-          Password berhasil diubah! Mengarahkan ke halaman login...
+          {{ t('auth.reset.success') }}
         </div>
         <RouterLink
           to="/login"
           class="text-sm font-extrabold text-brand-500 hover:opacity-70"
         >
-          Sign in sekarang
+          {{ t('auth.reset.signInNow') }}
         </RouterLink>
       </div>
 
       <!-- FORM -->
       <form v-else @submit.prevent="handleSubmit" class="flex flex-col gap-3.5">
         <div>
-          <h1 class="font-display text-[28px] mb-1.5">New password</h1>
+          <h1 class="font-display text-[28px] mb-1.5">{{ t('auth.reset.title') }}</h1>
           <p class="text-[#6E5A4D] text-[14.5px]">
-            Code verified ✓ — now set a new password for
+            {{ t('auth.reset.subtitle1') }}
             <strong class="text-cocoa-900">{{ email }}</strong>
           </p>
         </div>
 
         <div>
           <label for="newPassword" class="block font-extrabold text-[13.5px] mb-1.5">
-            New password
+            {{ t('auth.reset.newPassword') }}
           </label>
           <input
             id="newPassword"
             v-model="newPassword"
             type="password"
-            placeholder="New password (min. 6 characters)"
+            :placeholder="t('auth.reset.newPasswordPlaceholder')"
             autocomplete="new-password"
             class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
           <p class="mt-1.5 text-xs text-cocoa-400">
-            6–20 karakter, diawali huruf, dan mengandung minimal 1 angka
+            {{ t('auth.reset.passwordRules') }}
           </p>
         </div>
 
         <div>
           <label for="confirmPassword" class="block font-extrabold text-[13.5px] mb-1.5">
-            Confirm password
+            {{ t('auth.register.confirmPassword') }}
           </label>
           <input
             id="confirmPassword"
             v-model="confirmPassword"
             type="password"
-            placeholder="Ulangi password baru"
+            :placeholder="t('auth.reset.confirmPasswordPlaceholder')"
             autocomplete="new-password"
             class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
@@ -157,7 +159,7 @@ const handleSubmit = async () => {
           :disabled="isSubmitting"
           class="w-full rounded-full bg-brand-500 text-white py-3.5 text-[15px] font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isSubmitting ? 'Menyimpan...' : 'Save & sign in' }}
+          {{ isSubmitting ? t('auth.reset.saving') : t('auth.reset.save') }}
         </button>
       </form>
     </div>

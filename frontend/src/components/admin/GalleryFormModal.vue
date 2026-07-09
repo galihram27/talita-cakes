@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { X, Upload } from 'lucide-vue-next'
 import { createGallery, updateGallery } from '@/services/gallery.service'
 import { uploadImage } from '@/services/upload.service'
@@ -11,11 +12,14 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'saved'])
+const { t } = useI18n()
 
 const isEdit = computed(() => !!props.item)
 
 const modalTitle = computed(() =>
-  isEdit.value ? `Edit: ${props.item.title}` : 'Add Image'
+  isEdit.value
+    ? t('admin.galleryForm.editTitle', { name: props.item.title })
+    : t('admin.galleryForm.addTitle')
 )
 
 // ===== STATE FORM =====
@@ -71,7 +75,7 @@ const handleFileChange = async (e) => {
     form.imageUrl = url
   } catch (err) {
     errorMessage.value =
-      err.response?.data?.message || 'Failed to upload image. Please try again.'
+      err.response?.data?.message || t('admin.galleryForm.uploadFailed')
   } finally {
     isUploading.value = false
   }
@@ -83,8 +87,8 @@ const removeImage = () => {
 
 // ===== SUBMIT =====
 const validate = () => {
-  if (!form.title.trim()) return 'Title is required'
-  if (!form.imageUrl) return 'Image is required'
+  if (!form.title.trim()) return t('admin.galleryForm.titleRequired')
+  if (!form.imageUrl) return t('admin.galleryForm.imageRequired')
   return null
 }
 
@@ -114,7 +118,7 @@ const handleSubmit = async () => {
     emit('close')
   } catch (err) {
     errorMessage.value =
-      err.response?.data?.message || 'Failed to save image. Please try again.'
+      err.response?.data?.message || t('admin.galleryForm.saveFailed')
   } finally {
     isSubmitting.value = false
   }
@@ -139,7 +143,7 @@ const close = () => {
           type="button"
           @click="close"
           class="p-1 text-cocoa-400 hover:text-cocoa-900 transition"
-          aria-label="Close"
+          :aria-label="t('common.close')"
         >
           <X class="w-5 h-5" />
         </button>
@@ -149,18 +153,18 @@ const close = () => {
       <form class="px-6 py-5 space-y-5" @submit.prevent="handleSubmit">
         <!-- TITLE -->
         <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Title</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.galleryForm.title') }}</label>
           <input
             v-model="form.title"
             type="text"
-            placeholder="Image Title..."
+            :placeholder="t('admin.galleryForm.titlePlaceholder')"
             class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
           />
         </div>
 
         <!-- IMAGE -->
         <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">Image</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.galleryForm.image') }}</label>
           <button
             type="button"
             @click="openFilePicker"
@@ -168,7 +172,7 @@ const close = () => {
             class="inline-flex items-center gap-2 rounded-full border border-cream-300 px-5 py-2 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 hover:border-brand-400 transition disabled:opacity-50"
           >
             <Upload class="w-4 h-4" />
-            {{ isUploading ? 'Uploading...' : 'Upload Image' }}
+            {{ isUploading ? t('admin.galleryForm.uploading') : t('admin.galleryForm.upload') }}
           </button>
           <input
             ref="fileInputRef"
@@ -186,7 +190,7 @@ const close = () => {
               type="button"
               @click="removeImage"
               class="w-8 h-8 rounded-full border border-cream-300 text-cocoa-500 flex items-center justify-center hover:border-brand-400 hover:text-brand-600 transition"
-              aria-label="Remove image"
+              :aria-label="t('admin.galleryForm.removeImage')"
             >
               <X class="w-4 h-4" />
             </button>
@@ -196,7 +200,7 @@ const close = () => {
         <!-- DESCRIPTION -->
         <div>
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
-            Description <span class="text-cocoa-400 font-normal">(optional)</span>
+            {{ t('admin.galleryForm.description') }} <span class="text-cocoa-400 font-normal">{{ t('admin.galleryForm.optional') }}</span>
           </label>
           <textarea
             v-model="form.description"
@@ -208,12 +212,12 @@ const close = () => {
         <!-- TAGS -->
         <div>
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
-            Tags <span class="text-cocoa-400 font-normal">(optional, separate with commas)</span>
+            {{ t('admin.galleryForm.tags') }} <span class="text-cocoa-400 font-normal">{{ t('admin.galleryForm.tagsHint') }}</span>
           </label>
           <input
             v-model="form.tags"
             type="text"
-            placeholder="birthday, wedding, custom..."
+            :placeholder="t('admin.galleryForm.tagsPlaceholder')"
             class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
           />
         </div>
@@ -229,14 +233,14 @@ const close = () => {
             :disabled="isSubmitting"
             class="rounded-full border border-cream-300 px-5 py-2.5 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 transition disabled:opacity-50"
           >
-            Cancel
+            {{ t('admin.galleryForm.cancel') }}
           </button>
           <button
             type="submit"
             :disabled="isSubmitting || isUploading"
             class="rounded-full bg-brand-500 text-white px-6 py-2.5 text-sm font-bold hover:bg-brand-600 transition disabled:opacity-50"
           >
-            {{ isSubmitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Image' }}
+            {{ isSubmitting ? t('admin.galleryForm.saving') : isEdit ? t('admin.galleryForm.saveChanges') : t('admin.galleryForm.addImage') }}
           </button>
         </div>
       </form>

@@ -1,6 +1,9 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Ruler } from 'lucide-vue-next'
+
+const { t } = useI18n()
 
 // kartu info shape & size untuk produk dengan variant fixed (TYPE1 & TYPE2)
 const props = defineProps({
@@ -33,9 +36,9 @@ const sizeText = computed(() => {
         />
       </div>
       <div class="min-w-0">
-        <p class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">Shape</p>
+        <p class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">{{ t('product.shape') }}</p>
         <p class="font-display text-[16.5px] text-cocoa-900 leading-tight truncate">
-          {{ isRound ? 'Round' : 'Square' }}
+          {{ isRound ? t('product.round') : t('product.square') }}
         </p>
       </div>
     </div>
@@ -50,7 +53,7 @@ const sizeText = computed(() => {
         <Ruler class="w-[18px] h-[18px]" />
       </div>
       <div class="min-w-0">
-        <p class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">Size</p>
+        <p class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">{{ t('product.size') }}</p>
         <p class="font-display text-[16.5px] text-cocoa-900 leading-tight truncate">
           <template v-if="isSquareSize"
             >{{ size }}<span class="font-sans font-bold text-[#6B4423] mx-0.5">×</span

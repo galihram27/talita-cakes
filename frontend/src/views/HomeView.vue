@@ -1,79 +1,84 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
+import { useProductStore } from '@/stores/product.store'
 import ProductCard from '@/components/product/ProductCard.vue'
 import GoogleReviews from '@/components/common/GoogleReviews.vue'
-import api from '@/lib/api'
 
-const featuredProducts = ref([])
-const isLoading = ref(true)
+const { t } = useI18n()
+
+// Sumber data sama dengan halaman Menu: store dengan cache localStorage +
+// stale-while-revalidate. Kunjungan berikutnya favorit langsung tampil dari
+// cache (loading instan), refresh berjalan diam-diam di background.
+const productStore = useProductStore()
+const { products } = storeToRefs(productStore)
+const isLoading = ref(!productStore.hasLoaded)
+
+// tampilkan 4 produk pertama sebagai favorit
+const featuredProducts = computed(() => products.value.slice(0, 4))
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/products')
-    // tampilkan 4 produk pertama sebagai favorit
-    featuredProducts.value = (data.data || []).slice(0, 4)
-  } catch (err) {
-    featuredProducts.value = []
+    await productStore.ensureLoaded()
   } finally {
     isLoading.value = false
   }
 })
 
 // Kartu tipe produk (dari desain)
-const typeCards = [
+const typeCards = computed(() => [
   {
-    tag: 'Signature Collection',
-    desc: 'Perfect for customers who love our ready-made designs.',
-    features: ['Fixed Size', 'Fixed Flavor', 'Fixed Decoration'],
+    tag: t('home.types.t1.tag'),
+    desc: t('home.types.t1.desc'),
+    features: [
+      t('home.features.fixedSize'),
+      t('home.features.fixedFlavor'),
+      t('home.features.fixedDecoration'),
+    ],
   },
   {
-    tag: 'Flavor & Design Choice',
-    desc: 'Choose your favorite flavor while keeping the original cake size.',
-    features: ['Fixed Size', 'Choose Flavor', 'Simple Decoration Customization'],
+    tag: t('home.types.t2.tag'),
+    desc: t('home.types.t2.desc'),
+    features: [
+      t('home.features.fixedSize'),
+      t('home.features.chooseFlavor'),
+      t('home.features.simpleDecoration'),
+    ],
   },
   {
-    tag: 'Choose Your Size',
-    desc: 'Love the design but need a different size?',
-    features: ['Choose Size', 'Fixed Flavor', 'Fixed Decoration'],
+    tag: t('home.types.t3.tag'),
+    desc: t('home.types.t3.desc'),
+    features: [
+      t('home.features.chooseSize'),
+      t('home.features.fixedFlavor'),
+      t('home.features.fixedDecoration'),
+    ],
   },
   {
-    tag: 'Fully Custom Cake',
-    desc: "Create a cake that's uniquely yours.",
-    features: ['Choose Size', 'Choose Flavor', 'Custom Design', 'Upload Inspiration Photo'],
+    tag: t('home.types.t4.tag'),
+    desc: t('home.types.t4.desc'),
+    features: [
+      t('home.features.chooseSize'),
+      t('home.features.chooseFlavor'),
+      t('home.features.customDesign'),
+      t('home.features.uploadInspiration'),
+    ],
   },
-]
+])
 
-const steps = [
-  {
-    n: '1',
-    title: 'Choose Your Cake',
-    desc: 'Browse our menu and select your favorite cake. Customize the size, flavor, and design (if available), then upload your inspiration photo for custom orders.',
-  },
-  {
-    n: '2',
-    title: 'Select Your Date',
-    desc: 'Choose your preferred pickup or delivery date. We recommend placing your order at least 3 days in advance. For large cakes or highly customized designs, we recommend ordering earlier to ensure the best results.',
-  },
-  {
-    n: '3',
-    title: 'Submit Your Order',
-    desc: 'Your order summary will be generated automatically. Simply send it to us via WhatsApp to continue the ordering process.',
-  },
-  {
-    n: '4',
-    title: 'Order Confirmation',
-    desc: 'Our team will review your order, confirm availability, delivery details, and payment. Once everything is confirmed, your cake will be freshly baked and handcrafted for your special day.',
-  },
-]
+const steps = computed(() =>
+  ['s1', 's2', 's3', 's4'].map((key, i) => ({
+    n: String(i + 1),
+    title: t(`home.steps.${key}.title`),
+    desc: t(`home.steps.${key}.desc`),
+  }))
+)
 
-const whyChoose = [
-  { icon: '❤️', label: 'Baked Fresh After You Order' },
-  { icon: '🎂', label: 'Fully Customizable' },
-  { icon: '🚚', label: 'Delivery Available' },
-  { icon: '⭐', label: 'Trusted Since 2012' },
-  { icon: '🥚', label: 'Premium & Halal Ingredients' },
-  { icon: '💝', label: 'Baked with Love' },
-]
+const whyIcons = ['❤️', '🎂', '🚚', '⭐', '🥚', '💝']
+const whyChoose = computed(() =>
+  whyIcons.map((icon, i) => ({ icon, label: t(`home.why.w${i + 1}`) }))
+)
 </script>
 
 <template>
@@ -84,39 +89,37 @@ const whyChoose = [
         <h1
           class="font-display text-[clamp(38px,5vw,58px)] leading-[1.12] max-w-[620px] mb-4"
         >
-          Every Celebration Begins with a Beautiful Cake
+          {{ t('home.hero.title') }}
         </h1>
         <p class="text-[17px] leading-relaxed text-[#6E5A4D] max-w-[480px] mb-7">
-          Freshly baked custom cakes and premium desserts, handcrafted to make
-          birthdays, weddings, anniversaries, baby showers, graduations, and
-          every celebration truly unforgettable.
+          {{ t('home.hero.subtitle') }}
         </p>
         <div class="flex gap-3 flex-wrap">
           <RouterLink
             to="/menu"
             class="inline-flex items-center bg-brand-500 text-white font-bold text-[15px] px-7 py-3.5 rounded-full hover:bg-brand-600 transition-colors"
           >
-            View Menu
+            {{ t('home.hero.viewMenu') }}
           </RouterLink>
           <RouterLink
             to="/gallery"
             class="inline-flex items-center bg-white text-cocoa-900 border border-[#E4D3C1] font-bold text-[15px] px-7 py-3.5 rounded-full hover:border-brand-500 hover:text-brand-500 transition-colors"
           >
-            Our Gallery
+            {{ t('home.hero.ourGallery') }}
           </RouterLink>
         </div>
         <div class="flex gap-8 mt-10 flex-wrap">
           <div>
-            <div class="font-display text-[26px]">12+ Years</div>
-            <div class="text-[13px] text-cocoa-400">Baking Happiness Since 2012</div>
+            <div class="font-display text-[26px]">{{ t('home.stats.years') }}</div>
+            <div class="text-[13px] text-cocoa-400">{{ t('home.stats.yearsDesc') }}</div>
           </div>
           <div>
-            <div class="font-display text-[26px]">3000+ Cakes</div>
-            <div class="text-[13px] text-cocoa-400">Handcrafted with Love</div>
+            <div class="font-display text-[26px]">{{ t('home.stats.cakes') }}</div>
+            <div class="text-[13px] text-cocoa-400">{{ t('home.stats.cakesDesc') }}</div>
           </div>
           <div>
-            <div class="font-display text-[26px]">Made by Order</div>
-            <div class="text-[13px] text-cocoa-400">Freshly Baked for Every Order</div>
+            <div class="font-display text-[26px]">{{ t('home.stats.made') }}</div>
+            <div class="text-[13px] text-cocoa-400">{{ t('home.stats.madeDesc') }}</div>
           </div>
         </div>
       </div>
@@ -126,12 +129,10 @@ const whyChoose = [
     <section class="bg-white border-y border-cream-200">
       <div class="max-w-[1160px] mx-auto px-5 md:px-8 py-16">
         <h2 class="font-display text-[32px] mb-2">
-          Find the Perfect Cake for Your Celebration
+          {{ t('home.typesTitle') }}
         </h2>
         <p class="text-[#6E5A4D] text-[15.5px] mb-8">
-          Whether you're looking for a ready-to-order favorite or a fully
-          customized creation, we'll help you find the perfect cake for your
-          special celebration.
+          {{ t('home.typesSubtitle') }}
         </p>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <RouterLink
@@ -166,21 +167,21 @@ const whyChoose = [
     <section class="max-w-[1160px] mx-auto px-5 md:px-8 py-16">
       <div class="flex items-baseline justify-between gap-4 flex-wrap mb-7">
         <div>
-          <h2 class="font-display text-[32px] mb-1">Customer favorites</h2>
+          <h2 class="font-display text-[32px] mb-1">{{ t('home.favoritesTitle') }}</h2>
           <p class="text-[#6E5A4D] text-[15.5px]">
-            The ones ordered again and again.
+            {{ t('home.favoritesSubtitle') }}
           </p>
         </div>
         <RouterLink
           to="/menu"
           class="text-brand-500 font-extrabold text-[14.5px] hover:opacity-65 transition-opacity"
         >
-          All menu →
+          {{ t('home.allMenu') }}
         </RouterLink>
       </div>
 
       <div v-if="isLoading" class="text-center text-cocoa-400 py-12">
-        Memuat kue favorit...
+        {{ t('home.loadingFavorites') }}
       </div>
       <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-5">
         <ProductCard
@@ -196,7 +197,7 @@ const whyChoose = [
       <div class="max-w-[1160px] mx-auto px-5 md:px-8 pt-16 pb-[76px]">
         <div class="text-center max-w-[560px] mx-auto mb-11">
           <h2 class="font-display text-[38px] leading-tight">
-            Order your cake in 4 simple steps
+            {{ t('home.stepsTitle') }}
           </h2>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -224,7 +225,7 @@ const whyChoose = [
       <div class="max-w-[1160px] mx-auto px-5 md:px-8 py-16">
         <div class="text-center max-w-[560px] mx-auto mb-10">
           <h2 class="font-display text-[34px] leading-tight">
-            Why Choose Talita's Cake
+            {{ t('home.whyTitle') }}
           </h2>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -247,6 +248,8 @@ const whyChoose = [
     </section>
 
     <!-- GOOGLE REVIEWS -->
-    <GoogleReviews />
+    <div class="mt-14">
+      <GoogleReviews narrow />
+    </div>
   </div>
 </template>

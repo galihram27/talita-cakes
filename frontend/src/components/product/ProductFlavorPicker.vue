@@ -1,18 +1,21 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
+
 // Grid pilihan flavor (TYPE2 & TYPE4) — gaya tombol radio dari desain
 defineProps({
   modelValue: { type: String, default: '' },
   flavors: { type: Array, required: true },
-  stepLabel: { type: String, default: 'Choose flavor' },
+  stepLabel: { type: String, default: '' },
 })
 
 defineEmits(['update:modelValue'])
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="mb-6">
     <p class="text-[15px] font-extrabold mb-2.5">
-      {{ stepLabel }} <span class="text-brand-500">*</span>
+      {{ stepLabel || t('product.chooseFlavor') }} <span class="text-brand-500">*</span>
     </p>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <button

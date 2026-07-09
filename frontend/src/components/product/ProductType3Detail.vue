@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ProductImage from './ProductImage.vue'
 import ProductInfoHeader from './ProductInfoHeader.vue'
 import ProductPriceDisplay from './ProductPriceDisplay.vue'
@@ -10,6 +11,8 @@ import { addItemToCart } from '@/services/cart.service'
 const props = defineProps({
   product: { type: Object, required: true },
 })
+
+const { t } = useI18n()
 
 const selectedVariantId = ref(null)
 const textOnCake = ref('')
@@ -35,11 +38,11 @@ const handleSubmit = async () => {
   submitSuccess.value = false
 
   if (!selectedVariantId.value) {
-    submitError.value = 'Pilih shape & size terlebih dahulu'
+    submitError.value = t('product.chooseVariantFirst')
     return
   }
   if (quantity.value < 1) {
-    submitError.value = 'Quantity minimal 1'
+    submitError.value = t('product.qtyMin')
     return
   }
 
@@ -54,7 +57,7 @@ const handleSubmit = async () => {
     })
     submitSuccess.value = true
   } catch (err) {
-    submitError.value = err.response?.data?.message || 'Gagal menambahkan ke keranjang'
+    submitError.value = err.response?.data?.message || t('product.addToCartFailed')
   } finally {
     isSubmitting.value = false
   }
@@ -77,14 +80,9 @@ const handleSubmit = async () => {
       <div
         class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
       >
-        <span
-          class="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-[#F4E7D8] text-[19px] leading-none"
-        >
-          🍰
-        </span>
         <span class="flex flex-col gap-0.5 min-w-0">
           <span class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">
-            Flavor
+            {{ t('product.flavor') }}
           </span>
           <span class="font-display text-[16.5px] text-cocoa-900 leading-tight">
             {{ product.flavor }}

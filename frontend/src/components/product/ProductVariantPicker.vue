@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { formatRupiah } from '@/utils/formatCurrency'
+
+const { t } = useI18n()
 import { sizeLabel } from '@/config/productOptions'
 
 const props = defineProps({
@@ -52,7 +55,7 @@ watch(
 <template>
   <div class="mb-6">
     <p class="text-[15px] font-extrabold mb-2.5">
-      1 · Choose shape <span class="text-brand-500">*</span>
+      {{ t('product.chooseShape') }} <span class="text-brand-500">*</span>
     </p>
     <div class="flex gap-2.5">
       <button
@@ -70,13 +73,13 @@ watch(
           :class="shape === 'ROUND' ? 'rounded-full' : 'rounded-[4px]'"
         />
         <span class="font-extrabold text-[14.5px] text-cocoa-900">
-          {{ shape === 'ROUND' ? 'Round' : 'Square' }}
+          {{ shape === 'ROUND' ? t('product.round') : t('product.square') }}
         </span>
       </button>
     </div>
 
     <p class="text-[15px] font-extrabold mt-5 mb-2.5">
-      2 · Choose size <span class="text-brand-500">*</span>
+      {{ t('product.chooseSize') }} <span class="text-brand-500">*</span>
     </p>
     <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
       <button

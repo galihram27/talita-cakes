@@ -10,10 +10,6 @@ setInterval(() => {
   cleanupUnverifiedUsers().catch((err) => console.error("Cleanup gagal:", err));
 }, 60 * 60 * 1000); // jalan tiap 1 jam
 
-// app.listen(PORT, () => {
-//    console.log(`Server running on port ${PORT}`);
-// });
-
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

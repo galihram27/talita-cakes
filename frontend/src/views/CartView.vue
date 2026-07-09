@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Trash2 } from 'lucide-vue-next'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth.store'
@@ -8,6 +9,7 @@ import { useCartStore } from '@/stores/cart.store'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { formatRupiah } from '@/utils/formatCurrency'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 const router = useRouter()
@@ -57,7 +59,7 @@ const fetchCart = async () => {
     // Hanya tampilkan error kalau memang belum ada data yang bisa ditampilkan.
     if (!cartStore.loaded) {
       errorMessage.value =
-        err.response?.data?.message || 'Gagal memuat keranjang'
+        err.response?.data?.message || t('cart.loadFailed')
     }
   } finally {
     isLoading.value = false
@@ -82,7 +84,7 @@ const changeQuantity = async (item, delta) => {
       cartStore.setFromItems(cart.value.items)
     } catch (err) {
       errorMessage.value =
-        err.response?.data?.message || 'Gagal menghapus item'
+        err.response?.data?.message || t('cart.removeFailed')
     } finally {
       updatingItemId.value = null
     }
@@ -102,7 +104,7 @@ const changeQuantity = async (item, delta) => {
     cartStore.setFromItems(cart.value.items)
   } catch (err) {
     errorMessage.value =
-      err.response?.data?.message || 'Gagal mengubah jumlah item'
+      err.response?.data?.message || t('cart.updateQtyFailed')
   } finally {
     updatingItemId.value = null
   }
@@ -129,7 +131,7 @@ const confirmRemoveItem = async () => {
     cartStore.setFromItems(cart.value.items)
     itemToDelete.value = null
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Gagal menghapus item'
+    errorMessage.value = err.response?.data?.message || t('cart.removeFailed')
   } finally {
     isDeleting.value = false
   }
@@ -147,7 +149,7 @@ onMounted(fetchCart)
   <div class="tc-page max-w-[1160px] mx-auto px-5 md:px-8 pt-12 pb-20">
     <!-- LOADING -->
     <div v-if="isLoading" class="text-center text-cocoa-400 py-24">
-      Memuat keranjang...
+      {{ t('cart.loading') }}
     </div>
 
     <!-- ERROR (hanya bisa muncul untuk user yang sudah login) -->
@@ -157,25 +159,25 @@ onMounted(fetchCart)
 
     <!-- EMPTY STATE -->
     <template v-else-if="!cart.items || cart.items.length === 0">
-      <h1 class="font-display text-[40px] mb-6">Cart</h1>
+      <h1 class="font-display text-[40px] mb-6">{{ t('cart.title') }}</h1>
       <div
         class="text-center bg-white border border-dashed border-[#E4D3C1] rounded-[20px] px-6 py-16"
       >
         <div class="text-[40px] mb-3">🧺</div>
-        <div class="font-display text-2xl mb-2">Your cart is still empty</div>
-        <p class="text-[#6E5A4D] mb-5">Let's pick a cake for your special moment.</p>
+        <div class="font-display text-2xl mb-2">{{ t('cart.emptyTitle') }}</div>
+        <p class="text-[#6E5A4D] mb-5">{{ t('cart.emptyDesc') }}</p>
         <RouterLink
           to="/menu"
           class="inline-flex bg-brand-500 text-white font-bold text-[15px] px-6 py-3 rounded-full hover:bg-brand-600 transition-colors"
         >
-          View Menu
+          {{ t('cart.viewMenu') }}
         </RouterLink>
       </div>
     </template>
 
     <!-- CART DENGAN ISI -->
     <div v-else>
-      <h1 class="font-display text-[40px] mb-6">Cart</h1>
+      <h1 class="font-display text-[40px] mb-6">{{ t('cart.title') }}</h1>
 
       <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start">
         <!-- DAFTAR ITEM -->
@@ -207,7 +209,7 @@ onMounted(fetchCart)
                   type="button"
                   @click="askRemoveItem(item)"
                   class="shrink-0 inline-flex items-center justify-center p-2 rounded-[9px] bg-[#FBE9E7] text-brand-500 hover:bg-[#F5D6D2] transition-colors"
-                  aria-label="Hapus item"
+                  :aria-label="t('cart.removeItem')"
                 >
                   <Trash2 class="w-[17px] h-[17px]" stroke-width="1.8" />
                 </button>
@@ -215,19 +217,19 @@ onMounted(fetchCart)
 
               <div class="flex flex-col gap-0.5 text-[13.5px] text-[#6E5A4D] mt-1">
                 <p v-if="item.flavor">
-                  <span class="text-cocoa-400">Flavor:</span>
+                  <span class="text-cocoa-400">{{ t('cart.flavor') }}</span>
                   <strong class="text-[#4A3A30]"> {{ item.flavor }}</strong>
                 </p>
                 <p v-if="item.shape">
-                  <span class="text-cocoa-400">Shape:</span>
+                  <span class="text-cocoa-400">{{ t('cart.shape') }}</span>
                   <strong class="text-[#4A3A30]"> {{ item.shape }}</strong>
                 </p>
                 <p v-if="item.size">
-                  <span class="text-cocoa-400">Size:</span>
+                  <span class="text-cocoa-400">{{ t('cart.size') }}</span>
                   <strong class="text-[#4A3A30]"> {{ item.size }}</strong>
                 </p>
                 <p v-if="item.textOnCake" class="truncate">
-                  <span class="text-cocoa-400">Text:</span>
+                  <span class="text-cocoa-400">{{ t('cart.text') }}</span>
                   <strong class="text-[#4A3A30]"> {{ item.textOnCake }}</strong>
                 </p>
               </div>
@@ -240,7 +242,7 @@ onMounted(fetchCart)
                     :disabled="updatingItemId === item.id"
                     @click="changeQuantity(item, -1)"
                     class="w-[34px] h-[34px] text-[15px] text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
-                    aria-label="Kurangi jumlah"
+                    :aria-label="t('product.orderForm.decreaseQty')"
                   >
                     &minus;
                   </button>
@@ -252,7 +254,7 @@ onMounted(fetchCart)
                     :disabled="updatingItemId === item.id"
                     @click="changeQuantity(item, 1)"
                     class="w-[34px] h-[34px] text-[15px] text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
-                    aria-label="Tambah jumlah"
+                    :aria-label="t('product.orderForm.increaseQty')"
                   >
                     +
                   </button>
@@ -270,22 +272,22 @@ onMounted(fetchCart)
         <div
           class="bg-white border border-cream-300 rounded-2xl p-6 lg:sticky lg:top-24"
         >
-          <h2 class="font-display text-[21px] mb-4">Summary</h2>
+          <h2 class="font-display text-[21px] mb-4">{{ t('cart.summary') }}</h2>
 
           <div
             class="flex justify-between text-[14.5px] text-[#6E5A4D] py-2"
           >
-            <span>Subtotal ({{ cart.items.length }} item)</span>
+            <span>{{ t('cart.subtotal', { count: cart.items.length }) }}</span>
             <strong class="text-cocoa-900">{{ formatRupiah(cart.subtotal) }}</strong>
           </div>
           <div
             class="flex justify-between text-[14.5px] text-[#6E5A4D] py-2 border-b border-cream-200"
           >
-            <span>Delivery fee</span>
-            <span class="text-[13px]">calculated at checkout</span>
+            <span>{{ t('cart.deliveryFee') }}</span>
+            <span class="text-[13px]">{{ t('cart.calculatedAtCheckout') }}</span>
           </div>
           <div class="flex justify-between text-base font-extrabold pt-3.5 pb-4">
-            <span>Estimated total</span>
+            <span>{{ t('cart.estimatedTotal') }}</span>
             <span class="text-brand-500">{{ formatRupiah(cart.subtotal) }}</span>
           </div>
 
@@ -294,18 +296,18 @@ onMounted(fetchCart)
             @click="goToCheckout"
             class="w-full flex justify-center bg-brand-500 text-white font-extrabold text-[15.5px] py-[15px] rounded-full hover:bg-brand-600 transition-colors"
           >
-            Continue to checkout
+            {{ t('cart.continueCheckout') }}
           </button>
 
           <p class="text-[12.5px] text-cocoa-400 text-center mt-2.5">
-            Payment is confirmed manually via WhatsApp — no online payment.
+            {{ t('cart.paymentNote') }}
           </p>
 
           <RouterLink
             to="/menu"
             class="block text-center text-sm text-[#6E5A4D] hover:text-brand-500 mt-3 transition-colors"
           >
-            + Add More Items
+            {{ t('cart.addMore') }}
           </RouterLink>
         </div>
       </div>
@@ -314,10 +316,10 @@ onMounted(fetchCart)
     <!-- DIALOG KONFIRMASI HAPUS -->
     <ConfirmDialog
       :open="!!itemToDelete"
-      title="Hapus item"
-      :message="`Hapus ${itemToDelete?.productName || 'item ini'} dari keranjang?`"
-      confirm-text="Hapus"
-      cancel-text="Batal"
+      :title="t('cart.confirmRemoveTitle')"
+      :message="t('cart.confirmRemoveMessage', { name: itemToDelete?.productName || t('cart.thisItem') })"
+      :confirm-text="t('common.delete')"
+      :cancel-text="t('common.cancel')"
       :is-loading="isDeleting"
       @confirm="confirmRemoveItem"
       @cancel="itemToDelete = null"

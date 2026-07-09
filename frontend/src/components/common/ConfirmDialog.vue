@@ -1,18 +1,20 @@
 <script setup>
 import { AlertTriangle } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 
 defineProps({
   open: { type: Boolean, default: false },
-  title: { type: String, default: 'Confirmation' },
-  message: { type: String, default: 'Are you sure?' },
-  confirmText: { type: String, default: 'Yes' },
-  cancelText: { type: String, default: 'No' },
+  title: { type: String, default: '' },
+  message: { type: String, default: '' },
+  confirmText: { type: String, default: '' },
+  cancelText: { type: String, default: '' },
   // gaya tombol konfirmasi: 'danger' (merah) atau 'primary' (gelap)
   variant: { type: String, default: 'danger' },
   isLoading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['confirm', 'cancel'])
+const { t } = useI18n()
 </script>
 
 <template>
@@ -29,8 +31,8 @@ const emit = defineEmits(['confirm', 'cancel'])
           <AlertTriangle class="w-5 h-5" />
         </div>
         <div class="min-w-0">
-          <h3 class="text-base font-bold">{{ title }}</h3>
-          <p class="text-sm text-gray-600 mt-1 break-words">{{ message }}</p>
+          <h3 class="text-base font-bold">{{ title || t('common.confirmation') }}</h3>
+          <p class="text-sm text-gray-600 mt-1 break-words">{{ message || t('common.areYouSure') }}</p>
         </div>
       </div>
 
@@ -41,7 +43,7 @@ const emit = defineEmits(['confirm', 'cancel'])
           @click="emit('cancel')"
           class="rounded-full border border-gray-300 px-5 py-2 text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
         >
-          {{ cancelText }}
+          {{ cancelText || t('common.no') }}
         </button>
         <button
           type="button"
@@ -50,7 +52,7 @@ const emit = defineEmits(['confirm', 'cancel'])
           class="rounded-full px-6 py-2 text-sm font-medium text-white transition disabled:opacity-50"
           :class="variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-600 hover:bg-brand-700'"
         >
-          {{ isLoading ? 'Processing...' : confirmText }}
+          {{ isLoading ? t('common.processing') : confirmText || t('common.yes') }}
         </button>
       </div>
     </div>

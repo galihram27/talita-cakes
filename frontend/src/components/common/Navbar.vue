@@ -1,12 +1,17 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, computed, watch } from "vue";
 import { ShoppingCart, ChevronDown, User, LogOut, Menu } from "lucide-vue-next";
+import { useI18n } from "vue-i18n";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCartStore } from "@/stores/cart.store";
+import { setLocale } from "@/i18n";
 import logo from "@/assets/images/logo.png";
 
+const { t, locale } = useI18n();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
+
+const switchLocale = (lang) => setLocale(lang);
 
 // Picu animasi "memantul" pada ikon + badge keranjang tiap kali jumlah item
 // bertambah (mis. setelah add to cart). Kelas dilepas lagi setelah animasi
@@ -40,12 +45,13 @@ const handleLogout = async () => {
   await authStore.logout();
 };
 
-const navLinks = [
-  { to: "/", label: "Home", exact: true },
-  { to: "/menu", label: "Menu" },
-  { to: "/gallery", label: "Gallery" },
-  { to: "/about", label: "About Us" },
-];
+const navLinks = computed(() => [
+  { to: "/", label: t("nav.home"), exact: true },
+  { to: "/menu", label: t("nav.menu") },
+  { to: "/gallery", label: t("nav.gallery") },
+  { to: "/about", label: t("nav.about") },
+  { to: "/faq", label: t("nav.faq") },
+]);
 </script>
 
 <template>
@@ -71,7 +77,7 @@ const navLinks = [
           <span
             class="text-[10.5px] tracking-[0.14em] uppercase text-cocoa-400"
           >
-            Since 2012
+            {{ t("nav.since") }}
           </span>
         </span>
       </RouterLink>
@@ -95,16 +101,46 @@ const navLinks = [
           to="/admin/analytics"
           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-brand-500 hover:bg-brand-100 transition-colors"
         >
-          🛠 Admin
+          🛠 {{ t("nav.admin") }}
         </RouterLink>
       </nav>
 
       <!-- Right side -->
       <div class="flex items-center gap-2.5 ml-auto md:ml-2">
+        <!-- Language switcher -->
+        <div
+          class="hidden sm:inline-flex items-center h-[42px] p-1 rounded-full bg-white border border-[#EBDCCC] text-[12px] font-extrabold"
+        >
+          <button
+            type="button"
+            @click="switchLocale('id')"
+            class="px-2.5 h-[32px] rounded-full transition-colors"
+            :class="
+              locale === 'id'
+                ? 'bg-brand-500 text-white'
+                : 'text-cocoa-400 hover:text-cocoa-900'
+            "
+          >
+            ID
+          </button>
+          <button
+            type="button"
+            @click="switchLocale('en')"
+            class="px-2.5 h-[32px] rounded-full transition-colors"
+            :class="
+              locale === 'en'
+                ? 'bg-brand-500 text-white'
+                : 'text-cocoa-400 hover:text-cocoa-900'
+            "
+          >
+            EN
+          </button>
+        </div>
+
         <!-- Cart -->
         <RouterLink
           to="/cart"
-          title="Cart"
+          :title="t('nav.cart')"
           class="relative inline-flex items-center justify-center w-[42px] h-[42px] rounded-full bg-white border border-[#EBDCCC] text-cocoa-900 hover:border-brand-500 hover:bg-brand-100 hover:text-brand-500 transition-colors"
         >
           <ShoppingCart
@@ -127,7 +163,7 @@ const navLinks = [
           to="/login"
           class="inline-flex items-center h-[42px] px-5 rounded-full bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 transition-colors"
         >
-          Sign in
+          {{ t("nav.signIn") }}
         </RouterLink>
 
         <!-- LOGGED IN -->
@@ -160,7 +196,7 @@ const navLinks = [
               @click="closeUserMenu"
             >
               <User class="w-4 h-4" stroke-width="1.8" />
-              Profile
+              {{ t("nav.profile") }}
             </RouterLink>
             <button
               type="button"
@@ -168,7 +204,7 @@ const navLinks = [
               class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-brand-500 text-sm font-bold text-left hover:bg-brand-50 transition-colors"
             >
               <LogOut class="w-4 h-4" stroke-width="1.8" />
-              Logout
+              {{ t("nav.logout") }}
             </button>
           </div>
         </div>
@@ -204,8 +240,36 @@ const navLinks = [
         class="py-3 px-2 text-brand-500 font-extrabold hover:opacity-70 transition-opacity"
         @click="closeNav"
       >
-        🛠 Admin Panel
+        🛠 {{ t("nav.adminPanel") }}
       </RouterLink>
+
+      <!-- Language switcher (mobile) -->
+      <div class="flex items-center gap-2 pt-3 sm:hidden">
+        <button
+          type="button"
+          @click="switchLocale('id')"
+          class="px-4 py-1.5 rounded-full text-[12px] font-extrabold border transition-colors"
+          :class="
+            locale === 'id'
+              ? 'bg-brand-500 border-brand-500 text-white'
+              : 'bg-white border-[#EBDCCC] text-cocoa-400'
+          "
+        >
+          ID
+        </button>
+        <button
+          type="button"
+          @click="switchLocale('en')"
+          class="px-4 py-1.5 rounded-full text-[12px] font-extrabold border transition-colors"
+          :class="
+            locale === 'en'
+              ? 'bg-brand-500 border-brand-500 text-white'
+              : 'bg-white border-[#EBDCCC] text-cocoa-400'
+          "
+        >
+          EN
+        </button>
+      </div>
     </nav>
   </header>
 </template>

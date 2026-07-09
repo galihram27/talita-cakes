@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import api from '@/lib/api'
 import logo from '@/assets/images/logo.png'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 
@@ -40,7 +42,7 @@ const handleVerify = async () => {
   infoMessage.value = ''
 
   if (code.value.length !== 6) {
-    errorMessage.value = 'Kode OTP harus 6 digit'
+    errorMessage.value = t('auth.forgot.otpLength')
     return
   }
 
@@ -53,7 +55,7 @@ const handleVerify = async () => {
     // verifikasi sukses -> arahkan ke login
     router.push({ name: 'login' })
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Kode OTP salah'
+    errorMessage.value = err.response?.data?.message || t('auth.forgot.otpWrong')
   } finally {
     isSubmitting.value = false
   }
@@ -70,11 +72,11 @@ const handleResend = async () => {
       email: email.value,
       purpose: 'EMAIL_VERIFICATION',
     })
-    infoMessage.value = data.message || 'Kode baru sudah dikirim.'
+    infoMessage.value = data.message || t('auth.verify.newCodeSent')
     startResendCooldown()
   } catch (err) {
     errorMessage.value =
-      err.response?.data?.message || 'Gagal mengirim ulang kode OTP'
+      err.response?.data?.message || t('auth.forgot.resendFailed')
   } finally {
     isSubmitting.value = false
   }
@@ -97,11 +99,11 @@ const handleResend = async () => {
 
     <!-- CARD -->
     <div class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
-      <h1 class="font-display text-[28px] mb-1.5">Verify your email</h1>
+      <h1 class="font-display text-[28px] mb-1.5">{{ t('auth.verify.title') }}</h1>
       <p class="text-[#6E5A4D] text-[14.5px] mb-6">
-        We sent a 6-digit code to
+        {{ t('auth.forgot.otpSubtitle1') }}
         <strong class="text-cocoa-900">{{ email }}</strong
-        >. Enter it below.
+        >{{ t('auth.forgot.otpSubtitle2') }}
       </p>
 
       <form @submit.prevent="handleVerify" class="flex flex-col gap-3.5">
@@ -133,7 +135,7 @@ const handleResend = async () => {
           :disabled="isSubmitting"
           class="w-full rounded-full bg-brand-500 text-white py-3.5 text-[15px] font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isSubmitting ? 'Memeriksa...' : 'Verify' }}
+          {{ isSubmitting ? t('auth.forgot.verifying') : t('auth.forgot.verify') }}
         </button>
 
         <button
@@ -142,7 +144,7 @@ const handleResend = async () => {
           :disabled="resendCooldown > 0 || isSubmitting"
           class="text-brand-500 font-bold text-[13.5px] p-1 hover:opacity-70 disabled:text-cocoa-400 disabled:cursor-not-allowed"
         >
-          {{ resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code' }}
+          {{ resendCooldown > 0 ? t('auth.forgot.resendWithCooldown', { s: resendCooldown }) : t('auth.forgot.resend') }}
         </button>
       </form>
     </div>

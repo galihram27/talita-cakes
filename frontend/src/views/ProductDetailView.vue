@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { getProductById } from '@/services/product.service'
 import { useProductStore } from '@/stores/product.store'
 import ProductType1Detail from '@/components/product/ProductType1Detail.vue'
@@ -8,6 +9,7 @@ import ProductType2Detail from '@/components/product/ProductType2Detail.vue'
 import ProductType3Detail from '@/components/product/ProductType3Detail.vue'
 import ProductType4Detail from '@/components/product/ProductType4Detail.vue'
 
+const { t } = useI18n()
 const route = useRoute()
 const productStore = useProductStore()
 
@@ -30,7 +32,7 @@ const fetchProduct = async () => {
     // Kalau sudah ada data dari cache, jangan timpa dengan pesan error —
     // biarkan detail yang sudah tampil tetap terlihat.
     if (!product.value) {
-      loadError.value = err.response?.data?.message || 'Produk tidak ditemukan'
+      loadError.value = err.response?.data?.message || t('product.notFound')
     }
   } finally {
     isLoading.value = false
@@ -46,10 +48,10 @@ onMounted(fetchProduct)
       to="/menu"
       class="inline-flex items-center gap-1.5 text-cocoa-400 hover:text-brand-500 font-bold text-sm mb-6 transition-colors"
     >
-      ← Back to menu
+      {{ t('product.backToMenu') }}
     </RouterLink>
 
-    <div v-if="isLoading" class="text-center py-24 text-cocoa-400">Memuat produk...</div>
+    <div v-if="isLoading" class="text-center py-24 text-cocoa-400">{{ t('product.loading') }}</div>
     <div v-else-if="loadError" class="text-center py-24 text-brand-600">{{ loadError }}</div>
 
     <ProductType1Detail v-else-if="product.type === 'TYPE1'" :product="product" />
@@ -58,7 +60,7 @@ onMounted(fetchProduct)
     <ProductType4Detail v-else-if="product.type === 'TYPE4'" :product="product" />
 
     <div v-else class="text-center py-24 text-gray-500">
-      Halaman detail untuk tipe produk ini belum tersedia.
+      {{ t('product.typeUnavailable') }}
     </div>
   </div>
 </template>

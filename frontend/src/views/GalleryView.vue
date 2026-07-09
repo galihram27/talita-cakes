@@ -1,7 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useGalleryStore } from '@/stores/gallery.store'
+
+const { t } = useI18n()
 
 // ===== STATE: LIST =====
 // List (termasuk posisi search & pagination) disimpan di store supaya balik
@@ -21,7 +24,7 @@ const loadMore = async () => {
   try {
     await galleryStore.loadMore()
   } catch (err) {
-    errorMessage.value = 'Gagal memuat gallery, silakan coba lagi.'
+    errorMessage.value = t('gallery.error')
   } finally {
     isLoadingMore.value = false
   }
@@ -36,7 +39,7 @@ const handleSearchInput = () => {
     try {
       await galleryStore.applySearch(search.value)
     } catch (err) {
-      errorMessage.value = 'Gagal memuat gallery, silakan coba lagi.'
+      errorMessage.value = t('gallery.error')
     } finally {
       isLoading.value = false
     }
@@ -47,7 +50,7 @@ onMounted(async () => {
   try {
     await galleryStore.ensureLoaded()
   } catch (err) {
-    errorMessage.value = 'Gagal memuat gallery, silakan coba lagi.'
+    errorMessage.value = t('gallery.error')
   } finally {
     isLoading.value = false
   }
@@ -57,6 +60,16 @@ onMounted(async () => {
 const selectedItem = ref(null)
 const isDownloading = ref(false)
 
+// ===== POP-OUT FOTO (LIGHTBOX) =====
+// Klik gambar di modal -> tampilkan gambar besar memenuhi layar.
+const isPhotoOpen = ref(false)
+const openPhoto = () => {
+  isPhotoOpen.value = true
+}
+const closePhoto = () => {
+  isPhotoOpen.value = false
+}
+
 const openDetail = (item) => {
   selectedItem.value = item
 }
@@ -64,6 +77,25 @@ const openDetail = (item) => {
 const closeDetail = () => {
   selectedItem.value = null
 }
+
+// Kunci scroll body saat modal terbuka supaya latar tidak ikut bergeser.
+// Tutup lightbox tiap modal dibuka/ditutup supaya mulai dari keadaan normal.
+watch(selectedItem, (val) => {
+  document.body.style.overflow = val ? 'hidden' : ''
+  isPhotoOpen.value = false
+})
+
+// Tombol Esc: tutup lightbox dulu (jika terbuka), baru modal detail
+const handleKeydown = (e) => {
+  if (e.key !== 'Escape') return
+  if (isPhotoOpen.value) closePhoto()
+  else if (selectedItem.value) closeDetail()
+}
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  document.body.style.overflow = ''
+})
 
 // Download via blob supaya tetap ke-trigger "save file" walau gambar
 // disimpan di storage/CDN eksternal (cross-origin).
@@ -95,12 +127,10 @@ const downloadImage = async (item) => {
     <!-- HEADLINE -->
     <div class="mb-6">
       <h1 class="font-display text-[clamp(38px,5vw,52px)] leading-[1.05]">
-        Cake Inspiration <span class="italic text-brand-500">Gallery</span>
+        {{ t('gallery.heading1') }} <span class="italic text-brand-500">{{ t('gallery.heading2') }}</span>
       </h1>
       <p class="mt-3 text-[15px] leading-relaxed text-[#6E5A4D] max-w-[860px]">
-        Browse hundreds of handcrafted cakes we've created since 2012. Find
-        inspiration for your celebration, save your favorite design, or
-        customize it to create a cake that's uniquely yours.
+        {{ t('gallery.subtitle') }}
       </p>
     </div>
 
@@ -115,7 +145,7 @@ const downloadImage = async (item) => {
         v-model="search"
         @input="handleSearchInput"
         type="text"
-        placeholder="Tip: You can search by theme, character, color, occasion, or flavor"
+        :placeholder="t('gallery.searchPlaceholder')"
         class="w-full rounded-full border border-[#E4D3C1] bg-white py-3 pl-11 pr-4 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E] focus:border-brand-500"
       />
     </div>
@@ -124,11 +154,11 @@ const downloadImage = async (item) => {
     <p v-if="errorMessage" class="text-brand-600 text-sm mb-8">{{ errorMessage }}</p>
 
     <!-- LOADING -->
-    <div v-if="isLoading" class="text-center text-cocoa-400 py-20">Memuat gallery...</div>
+    <div v-if="isLoading" class="text-center text-cocoa-400 py-20">{{ t('gallery.loading') }}</div>
 
     <!-- EMPTY -->
     <div v-else-if="galleryItems.length === 0" class="py-12 text-cocoa-400 text-[15px]">
-      Belum ada gambar di gallery.
+      {{ t('gallery.empty') }}
     </div>
 
     <!-- GRID -->
@@ -157,63 +187,145 @@ const downloadImage = async (item) => {
           @click="loadMore"
           class="rounded-full bg-brand-500 text-white px-6 py-3 text-sm font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isLoadingMore ? 'Memuat...' : 'Load More' }}
+          {{ isLoadingMore ? t('gallery.loadingMore') : t('gallery.loadMore') }}
         </button>
       </div>
     </template>
 
     <!-- ===== DETAIL MODAL ===== -->
-    <div
-      v-if="selectedItem"
-      class="fixed inset-0 bg-cocoa-900/55 flex items-center justify-center z-[100] px-6"
-      @click.self="closeDetail"
-    >
-      <div class="bg-cream-50 rounded-[20px] w-full max-w-2xl max-h-[85vh] overflow-y-auto">
-        <!-- IMAGE -->
-        <div class="relative aspect-[4/3] bg-[repeating-linear-gradient(45deg,#F6EDE4_0_10px,#F0E3D6_10px_20px)]">
+    <!-- Teleport ke body: lepas dari containing block .tc-page (transform)
+         supaya overlay menutupi seluruh viewport & panel benar-benar center. -->
+    <Teleport to="body">
+    <Transition name="tc-modal">
+      <div
+        v-if="selectedItem"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-cocoa-900/60 backdrop-blur-sm"
+        @click.self="closeDetail"
+      >
+        <div
+          class="tc-modal-panel relative m-auto grid grid-cols-1 md:grid-cols-[1.05fr_0.95fr] w-full max-w-2xl max-h-[85vh] overflow-hidden bg-cream-50 rounded-[22px] shadow-[0_30px_80px_-20px_rgba(51,38,31,0.6)]"
+        >
+          <!-- CLOSE -->
           <button
             type="button"
             @click="closeDetail"
-            class="absolute top-3 right-3 w-9 h-9 rounded-full bg-[#F0E3D6] text-[#6E5A4D] flex items-center justify-center text-sm hover:bg-brand-500 hover:text-white transition-colors"
-            aria-label="Tutup"
+            class="absolute top-3.5 right-3.5 z-10 w-9 h-9 rounded-full bg-white/85 backdrop-blur text-cocoa-900 flex items-center justify-center text-sm shadow-sm hover:bg-brand-500 hover:text-white transition-colors"
+            :aria-label="t('common.close')"
+          >
+            ✕
+          </button>
+
+          <!-- IMAGE (klik untuk pop-out) -->
+          <button
+            type="button"
+            @click="openPhoto"
+            class="group relative flex items-center justify-center min-h-[200px] max-h-[38vh] md:max-h-[85vh] overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_10px,#F0E3D6_10px_20px)] cursor-zoom-in"
+          >
+            <img
+              :src="selectedItem.imageUrl"
+              :alt="selectedItem.title"
+              class="w-full h-full object-contain select-none"
+            />
+            <!-- ikon expand -->
+            <span
+              class="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white/85 backdrop-blur text-cocoa-900 flex items-center justify-center shadow-sm group-hover:bg-brand-500 group-hover:text-white transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+            </span>
+          </button>
+
+          <!-- INFO -->
+          <div class="flex flex-col p-5 md:p-6 overflow-y-auto">
+            <span
+              class="text-[11px] font-extrabold tracking-[0.14em] uppercase text-cocoa-400 mb-2"
+            >
+              {{ t('nav.gallery') }}
+            </span>
+            <h2 class="font-display text-[26px] leading-tight text-cocoa-900 mb-3">
+              {{ selectedItem.title }}
+            </h2>
+
+            <div v-if="selectedItem.tags?.length" class="flex flex-wrap gap-2 mb-4">
+              <span
+                v-for="tag in selectedItem.tags"
+                :key="tag"
+                class="rounded-full bg-brand-100 text-brand-500 px-3 py-1 text-xs font-bold"
+              >
+                {{ tag }}
+              </span>
+            </div>
+
+            <p
+              v-if="selectedItem.description"
+              class="text-[14.5px] text-[#6E5A4D] leading-[1.75]"
+            >
+              {{ selectedItem.description }}
+            </p>
+
+            <button
+              type="button"
+              :disabled="isDownloading"
+              @click="downloadImage(selectedItem)"
+              class="mt-auto pt-6 shrink-0"
+            >
+              <span
+                class="flex items-center justify-center gap-2 w-full rounded-full bg-brand-500 text-white py-3.5 text-sm font-extrabold shadow-[0_12px_26px_-12px_rgba(169,46,48,0.65)] hover:bg-brand-600 hover:-translate-y-px transition-all"
+                :class="isDownloading ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                {{ isDownloading ? t('gallery.downloading') : t('gallery.download') }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+    </Teleport>
+
+    <!-- ===== POP-OUT / LIGHTBOX GAMBAR ===== -->
+    <Teleport to="body">
+      <Transition name="tc-modal">
+        <div
+          v-if="isPhotoOpen && selectedItem"
+          class="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-8 bg-cocoa-900/90"
+          @click="closePhoto"
+        >
+          <button
+            type="button"
+            @click.stop="closePhoto"
+            class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/15 text-white flex items-center justify-center hover:bg-brand-500 transition-colors"
+            :aria-label="t('common.close')"
           >
             ✕
           </button>
           <img
             :src="selectedItem.imageUrl"
             :alt="selectedItem.title"
-            class="w-full h-full object-cover"
+            @click.stop
+            class="tc-modal-panel max-w-full max-h-full object-contain rounded-lg shadow-2xl select-none"
           />
         </div>
-
-        <!-- INFO -->
-        <div class="p-6">
-          <h2 class="font-display text-2xl mb-2">{{ selectedItem.title }}</h2>
-
-          <div v-if="selectedItem.tags?.length" class="flex flex-wrap gap-2 mb-4">
-            <span
-              v-for="tag in selectedItem.tags"
-              :key="tag"
-              class="rounded-full bg-brand-100 text-brand-500 px-3 py-1 text-xs font-bold"
-            >
-              {{ tag }}
-            </span>
-          </div>
-
-          <p v-if="selectedItem.description" class="text-sm text-[#6E5A4D] leading-relaxed mb-6">
-            {{ selectedItem.description }}
-          </p>
-
-          <button
-            type="button"
-            :disabled="isDownloading"
-            @click="downloadImage(selectedItem)"
-            class="w-full rounded-full bg-gradient-to-br from-[#C6423F] to-[#A82E30] text-white py-3 text-sm font-extrabold shadow-[0_12px_26px_-12px_rgba(169,46,48,0.65)] hover:-translate-y-px transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {{ isDownloading ? 'Downloading...' : '⬇ Download Image' }}
-          </button>
-        </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+/* Transisi masuk/keluar modal detail */
+.tc-modal-enter-active,
+.tc-modal-leave-active {
+  transition: opacity 0.22s ease;
+}
+.tc-modal-enter-from,
+.tc-modal-leave-to {
+  opacity: 0;
+}
+.tc-modal-enter-active .tc-modal-panel,
+.tc-modal-leave-active .tc-modal-panel {
+  transition: transform 0.22s ease;
+}
+.tc-modal-enter-from .tc-modal-panel,
+.tc-modal-leave-to .tc-modal-panel {
+  transform: translateY(12px) scale(0.98);
+}
+</style>

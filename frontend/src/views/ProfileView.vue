@@ -1,10 +1,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth.store'
 import { formatRupiah } from '@/utils/formatCurrency'
 
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
 
@@ -25,7 +27,7 @@ const fetchOrders = async () => {
     orders.value = data.data
   } catch (err) {
     errorMessage.value =
-      err.response?.data?.message || 'Gagal memuat riwayat pesanan'
+      err.response?.data?.message || t('profile.loadFailed')
   } finally {
     isLoading.value = false
   }
@@ -43,7 +45,7 @@ const handleLogout = async () => {
 }
 
 const formatDate = (dateString) =>
-  new Date(dateString).toLocaleDateString('id-ID', {
+  new Date(dateString).toLocaleDateString(locale.value === 'en' ? 'en-US' : 'id-ID', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -77,19 +79,19 @@ onMounted(fetchOrders)
         @click="handleLogout"
         class="border-[1.5px] border-[#E4D3C1] bg-white text-[#6E5A4D] font-bold text-sm px-5 py-2.5 rounded-full hover:border-brand-500 hover:text-brand-500 transition-colors disabled:opacity-60"
       >
-        {{ isLoggingOut ? 'Keluar...' : 'Log out' }}
+        {{ isLoggingOut ? t('profile.loggingOut') : t('profile.logout') }}
       </button>
     </div>
 
     <!-- RIWAYAT PESANAN -->
     <h2 class="font-display text-[23px] mb-4">
-      Order history
+      {{ t('profile.orderHistory') }}
       <span class="text-cocoa-400 text-sm font-sans font-bold">({{ totalOrders }})</span>
     </h2>
 
     <!-- LOADING -->
     <div v-if="isLoading" class="text-center text-cocoa-400 py-16">
-      Memuat riwayat pesanan...
+      {{ t('profile.loading') }}
     </div>
 
     <!-- ERROR -->
@@ -102,9 +104,9 @@ onMounted(fetchOrders)
       v-else-if="orders.length === 0"
       class="bg-white border border-dashed border-[#E4D3C1] rounded-2xl p-10 text-center text-cocoa-400"
     >
-      No orders yet.
+      {{ t('profile.empty') }}
       <RouterLink to="/menu" class="text-brand-500 font-extrabold hover:opacity-70">
-        Start ordering →
+        {{ t('profile.startOrdering') }}
       </RouterLink>
     </div>
 
@@ -118,7 +120,7 @@ onMounted(fetchOrders)
         <!-- Header: tanggal + badge tipe pemesanan -->
         <div class="flex justify-between items-center gap-3 flex-wrap mb-2.5">
           <p class="text-[13px] text-[#B7A18E] font-semibold">
-            created {{ formatDate(order.createdAt) }}
+            {{ t('profile.created', { date: formatDate(order.createdAt) }) }}
           </p>
           <span
             class="rounded-full px-3 py-1 text-xs font-extrabold tracking-wide"
@@ -128,7 +130,7 @@ onMounted(fetchOrders)
                 : 'bg-cream-100 text-[#6E5A4D]'
             "
           >
-            {{ order.fulfillmentType === 'DELIVERY' ? 'DELIVERY' : 'PICKUP' }}
+            {{ order.fulfillmentType === 'DELIVERY' ? t('profile.delivery') : t('profile.pickup') }}
           </span>
         </div>
 
@@ -147,7 +149,7 @@ onMounted(fetchOrders)
         <div
           class="flex items-center justify-between border-t border-cream-200 pt-3 text-sm"
         >
-          <span class="font-bold">Total</span>
+          <span class="font-bold">{{ t('profile.total') }}</span>
           <span class="font-extrabold text-brand-500">
             {{ formatRupiah(order.total) }}
           </span>

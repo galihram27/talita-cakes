@@ -1,19 +1,22 @@
 <script setup>
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ExternalLink, LogOut } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import logo from '@/assets/images/logo.png'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const navItems = [
-  { to: '/admin/analytics', label: 'Analytics' },
-  { to: '/admin/products', label: 'Products' },
-  { to: '/admin/gallery', label: 'Gallery' },
-  { to: '/admin/orders', label: 'Orders' },
-]
+const navItems = computed(() => [
+  { to: '/admin/analytics', label: t('admin.sidebar.analytics') },
+  { to: '/admin/products', label: t('admin.sidebar.products') },
+  { to: '/admin/gallery', label: t('admin.sidebar.gallery') },
+  { to: '/admin/orders', label: t('admin.sidebar.orders') },
+])
 
 const isActive = (item) => route.path === item.to
 
@@ -35,7 +38,7 @@ const handleLogout = async () => {
       <span class="flex flex-col leading-tight">
         <span class="font-display text-lg text-cream-50">Talita's Cake</span>
         <span class="text-[10px] font-sans font-bold tracking-[0.22em] uppercase text-brand-300">
-          Admin Panel
+          {{ t('admin.sidebar.panel') }}
         </span>
       </span>
     </RouterLink>
@@ -65,7 +68,7 @@ const handleLogout = async () => {
         class="flex items-center gap-2.5 px-4 py-2 rounded-lg text-sm text-cream-200/70 hover:text-cream-50 hover:bg-white/5 transition-colors"
       >
         <ExternalLink class="w-4 h-4" stroke-width="1.8" />
-        View site
+        {{ t('admin.sidebar.viewSite') }}
       </RouterLink>
       <button
         type="button"
@@ -73,7 +76,7 @@ const handleLogout = async () => {
         class="w-full flex items-center gap-2.5 px-4 py-2 rounded-lg text-sm text-cream-200/70 hover:text-white hover:bg-brand-500/80 transition-colors text-left"
       >
         <LogOut class="w-4 h-4" stroke-width="1.8" />
-        Logout
+        {{ t('admin.sidebar.logout') }}
       </button>
     </div>
   </aside>
@@ -87,14 +90,14 @@ const handleLogout = async () => {
       <span class="flex flex-col leading-tight">
         <span class="font-display text-base text-cream-50">Talita's Cake</span>
         <span class="text-[9px] font-sans font-bold tracking-[0.22em] uppercase text-brand-300">
-          Admin Panel
+          {{ t('admin.sidebar.panel') }}
         </span>
       </span>
       <button
         type="button"
         @click="handleLogout"
         class="ml-auto p-2 rounded-lg text-cream-200/70 hover:text-white hover:bg-white/10 transition-colors"
-        aria-label="Logout"
+        :aria-label="t('admin.sidebar.logout')"
       >
         <LogOut class="w-4 h-4" stroke-width="1.8" />
       </button>

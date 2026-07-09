@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Search, Plus, Pencil, Trash2 } from 'lucide-vue-next'
 import { deleteGallery } from '@/services/gallery.service'
 import { cloudinaryThumb } from '@/utils/cloudinaryImage'
@@ -12,6 +13,7 @@ import Toast from '@/components/common/Toast.vue'
 
 // Data gallery diambil dari cache store admin (stale-while-revalidate):
 // kunjungan kedua langsung tampil tanpa loading, refresh jalan di background.
+const { t } = useI18n()
 const adminGalleryStore = useAdminGalleryStore()
 const analyticsStore = useAnalyticsStore()
 
@@ -31,7 +33,7 @@ onMounted(async () => {
   try {
     await adminGalleryStore.ensureLoaded()
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Failed to load gallery'
+    errorMessage.value = err.response?.data?.message || t('admin.gallery.loadFailed')
   }
 })
 
@@ -42,7 +44,7 @@ const handleSearchInput = () => {
       errorMessage.value = ''
       await adminGalleryStore.applySearch(searchQuery.value)
     } catch (err) {
-      errorMessage.value = err.response?.data?.message || 'Failed to load gallery'
+      errorMessage.value = err.response?.data?.message || t('admin.gallery.loadFailed')
     }
   }, 400)
 }
@@ -52,7 +54,7 @@ const loadMore = async () => {
   try {
     await adminGalleryStore.loadMore()
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Failed to load gallery'
+    errorMessage.value = err.response?.data?.message || t('admin.gallery.loadFailed')
   } finally {
     isLoadingMore.value = false
   }
@@ -77,8 +79,8 @@ const publicGalleryStore = useGalleryStore()
 const handleSaved = () => {
   // editingItem masih menyimpan mode saat modal ter-submit (null = tambah)
   toastMessage.value = editingItem.value
-    ? 'Edit image successfully'
-    : 'Add image successfully'
+    ? t('admin.gallery.editSuccess')
+    : t('admin.gallery.addSuccess')
   publicGalleryStore.invalidate() // supaya halaman Gallery publik tidak menampilkan cache basi
   analyticsStore.invalidate() // angka "Gallery Images" di dashboard ikut segar
   adminGalleryStore.refresh().catch(() => {})
@@ -108,7 +110,7 @@ const handleDelete = async () => {
     )
     adminGalleryStore.refresh().catch(() => {})
   } catch (err) {
-    deleteError.value = err.response?.data?.message || 'Failed to delete image'
+    deleteError.value = err.response?.data?.message || t('admin.gallery.deleteFailed')
   } finally {
     deletingItem.value = null
     isDeleting.value = false
@@ -120,7 +122,7 @@ const handleDelete = async () => {
   <div>
     <!-- HEADER -->
     <div class="flex items-center justify-between gap-4 mb-8">
-      <h1 class="text-4xl">Gallery</h1>
+      <h1 class="text-4xl">{{ t('admin.gallery.title') }}</h1>
 
       <button
         type="button"
@@ -128,7 +130,7 @@ const handleDelete = async () => {
         class="inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-5 py-2.5 text-sm font-bold hover:bg-brand-600 transition-colors shrink-0"
       >
         <Plus class="w-4 h-4" stroke-width="2.4" />
-        Add image
+        {{ t('admin.gallery.add') }}
       </button>
     </div>
 
@@ -140,15 +142,15 @@ const handleDelete = async () => {
           v-model="searchQuery"
           @input="handleSearchInput"
           type="text"
-          placeholder="Search images..."
+          :placeholder="t('admin.gallery.searchPlaceholder')"
           class="w-full rounded-full border border-cream-300 bg-white pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-400"
         />
       </div>
-      <p class="text-sm font-semibold text-cocoa-400 shrink-0">{{ totalItems }} images</p>
+      <p class="text-sm font-semibold text-cocoa-400 shrink-0">{{ t('admin.gallery.imageCount', { count: totalItems }) }}</p>
     </div>
 
     <!-- LOADING -->
-    <div v-if="isLoading" class="text-center text-cocoa-400 py-24">Loading gallery...</div>
+    <div v-if="isLoading" class="text-center text-cocoa-400 py-24">{{ t('admin.gallery.loading') }}</div>
 
     <!-- ERROR -->
     <div v-else-if="errorMessage" class="text-center text-brand-600 py-24">
@@ -160,7 +162,7 @@ const handleDelete = async () => {
       v-else-if="galleryItems.length === 0"
       class="text-center text-cocoa-400 py-24 bg-white rounded-2xl border border-dashed border-cream-300"
     >
-      No images in the gallery yet
+      {{ t('admin.gallery.empty') }}
     </div>
 
     <!-- GRID -->
@@ -187,7 +189,7 @@ const handleDelete = async () => {
               type="button"
               @click="openEditModal(item)"
               class="w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center text-cocoa-500 hover:text-brand-600 hover:bg-white transition"
-              :aria-label="`Edit ${item.title}`"
+              :aria-label="t('admin.gallery.editAria', { name: item.title })"
             >
               <Pencil class="w-4 h-4" />
             </button>
@@ -195,7 +197,7 @@ const handleDelete = async () => {
               type="button"
               @click="openDeleteConfirm(item)"
               class="w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center text-cocoa-500 hover:text-red-600 hover:bg-white transition"
-              :aria-label="`Delete ${item.title}`"
+              :aria-label="t('admin.gallery.deleteAria', { name: item.title })"
             >
               <Trash2 class="w-4 h-4" />
             </button>
@@ -211,7 +213,7 @@ const handleDelete = async () => {
           @click="loadMore"
           class="rounded-full border border-brand-500 text-brand-500 px-6 py-2.5 text-sm font-bold hover:bg-brand-500 hover:text-white transition-colors disabled:opacity-50"
         >
-          {{ isLoadingMore ? 'Loading...' : 'Load More' }}
+          {{ isLoadingMore ? t('admin.gallery.loadingMore') : t('admin.gallery.loadMore') }}
         </button>
       </div>
     </template>
@@ -227,10 +229,10 @@ const handleDelete = async () => {
     <!-- KONFIRMASI HAPUS -->
     <ConfirmDialog
       :open="!!deletingItem"
-      title="Delete Image"
-      :message="`Are you sure you want to delete '${deletingItem?.title}' from the gallery? This action cannot be undone.`"
-      confirm-text="Delete"
-      cancel-text="Cancel"
+      :title="t('admin.gallery.deleteTitle')"
+      :message="t('admin.gallery.deleteMessage', { name: deletingItem?.title })"
+      :confirm-text="t('common.delete')"
+      :cancel-text="t('common.cancel')"
       :is-loading="isDeleting"
       @confirm="handleDelete"
       @cancel="deletingItem = null"

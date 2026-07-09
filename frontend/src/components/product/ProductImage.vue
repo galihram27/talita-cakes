@@ -1,6 +1,9 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+
+const { t } = useI18n()
 
 const props = defineProps({
   // foto utama / cover (fallback untuk produk lama yang belum punya galeri)
@@ -87,7 +90,7 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
         v-if="!activeImage"
         class="absolute inset-0 flex items-center justify-center font-mono text-xs text-[#A08874] text-center p-5"
       >
-        {{ alt || 'No Image' }}
+        {{ alt || t('product.noImage') }}
       </span>
 
       <!-- PANAH KIRI / KANAN (hanya kalau foto lebih dari 1) -->
@@ -95,7 +98,7 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
         <button
           type="button"
           @click="prev"
-          aria-label="Foto sebelumnya"
+          :aria-label="t('product.prevPhoto')"
           class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/85 backdrop-blur-sm border border-cream-300 flex items-center justify-center shadow-sm hover:bg-white transition duration-300"
           :class="controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
         >
@@ -104,7 +107,7 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
         <button
           type="button"
           @click="next"
-          aria-label="Foto berikutnya"
+          :aria-label="t('product.nextPhoto')"
           class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/85 backdrop-blur-sm border border-cream-300 flex items-center justify-center shadow-sm hover:bg-white transition duration-300"
           :class="controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
         >

@@ -1,65 +1,148 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getGoogleReviews } from '@/services/review.service'
+import { ref, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-const data = ref(null)
-const isLoading = ref(true)
+const { t } = useI18n()
 
-onMounted(async () => {
-  try {
-    data.value = await getGoogleReviews()
-  } catch (err) {
-    // Belum dikonfigurasi / gagal — section disembunyikan saja
-    data.value = null
-  } finally {
-    isLoading.value = false
-  }
+// grid = tampil 3 review per baris (dipakai di Home).
+// Default (carousel) = satu baris dengan scroll + tombol navigasi (About).
+// narrow = persempit lebar carousel agar ±3 review pertama langsung terlihat.
+defineProps({
+  grid: { type: Boolean, default: false },
+  narrow: { type: Boolean, default: false },
 })
+
+const scroller = ref(null)
+
+const scrollBy = (direction) => {
+  const el = scroller.value
+  if (!el) return
+  // Geser sejauh satu kartu (+ jarak antar kartu)
+  const card = el.querySelector('article')
+  const amount = card ? card.offsetWidth + 24 : el.clientWidth * 0.8
+  el.scrollBy({ left: direction * amount, behavior: 'smooth' })
+}
+
+// Tombol navigasi tampil saat pointer di area review, lalu menghilang
+// beberapa detik setelah pointer keluar.
+const controlsVisible = ref(false)
+let hideTimer = null
+
+const showControls = () => {
+  if (hideTimer) clearTimeout(hideTimer)
+  controlsVisible.value = true
+}
+
+const scheduleHide = () => {
+  if (hideTimer) clearTimeout(hideTimer)
+  hideTimer = setTimeout(() => {
+    controlsVisible.value = false
+  }, 2000)
+}
+
+onBeforeUnmount(() => {
+  if (hideTimer) clearTimeout(hideTimer)
+})
+
+// Ulasan asli pelanggan dari Google Maps, disalin manual.
+// Tautan "Lihat Semua Ulasan" mengarah ke halaman Google Maps toko
+// agar pengunjung bisa memverifikasi langsung ke sumbernya.
+const data = {
+  rating: 5.0,
+  totalReviews: 5,
+  googleMapsUrl:
+    'https://www.google.com/maps/place/?q=place_id:ChIJGWhCQZjraS4RGsVnp6ic14c',
+  reviews: [
+    {
+      author: 'agin',
+      rating: 5,
+      relativeTime: '6 bulan lalu',
+      text: 'enak banget kuenya, lembut, pluffy, ih mantap banget, bakal jadi langganan🥰',
+    },
+    {
+      author: 'Aphet Felix',
+      rating: 5,
+      relativeTime: '5 bulan lalu',
+      text: 'Pelayanan baik, walaupun saya jauh , pesanan tetep bisa di kirim dengan delivery khusus kue jadi aman, sukses terus.',
+    },
+    {
+      author: 'S&Q official',
+      rating: 5,
+      relativeTime: '6 bulan lalu',
+      text: 'Enak enak kuenya ga pernah gagal, harga murah kue enak pelayanannya cepat bisa request, yang paling penting itu bersih terimakasih selalu ada',
+    },
+    {
+      author: 'Tri Wahyuni Bunny',
+      rating: 5,
+      relativeTime: '3 bulan lalu',
+      text: 'Seller amanah, kuenya enak, bisa custom sesuai request.. terima kasih ya kak..',
+    },
+    {
+      author: 'Ika Nur Laili',
+      rating: 5,
+      relativeTime: 'sebulan lalu',
+      text: 'Kuenya enak banget lembut, manisnya gk bikin eneg dan desain kue sesuai request',
+    },
+  ],
+}
 </script>
 
 <template>
-  <div v-if="!isLoading && data && data.reviews.length">
+  <div v-if="data.reviews.length">
     <hr class="border-gray-200" />
 
-    <section class="max-w-7xl mx-auto px-6 py-16">
-    <p class="text-sm font-semibold text-brand-600 mb-2">Testimoni</p>
-    <div class="flex flex-wrap items-end justify-between gap-4 mb-10">
-      <h2 class="text-3xl font-extrabold">Kata Mereka di Google</h2>
-
-      <div class="flex items-center gap-2">
-        <span class="text-2xl font-extrabold">{{ data.rating }}</span>
-        <div class="flex text-amber-400">
-          <svg
-            v-for="i in 5"
-            :key="i"
-            class="w-5 h-5"
-            :class="i <= Math.round(data.rating) ? 'fill-current' : 'fill-gray-200'"
-            viewBox="0 0 20 20"
-          >
-            <path d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z" />
-          </svg>
-        </div>
-        <span class="text-sm text-gray-500">({{ data.totalReviews }} ulasan)</span>
-      </div>
+    <section class="mx-auto px-6 py-16" :class="narrow ? 'max-w-5xl' : 'max-w-7xl'">
+    <div class="mb-10">
+      <h2 class="text-3xl font-extrabold">{{ t('reviews.title') }}</h2>
+      <p class="mt-3 max-w-3xl text-gray-600 leading-relaxed">
+        {{ t('reviews.subtitle') }}
+      </p>
     </div>
 
-    <div class="grid md:grid-cols-3 gap-6">
+    <div
+      class="relative"
+      @mouseenter="showControls"
+      @mouseleave="scheduleHide"
+    >
+      <template v-if="!grid">
+        <button
+          type="button"
+          aria-label="Sebelumnya"
+          class="hidden sm:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-11 h-11 rounded-full bg-white border border-gray-300 text-gray-600 items-center justify-center shadow-md hover:bg-brand-600 hover:text-white hover:border-brand-600 transition-opacity duration-300"
+          :class="controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+          @click="scrollBy(-1)"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          aria-label="Berikutnya"
+          class="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-11 h-11 rounded-full bg-white border border-gray-300 text-gray-600 items-center justify-center shadow-md hover:bg-brand-600 hover:text-white hover:border-brand-600 transition-opacity duration-300"
+          :class="controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+          @click="scrollBy(1)"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </template>
+
+      <div
+        ref="scroller"
+        :class="grid
+          ? 'grid gap-6 sm:grid-cols-2 lg:grid-cols-3'
+          : 'flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory reviews-scroll'"
+      >
       <article
-        v-for="(review, index) in data.reviews.slice(0, 6)"
+        v-for="(review, index) in data.reviews"
         :key="index"
         class="rounded-2xl border border-gray-200 p-6 flex flex-col"
+        :class="grid ? '' : 'shrink-0 snap-start w-[85%] sm:w-80'"
       >
         <div class="flex items-center gap-3 mb-3">
-          <img
-            v-if="review.authorPhoto"
-            :src="review.authorPhoto"
-            :alt="review.author"
-            class="w-10 h-10 rounded-full object-cover"
-            loading="lazy"
-            referrerpolicy="no-referrer"
-          />
           <div
-            v-else
             class="w-10 h-10 rounded-full bg-brand-50 text-brand-600 font-extrabold flex items-center justify-center"
           >
             {{ review.author.charAt(0).toUpperCase() }}
@@ -82,10 +165,11 @@ onMounted(async () => {
           </svg>
         </div>
 
-        <p class="text-sm text-gray-600 leading-relaxed line-clamp-5">
+        <p class="text-sm text-gray-600 leading-relaxed line-clamp-3">
           {{ review.text }}
         </p>
       </article>
+      </div>
     </div>
 
     <div v-if="data.googleMapsUrl" class="flex justify-center mt-10">
@@ -95,9 +179,23 @@ onMounted(async () => {
         rel="noopener noreferrer"
         class="rounded-full border border-brand-600 text-brand-600 px-6 py-3 text-sm font-semibold inline-flex items-center gap-2 hover:bg-brand-600 hover:text-white transition"
       >
-        Lihat Semua Ulasan di Google Maps →
+        {{ t('reviews.viewAll') }}
       </a>
     </div>
     </section>
   </div>
 </template>
+
+<style scoped>
+.reviews-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+.reviews-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.reviews-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 9999px;
+}
+</style>

@@ -1,4 +1,8 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps({
   textOnCake: { type: String, default: '' },
   notes: { type: String, default: '' },
@@ -21,29 +25,29 @@ const decreaseQuantity = (current) => {
   <div class="max-w-md">
     <div class="mb-4">
       <label class="block text-[15px] font-extrabold mb-2">
-        Writing on the cake
-        <span class="text-[#B7A18E] font-semibold text-[13px]">(optional)</span>
+        {{ t('product.orderForm.writingLabel') }}
+        <span class="text-[#B7A18E] font-semibold text-[13px]">{{ t('product.orderForm.optional') }}</span>
       </label>
       <input
         :value="textOnCake"
         @input="$emit('update:textOnCake', $event.target.value)"
         type="text"
         maxlength="60"
-        placeholder="Example: Happy Birthday Nadia"
+        :placeholder="t('product.orderForm.writingPlaceholder')"
         class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
       />
     </div>
 
     <div class="mb-6">
       <label class="block text-[15px] font-extrabold mb-2">
-        Note
-        <span class="text-[#B7A18E] font-semibold text-[13px]">(optional)</span>
+        {{ t('product.orderForm.noteLabel') }}
+        <span class="text-[#B7A18E] font-semibold text-[13px]">{{ t('product.orderForm.optional') }}</span>
       </label>
       <textarea
         :value="notes"
         @input="$emit('update:notes', $event.target.value)"
         rows="3"
-        placeholder="Allergies, color requests, candles, etc."
+        :placeholder="t('product.orderForm.notePlaceholder')"
         class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E] resize-y"
       ></textarea>
     </div>
@@ -58,7 +62,7 @@ const decreaseQuantity = (current) => {
       v-if="submitSuccess"
       class="tc-fade bg-[#E9F6EE] border border-[#C9E7D6] text-[#2E9E6B] rounded-[10px] px-4 py-2.5 text-[13.5px] font-bold mb-3.5"
     >
-      ✓ Berhasil ditambahkan ke keranjang!
+      {{ t('product.orderForm.addedToCart') }}
     </div>
 
     <!-- qty + add to cart -->
@@ -71,7 +75,7 @@ const decreaseQuantity = (current) => {
           type="button"
           @click="decreaseQuantity(quantity)"
           class="w-[42px] h-[46px] text-lg text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors"
-          aria-label="Kurangi jumlah"
+          :aria-label="t('product.orderForm.decreaseQty')"
         >
           −
         </button>
@@ -80,7 +84,7 @@ const decreaseQuantity = (current) => {
           type="button"
           @click="increaseQuantity(quantity)"
           class="w-[42px] h-[46px] text-lg text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors"
-          aria-label="Tambah jumlah"
+          :aria-label="t('product.orderForm.increaseQty')"
         >
           +
         </button>
@@ -91,7 +95,7 @@ const decreaseQuantity = (current) => {
             type="button"
             @click="decreaseQuantity(quantity)"
             class="w-[42px] h-[46px] text-lg text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors"
-            aria-label="Kurangi jumlah"
+            :aria-label="t('product.orderForm.decreaseQty')"
           >
             −
           </button>
@@ -100,7 +104,7 @@ const decreaseQuantity = (current) => {
             type="button"
             @click="increaseQuantity(quantity)"
             class="w-[42px] h-[46px] text-lg text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors"
-            aria-label="Tambah jumlah"
+            :aria-label="t('product.orderForm.increaseQty')"
           >
             +
           </button>
@@ -113,7 +117,7 @@ const decreaseQuantity = (current) => {
         @click="$emit('submit')"
         class="flex-1 inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#C6423F] to-[#A82E30] text-white rounded-full px-5 py-[15px] font-extrabold text-[15.5px] shadow-[0_12px_26px_-12px_rgba(169,46,48,0.65)] hover:-translate-y-px hover:shadow-[0_16px_32px_-12px_rgba(169,46,48,0.78)] active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {{ isSubmitting ? 'Menambahkan...' : 'Add to cart' }}
+        {{ isSubmitting ? t('product.orderForm.adding') : t('product.orderForm.addToCart') }}
       </button>
     </div>
   </div>

@@ -1,11 +1,14 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { formatRupiah } from '@/utils/formatCurrency'
 
 defineProps({
   price: { type: Number, default: null },
   originalPrice: { type: Number, default: null },
-  placeholder: { type: String, default: 'Select shape & size to see the price' },
+  placeholder: { type: String, default: '' },
 })
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -13,7 +16,7 @@ defineProps({
     <p v-if="price !== null" class="text-[28px] font-bold tracking-tight text-brand-500">
       {{ formatRupiah(price) }}
     </p>
-    <p v-else class="text-lg text-[#B7A18E]">{{ placeholder }}</p>
+    <p v-else class="text-lg text-[#B7A18E]">{{ placeholder || t('product.pricePlaceholder') }}</p>
 
     <p
       v-if="price !== null && originalPrice !== null && originalPrice > price"

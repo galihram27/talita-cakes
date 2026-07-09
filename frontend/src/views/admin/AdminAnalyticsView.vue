@@ -1,7 +1,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ChevronDown, X } from 'lucide-vue-next'
 import { useAnalyticsStore } from '@/stores/analytics.store'
+
+const { t, locale } = useI18n()
+// locale untuk tanggal/angka mengikuti bahasa aktif
+const dateLocale = computed(() => (locale.value === 'en' ? 'en-US' : 'id-ID'))
 
 // ===== FILTER BULAN =====
 const selectedMonth = ref('all')
@@ -14,13 +19,13 @@ const dateTo = ref('')
 const isCustomRange = computed(() => !!dateFrom.value && !!dateTo.value)
 
 const monthOptions = computed(() => {
-  const options = [{ value: 'all', label: 'All months' }]
+  const options = [{ value: 'all', label: t('admin.analytics.allMonths') }]
   const now = new Date()
 
   for (let i = 0; i < 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    const label = d.toLocaleDateString(dateLocale.value, { month: 'long', year: 'numeric' })
     options.push({ value, label })
   }
 
@@ -30,7 +35,7 @@ const monthOptions = computed(() => {
 // Label rentang: "1 Jul 2026" dari string ISO "YYYY-MM-DD" (parse lokal, hindari geser hari)
 const formatRangeLabel = (iso) => {
   const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+  return new Date(y, m - 1, d).toLocaleDateString(dateLocale.value, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -55,7 +60,7 @@ const activeFilter = computed(() => {
   }
 
   if (selectedMonth.value === 'all') {
-    return { key: 'all', params: { groupBy: 'month' }, groupBy: 'month', periodLabel: 'Last 12 months' }
+    return { key: 'all', params: { groupBy: 'month' }, groupBy: 'month', periodLabel: t('admin.analytics.last12Months') }
   }
 
   const [year, month] = selectedMonth.value.split('-').map(Number)
@@ -75,7 +80,13 @@ const activeFilter = computed(() => {
 
 // Subtitle di kartu chart
 const periodLabel = computed(() => activeFilter.value.periodLabel)
-const chartTitleSuffix = computed(() => (activeFilter.value.groupBy === 'month' ? 'monthly' : 'daily'))
+const isMonthly = computed(() => activeFilter.value.groupBy === 'month')
+const visitorsChartTitle = computed(() =>
+  isMonthly.value ? t('admin.analytics.visitorsMonthly') : t('admin.analytics.visitorsDaily')
+)
+const ordersChartTitle = computed(() =>
+  isMonthly.value ? t('admin.analytics.ordersMonthly') : t('admin.analytics.ordersDaily')
+)
 
 // Ganti dropdown bulan → buang rentang custom biar tidak bentrok
 const onMonthChange = () => {
@@ -103,10 +114,10 @@ const visitorChart = computed(() => dashboard.value?.visitors ?? [])
 const orderChart = computed(() => dashboard.value?.orders ?? [])
 
 const statCards = computed(() => [
-  { label: 'Total Visitors', value: dashboard.value?.totalVisitors ?? 0 },
-  { label: 'Total Orders', value: dashboard.value?.totalOrders ?? 0 },
-  { label: 'Total Products', value: dashboard.value?.totalProducts ?? 0 },
-  { label: 'Total Gallery Images', value: dashboard.value?.totalGalleryImages ?? 0 },
+  { label: t('admin.analytics.totalVisitors'), value: dashboard.value?.totalVisitors ?? 0 },
+  { label: t('admin.analytics.totalOrders'), value: dashboard.value?.totalOrders ?? 0 },
+  { label: t('admin.analytics.totalProducts'), value: dashboard.value?.totalProducts ?? 0 },
+  { label: t('admin.analytics.totalGalleryImages'), value: dashboard.value?.totalGalleryImages ?? 0 },
 ])
 
 // ===== FETCH =====
@@ -115,7 +126,7 @@ const fetchDashboard = async () => {
   try {
     await analyticsStore.ensureLoaded(activeFilter.value.key, activeFilter.value.params)
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Failed to load analytics data'
+    errorMessage.value = err.response?.data?.message || t('admin.analytics.loadFailed')
   }
 }
 
@@ -130,10 +141,10 @@ const formatChartLabel = (raw) => {
   if (Number.isNaN(date.getTime())) return String(raw)
 
   if (activeFilter.value.groupBy === 'month') {
-    return date.toLocaleDateString('en-US', { month: 'short' })
+    return date.toLocaleDateString(dateLocale.value, { month: 'short' })
   }
 
-  return date.toLocaleDateString('en-US', { day: 'numeric' })
+  return date.toLocaleDateString(dateLocale.value, { day: 'numeric' })
 }
 
 const barHeight = (count, data) => {
@@ -146,7 +157,7 @@ const barHeight = (count, data) => {
   <div>
     <!-- HEADER -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-      <h1 class="text-4xl">Analytics</h1>
+      <h1 class="text-4xl">{{ t('admin.analytics.title') }}</h1>
 
       <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
         <!-- Dropdown bulan -->
@@ -171,7 +182,7 @@ const barHeight = (count, data) => {
             v-model="dateFrom"
             type="date"
             :max="dateTo || undefined"
-            aria-label="From date"
+            :aria-label="t('admin.analytics.fromDate')"
             class="flex-1 sm:flex-none rounded-full border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-cocoa-500 focus:outline-none focus:border-brand-400 cursor-pointer"
           />
           <span class="text-cocoa-400 shrink-0">–</span>
@@ -179,14 +190,14 @@ const barHeight = (count, data) => {
             v-model="dateTo"
             type="date"
             :min="dateFrom || undefined"
-            aria-label="To date"
+            :aria-label="t('admin.analytics.toDate')"
             class="flex-1 sm:flex-none rounded-full border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-cocoa-500 focus:outline-none focus:border-brand-400 cursor-pointer"
           />
           <button
             v-if="isCustomRange"
             type="button"
             @click="clearRange"
-            aria-label="Clear date range"
+            :aria-label="t('admin.analytics.clearRange')"
             class="shrink-0 p-1.5 rounded-full text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
           >
             <X class="w-4 h-4" />
@@ -197,7 +208,7 @@ const barHeight = (count, data) => {
 
     <!-- LOADING -->
     <div v-if="isLoading" class="text-center text-cocoa-400 py-24">
-      Loading analytics...
+      {{ t('admin.analytics.loading') }}
     </div>
 
     <!-- ERROR -->
@@ -216,7 +227,7 @@ const barHeight = (count, data) => {
           <p class="text-[11px] font-sans font-bold tracking-[0.14em] uppercase text-cocoa-400">
             {{ card.label }}
           </p>
-          <p class="font-display text-4xl mt-2">{{ card.value.toLocaleString('en-US') }}</p>
+          <p class="font-display text-4xl mt-2">{{ card.value.toLocaleString(dateLocale) }}</p>
         </div>
       </div>
 
@@ -225,7 +236,7 @@ const barHeight = (count, data) => {
         <!-- Visitors Chart -->
         <div class="bg-white rounded-2xl shadow-[0_2px_10px_-4px_rgba(51,38,31,0.12)] p-6">
           <div class="flex items-baseline justify-between gap-4 mb-8">
-            <h2 class="text-xl capitalize">{{ chartTitleSuffix }} visitors</h2>
+            <h2 class="text-xl">{{ visitorsChartTitle }}</h2>
             <span class="text-sm text-brand-400 font-semibold shrink-0">{{ periodLabel }}</span>
           </div>
 
@@ -233,7 +244,7 @@ const barHeight = (count, data) => {
             v-if="visitorChart.length === 0"
             class="h-52 flex items-center justify-center text-cocoa-400 text-sm border border-dashed border-cream-300 rounded-xl"
           >
-            No data yet
+            {{ t('admin.analytics.noData') }}
           </div>
 
           <div v-else class="h-52 flex items-end gap-1.5">
@@ -261,7 +272,7 @@ const barHeight = (count, data) => {
         <!-- Orders Chart -->
         <div class="bg-white rounded-2xl shadow-[0_2px_10px_-4px_rgba(51,38,31,0.12)] p-6">
           <div class="flex items-baseline justify-between gap-4 mb-8">
-            <h2 class="text-xl capitalize">{{ chartTitleSuffix }} orders</h2>
+            <h2 class="text-xl">{{ ordersChartTitle }}</h2>
             <span class="text-sm text-brand-400 font-semibold shrink-0">{{ periodLabel }}</span>
           </div>
 
@@ -269,7 +280,7 @@ const barHeight = (count, data) => {
             v-if="orderChart.length === 0"
             class="h-52 flex items-center justify-center text-cocoa-400 text-sm border border-dashed border-cream-300 rounded-xl"
           >
-            No data yet
+            {{ t('admin.analytics.noData') }}
           </div>
 
           <div v-else class="h-52 flex items-end gap-1.5">

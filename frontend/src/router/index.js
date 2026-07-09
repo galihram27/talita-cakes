@@ -17,6 +17,9 @@ const routes = [
       },
       { path: 'gallery', name: 'gallery', component: () => import('@/views/GalleryView.vue') },
       { path: 'about', name: 'about', component: () => import('@/views/AboutView.vue') },
+      { path: 'terms', name: 'terms', component: () => import('@/views/TermsView.vue') },
+      { path: 'privacy', name: 'privacy', component: () => import('@/views/PrivacyView.vue') },
+      { path: 'faq', name: 'faq', component: () => import('@/views/FaqView.vue') },
       {
         path: 'cart',
         name: 'cart',

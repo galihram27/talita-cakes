@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import GalleryPickerModal from './GalleryPickerModal.vue'
 import { uploadImage } from '@/services/upload.service'
 
@@ -8,6 +9,7 @@ defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+const { t } = useI18n()
 
 const fileInputRef = ref(null)
 const isGalleryModalOpen = ref(false)
@@ -28,7 +30,7 @@ const handleFileChange = async (e) => {
     emit('update:modelValue', { url, source: 'upload' })
   } catch (err) {
     uploadError.value =
-      err.response?.data?.message || 'Gagal meng-upload gambar. Coba lagi.'
+      err.response?.data?.message || t('product.designRef.uploadFailed')
   } finally {
     isUploading.value = false
   }
@@ -44,12 +46,11 @@ const remove = () => emit('update:modelValue', null)
 <template>
   <div class="mb-6">
     <p class="text-[15px] font-extrabold mb-1">
-      Design reference
-      <span class="text-cocoa-400 font-bold text-[13px]">(optional)</span>
+      {{ t('product.designRef.title') }}
+      <span class="text-cocoa-400 font-bold text-[13px]">{{ t('product.designRef.optional') }}</span>
     </p>
     <p class="text-[13px] text-cocoa-400 mb-2.5">
-      Upload your own image, or pick from our gallery as a decoration reference
-      — you can also send it later over WhatsApp.
+      {{ t('product.designRef.desc') }}
     </p>
 
     <!-- pilihan sumber (belum ada referensi) -->
@@ -60,7 +61,7 @@ const remove = () => emit('update:modelValue', null)
         :disabled="isUploading"
         class="inline-flex items-center gap-2 rounded-xl border-2 border-dashed border-[#D9C4AE] bg-white px-5 py-3 text-sm font-bold text-[#6E5A4D] hover:border-brand-500 hover:text-brand-500 transition-colors disabled:opacity-50 disabled:cursor-wait"
       >
-        {{ isUploading ? '⏳ Uploading...' : '⬆ Upload image' }}
+        {{ isUploading ? t('product.designRef.uploading') : t('product.designRef.upload') }}
       </button>
       <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="handleFileChange" />
 
@@ -69,7 +70,7 @@ const remove = () => emit('update:modelValue', null)
         @click="isGalleryModalOpen = true"
         class="inline-flex items-center gap-2 rounded-xl border-2 border-[#EBDCCC] bg-white px-5 py-3 text-sm font-bold text-[#6E5A4D] hover:border-brand-500 hover:text-brand-500 transition-colors"
       >
-        🖼 Choose from gallery
+        {{ t('product.designRef.chooseFromGallery') }}
       </button>
     </div>
 
@@ -85,14 +86,14 @@ const remove = () => emit('update:modelValue', null)
       >
         <img
           :src="modelValue.url"
-          alt="Design reference"
+          :alt="t('product.designRef.title')"
           class="absolute inset-0 w-full h-full object-cover"
         />
       </span>
       <span class="flex-1 min-w-0">
-        <span class="block font-extrabold text-sm">Design reference</span>
+        <span class="block font-extrabold text-sm">{{ t('product.designRef.title') }}</span>
         <span class="block text-[12.5px] text-cocoa-400">
-          {{ modelValue.source === 'gallery' ? 'From our gallery' : 'Own upload' }}
+          {{ modelValue.source === 'gallery' ? t('product.designRef.fromGallery') : t('product.designRef.ownUpload') }}
         </span>
       </span>
       <button
@@ -100,7 +101,7 @@ const remove = () => emit('update:modelValue', null)
         @click="remove"
         class="bg-brand-100 text-brand-500 font-extrabold text-[13px] px-3.5 py-2 rounded-full hover:bg-[#F1D6CF] transition-colors"
       >
-        Change
+        {{ t('product.designRef.change') }}
       </button>
     </div>
 

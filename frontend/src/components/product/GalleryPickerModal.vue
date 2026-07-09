@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Search } from 'lucide-vue-next'
 import { getGalleries } from '@/services/gallery.service'
 
@@ -8,6 +9,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'select'])
+const { t } = useI18n()
 
 const galleryItems = ref([])
 const isLoading = ref(false)
@@ -26,7 +28,7 @@ const fetchGalleries = async () => {
     })
     galleryItems.value = result.data
   } catch (err) {
-    error.value = 'Gagal memuat gallery'
+    error.value = t('gallery.picker.loadFailed')
   } finally {
     isLoading.value = false
   }
@@ -79,7 +81,7 @@ const choose = (item) => {
     >
     <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-bold">Choose from Gallery</h2>
+        <h2 class="text-lg font-bold">{{ t('gallery.picker.title') }}</h2>
         <button type="button" @click="close" class="text-sm text-gray-500 hover:text-gray-900">✕</button>
       </div>
 
@@ -90,14 +92,14 @@ const choose = (item) => {
           v-model="searchQuery"
           @input="handleSearchInput"
           type="text"
-          placeholder="Cari desain..."
+          :placeholder="t('gallery.picker.searchPlaceholder')"
           class="w-full rounded-full border border-gray-300 pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500"
         />
       </div>
 
       <div v-if="error" class="text-center py-10 text-red-600 text-sm">{{ error }}</div>
       <div v-else-if="!isLoading && galleryItems.length === 0" class="text-center py-10 text-gray-500 text-sm">
-        {{ searchQuery ? `Tidak ada hasil untuk '${searchQuery}'` : 'Belum ada gambar di gallery.' }}
+        {{ searchQuery ? t('gallery.picker.noResults', { query: searchQuery }) : t('gallery.empty') }}
       </div>
       <div v-else class="grid grid-cols-3 gap-3">
         <button

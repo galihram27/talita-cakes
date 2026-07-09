@@ -1,10 +1,12 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
 import logo from '@/assets/images/logo.png'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -15,11 +17,34 @@ const password = ref('')
 const errorMessage = ref('')
 const isSubmitting = ref(false)
 
+// error per-field, ditandai "touched" setelah user meninggalkan input (blur)
+const emailTouched = ref(false)
+const passwordTouched = ref(false)
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const emailError = computed(() => {
+  if (!emailTouched.value) return ''
+  const value = email.value.trim()
+  if (!value) return t('auth.login.emailRequired')
+  if (!EMAIL_REGEX.test(value)) return t('auth.login.emailInvalid')
+  return ''
+})
+
+const passwordError = computed(() => {
+  if (!passwordTouched.value) return ''
+  if (!password.value) return t('auth.login.passwordRequired')
+  return ''
+})
+
 const handleSubmit = async () => {
   errorMessage.value = ''
 
-  if (!email.value || !password.value) {
-    errorMessage.value = 'Email dan password wajib diisi'
+  // tandai semua field sebagai touched supaya error langsung tampil saat submit
+  emailTouched.value = true
+  passwordTouched.value = true
+
+  if (emailError.value || passwordError.value) {
     return
   }
 
@@ -39,7 +64,7 @@ const handleSubmit = async () => {
     router.push(route.query.redirect || '/')
   } catch (err) {
     errorMessage.value =
-      err.response?.data?.message || 'Email atau password salah'
+      err.response?.data?.message || t('auth.login.failed')
   } finally {
     isSubmitting.value = false
   }
@@ -62,40 +87,56 @@ const handleSubmit = async () => {
 
     <!-- CARD -->
     <div class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
-      <h1 class="font-display text-[28px] mb-1.5">Welcome back</h1>
-      <p class="text-[#6E5A4D] text-[14.5px] mb-6">Sign in to continue your order.</p>
+      <h1 class="font-display text-[28px] mb-1.5">{{ t('auth.login.title') }}</h1>
+      <p class="text-[#6E5A4D] text-[14.5px] mb-6">{{ t('auth.login.subtitle') }}</p>
 
       <form @submit.prevent="handleSubmit" class="flex flex-col gap-3.5">
         <!-- EMAIL -->
         <div>
-          <label for="email" class="block font-extrabold text-[13.5px] mb-1.5">Email</label>
+          <label for="email" class="block font-extrabold text-[13.5px] mb-1.5">{{ t('auth.login.email') }}</label>
           <input
             id="email"
             v-model="email"
             type="email"
-            placeholder="name@email.com"
+            :placeholder="t('auth.login.emailPlaceholder')"
             autocomplete="email"
-            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
+            @blur="emailTouched = true"
+            :aria-invalid="!!emailError"
+            :class="[
+              'w-full rounded-xl border-[1.5px] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]',
+              emailError ? 'border-brand-500' : 'border-[#E4D3C1]',
+            ]"
           />
+          <p v-if="emailError" class="mt-1.5 text-brand-500 text-[12.5px] font-bold">
+            {{ emailError }}
+          </p>
         </div>
 
         <!-- PASSWORD -->
         <div>
-          <label for="password" class="block font-extrabold text-[13.5px] mb-1.5">Password</label>
+          <label for="password" class="block font-extrabold text-[13.5px] mb-1.5">{{ t('auth.login.password') }}</label>
           <input
             id="password"
             v-model="password"
             type="password"
             placeholder="••••••••"
             autocomplete="current-password"
-            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
+            @blur="passwordTouched = true"
+            :aria-invalid="!!passwordError"
+            :class="[
+              'w-full rounded-xl border-[1.5px] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]',
+              passwordError ? 'border-brand-500' : 'border-[#E4D3C1]',
+            ]"
           />
+          <p v-if="passwordError" class="mt-1.5 text-brand-500 text-[12.5px] font-bold">
+            {{ passwordError }}
+          </p>
           <p class="text-right mt-2">
             <RouterLink
               to="/forgot-password"
               class="text-brand-500 font-bold text-[13.5px] hover:opacity-70"
             >
-              Forgot password?
+              {{ t('auth.login.forgotPassword') }}
             </RouterLink>
           </p>
         </div>
@@ -114,15 +155,15 @@ const handleSubmit = async () => {
           :disabled="isSubmitting"
           class="w-full rounded-full bg-brand-500 text-white py-3.5 text-[15px] font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
+          {{ isSubmitting ? t('auth.login.submitting') : t('auth.login.submit') }}
         </button>
       </form>
 
       <!-- REGISTER LINK -->
       <p class="border-t border-cream-200 mt-5 pt-4 text-center text-sm text-[#6E5A4D]">
-        Don't have an account?
+        {{ t('auth.login.noAccount') }}
         <RouterLink to="/register" class="font-extrabold text-brand-500 hover:opacity-70">
-          Sign up
+          {{ t('auth.login.signUp') }}
         </RouterLink>
       </p>
     </div>

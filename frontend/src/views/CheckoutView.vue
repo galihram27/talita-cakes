@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { MapPin, Phone, LocateFixed, Route } from 'lucide-vue-next'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -14,6 +15,7 @@ import {
   STORE_INFO,
 } from '@/config/constants'
 
+const { t } = useI18n()
 const cartStore = useCartStore()
 
 // Icon marker custom (gambar pin sendiri, bukan icon default Leaflet).
@@ -240,7 +242,7 @@ const fetchCart = async () => {
   } catch (err) {
     if (!cartStore.loaded) {
       errorMessage.value =
-        err.response?.data?.message || 'Gagal memuat keranjang'
+        err.response?.data?.message || t('cart.loadFailed')
     }
   } finally {
     isLoading.value = false
@@ -250,7 +252,7 @@ const fetchCart = async () => {
 // ===== LOKASI SAYA: pakai GPS browser (Geolocation API) =====
 const useMyLocation = () => {
   if (!('geolocation' in navigator)) {
-    pinError.value = 'Perangkat/browser tidak mendukung deteksi lokasi.'
+    pinError.value = t('checkout.geoUnsupported')
     return
   }
 
@@ -268,8 +270,8 @@ const useMyLocation = () => {
       isLocating.value = false
       pinError.value =
         err.code === err.PERMISSION_DENIED
-          ? 'Izin lokasi ditolak. Aktifkan izin lokasi di browser, atau pin manual di peta.'
-          : 'Gagal mendeteksi lokasi. Coba lagi atau pin manual di peta.'
+          ? t('checkout.geoDenied')
+          : t('checkout.geoFailed')
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   )
@@ -365,7 +367,7 @@ const submitOrder = async () => {
     errorMessage.value =
       fieldMessages.length > 0
         ? fieldMessages.join(' — ')
-        : err.response?.data?.message || 'Gagal membuat pesanan, coba lagi'
+        : err.response?.data?.message || t('checkout.createFailed')
   } finally {
     isSubmitting.value = false
   }
@@ -380,15 +382,15 @@ onMounted(fetchCart)
       to="/cart"
       class="inline-flex items-center gap-1.5 text-cocoa-400 hover:text-brand-500 font-bold text-sm mb-4 transition-colors"
     >
-      ← Kembali ke keranjang
+      {{ t('checkout.backToCart') }}
     </RouterLink>
-    <h1 class="font-display text-[38px] mb-1">Checkout</h1>
+    <h1 class="font-display text-[38px] mb-1">{{ t('checkout.title') }}</h1>
     <p class="text-[#6E5A4D] text-[15px] mb-7">
-      Tanpa pembayaran online — pesananmu dikonfirmasi owner via WhatsApp.
+      {{ t('checkout.subtitle') }}
     </p>
 
     <div v-if="isLoading" class="text-center text-cocoa-400 py-24">
-      Memuat checkout...
+      {{ t('checkout.loading') }}
     </div>
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
@@ -402,11 +404,11 @@ onMounted(fetchCart)
             >
               1
             </span>
-            <span class="font-display text-xl">Tanggal kue</span>
+            <span class="font-display text-xl">{{ t('checkout.dateTitle') }}</span>
           </div>
           <p class="text-[13.5px] text-cocoa-400 mb-3">
-            Semua kue pre-order — paling cepat
-            <strong class="text-cocoa-900">{{ minDate }}</strong> (H+7).
+            {{ t('checkout.dateHint1') }}
+            <strong class="text-cocoa-900">{{ minDate }}</strong> {{ t('checkout.dateHint2') }}
           </p>
           <input
             v-model="requestCakeDate"
@@ -424,7 +426,7 @@ onMounted(fetchCart)
             >
               2
             </span>
-            <span class="font-display text-xl">Ambil sendiri atau diantar?</span>
+            <span class="font-display text-xl">{{ t('checkout.fulfillTitle') }}</span>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <button
@@ -436,9 +438,9 @@ onMounted(fetchCart)
                 : 'border-[#EBDCCC] bg-white hover:border-brand-500'"
             >
               <div class="text-[22px] mb-1.5">🏠</div>
-              <div class="font-extrabold text-[15px] text-cocoa-900">Pickup</div>
+              <div class="font-extrabold text-[15px] text-cocoa-900">{{ t('checkout.pickup') }}</div>
               <div class="text-[12.5px] text-cocoa-400 mt-0.5">
-                Ambil di toko — gratis
+                {{ t('checkout.pickupDesc') }}
               </div>
             </button>
             <button
@@ -450,9 +452,9 @@ onMounted(fetchCart)
                 : 'border-[#EBDCCC] bg-white hover:border-brand-500'"
             >
               <div class="text-[22px] mb-1.5">🛵</div>
-              <div class="font-extrabold text-[15px] text-cocoa-900">Delivery</div>
+              <div class="font-extrabold text-[15px] text-cocoa-900">{{ t('checkout.delivery') }}</div>
               <div class="text-[12.5px] text-cocoa-400 mt-0.5">
-                Maks. {{ MAX_DELIVERY_DISTANCE_KM }} km dari toko
+                {{ t('checkout.deliveryDesc', { km: MAX_DELIVERY_DISTANCE_KM }) }}
               </div>
             </button>
           </div>
@@ -460,7 +462,7 @@ onMounted(fetchCart)
             v-if="!isDelivery && STORE_INFO.address"
             class="mt-3.5 bg-cream-50 border border-cream-300 rounded-xl px-4 py-3 text-[13.5px] text-[#6E5A4D]"
           >
-            📍 Ambil di:
+            {{ t('checkout.pickupAt') }}
             <strong class="text-cocoa-900">{{ STORE_INFO.address }}</strong>
           </div>
         </section>
@@ -473,7 +475,7 @@ onMounted(fetchCart)
             >
               3
             </span>
-            <span class="font-display text-xl">Penerima</span>
+            <span class="font-display text-xl">{{ t('checkout.recipientTitle') }}</span>
           </div>
           <div class="flex gap-2.5 mb-4">
             <button
@@ -484,7 +486,7 @@ onMounted(fetchCart)
                 ? 'border-brand-500 bg-[#F4D6D1]'
                 : 'border-[#EBDCCC] bg-white hover:border-brand-500'"
             >
-              Untuk saya sendiri
+              {{ t('checkout.forMyself') }}
             </button>
             <button
               type="button"
@@ -494,7 +496,7 @@ onMounted(fetchCart)
                 ? 'border-brand-500 bg-[#F4D6D1]'
                 : 'border-[#EBDCCC] bg-white hover:border-brand-500'"
             >
-              Untuk orang lain
+              {{ t('checkout.forSomeoneElse') }}
             </button>
           </div>
 
@@ -503,7 +505,7 @@ onMounted(fetchCart)
             <input
               v-model="recipientName"
               type="text"
-              placeholder="Nama penerima"
+              :placeholder="t('checkout.recipientNamePlaceholder')"
               class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
             />
             <div class="relative">
@@ -513,7 +515,7 @@ onMounted(fetchCart)
               <input
                 v-model="recipientPhone"
                 type="tel"
-                placeholder="No. HP penerima (08xxx)"
+                :placeholder="t('checkout.recipientPhonePlaceholder')"
                 class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white pl-10 pr-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
               />
             </div>
@@ -525,8 +527,7 @@ onMounted(fetchCart)
                 type="checkbox"
                 class="mt-0.5 w-4 h-4 accent-brand-500"
               />
-              Saya sudah mendapat izin dari penerima untuk membagikan nama &amp;
-              nomor HP-nya kepada Talita's Cake untuk keperluan pengiriman.
+              {{ t('checkout.consent') }}
             </label>
           </div>
         </section>
@@ -539,11 +540,10 @@ onMounted(fetchCart)
             >
               4
             </span>
-            <span class="font-display text-xl">Alamat tujuan</span>
+            <span class="font-display text-xl">{{ t('checkout.addressTitle') }}</span>
           </div>
           <p class="text-[13.5px] text-cocoa-400 mb-3.5">
-            Klik titik lokasi di peta atau tekan "Gunakan lokasi saya" — alamat
-            &amp; ongkir terisi otomatis.
+            {{ t('checkout.addressHint') }}
           </p>
 
           <button
@@ -553,7 +553,7 @@ onMounted(fetchCart)
             class="inline-flex items-center gap-2 rounded-xl bg-brand-500 text-white px-5 py-3 text-sm font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50"
           >
             <LocateFixed class="w-4 h-4" />
-            {{ isLocating ? 'Mendeteksi lokasi...' : 'Gunakan lokasi saya' }}
+            {{ isLocating ? t('checkout.locating') : t('checkout.useMyLocation') }}
           </button>
 
           <p v-if="pinError" class="text-xs text-brand-600 mt-2">{{ pinError }}</p>
@@ -567,7 +567,7 @@ onMounted(fetchCart)
             <input
               v-model="address"
               type="text"
-              placeholder="Alamat akan terisi otomatis dari titik lokasi..."
+              :placeholder="t('checkout.addressPlaceholder')"
               class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white pl-10 pr-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
             />
           </div>
@@ -581,15 +581,13 @@ onMounted(fetchCart)
 
           <p class="text-xs text-cocoa-400 mt-2">
             <template v-if="isReverseGeocoding">
-              Mengambil alamat dari titik lokasi...
+              {{ t('checkout.fetchingAddress') }}
             </template>
             <template v-else-if="addressLat === null">
-              Klik langsung titik lokasi di peta, atau tekan "Gunakan lokasi
-              saya" — alamat akan terisi otomatis.
+              {{ t('checkout.mapHintNoPin') }}
             </template>
             <template v-else>
-              Geser marker atau klik peta untuk koreksi titik lokasi; alamat ikut
-              diperbarui otomatis.
+              {{ t('checkout.mapHintHasPin') }}
             </template>
           </p>
 
@@ -607,7 +605,7 @@ onMounted(fetchCart)
               <div
                 class="text-[11px] font-extrabold tracking-widest uppercase text-[#3E7A4E]"
               >
-                Jarak dari toko
+                {{ t('checkout.distanceLabel') }}
               </div>
               <div class="text-lg font-extrabold leading-tight text-cocoa-900">
                 ± {{ distanceKm.toFixed(1) }} km
@@ -616,7 +614,7 @@ onMounted(fetchCart)
             <span
               class="ml-auto text-[11px] font-bold text-[#3E7A4E] bg-white border border-[#CDE3D2] rounded-full px-2.5 py-1"
             >
-              Dalam jangkauan ({{ MAX_DELIVERY_DISTANCE_KM }} km)
+              {{ t('checkout.inRange', { km: MAX_DELIVERY_DISTANCE_KM }) }}
             </span>
           </div>
 
@@ -633,7 +631,7 @@ onMounted(fetchCart)
               rel="noopener"
               class="font-extrabold underline"
             >
-              Hubungi via WhatsApp
+              {{ t('checkout.contactWhatsApp') }}
             </a>
           </div>
 
@@ -642,7 +640,7 @@ onMounted(fetchCart)
             <div
               class="text-[13px] font-extrabold text-cocoa-400 tracking-widest uppercase mb-2"
             >
-              Tarif ongkir
+              {{ t('checkout.feeTitle') }}
             </div>
             <div class="flex flex-col border border-cream-300 rounded-xl overflow-hidden">
               <div
@@ -655,9 +653,7 @@ onMounted(fetchCart)
               </div>
             </div>
             <p class="text-xs text-cocoa-400 mt-2">
-              Untuk pengiriman di luar radius {{ MAX_DELIVERY_DISTANCE_KM }} km
-              atau kondisi tertentu, silakan hubungi kami untuk informasi biaya
-              pengiriman.
+              {{ t('checkout.feeNote', { km: MAX_DELIVERY_DISTANCE_KM }) }}
             </p>
           </div>
         </section>
@@ -667,7 +663,7 @@ onMounted(fetchCart)
       <aside
         class="bg-white border border-cream-300 rounded-2xl p-6 lg:sticky lg:top-[92px]"
       >
-        <h2 class="font-display text-[21px] mb-4">Ringkasan pesanan</h2>
+        <h2 class="font-display text-[21px] mb-4">{{ t('checkout.summaryTitle') }}</h2>
 
         <ul class="flex flex-col gap-3 mb-4">
           <li
@@ -687,33 +683,33 @@ onMounted(fetchCart)
 
         <div class="border-t border-cream-200 pt-3.5">
           <div class="flex justify-between text-sm text-[#6E5A4D] py-1">
-            <span>Subtotal</span>
+            <span>{{ t('checkout.subtotal') }}</span>
             <strong class="text-cocoa-900">{{ formatRupiah(cart.subtotal) }}</strong>
           </div>
           <div v-if="isDelivery" class="flex justify-between text-sm text-[#6E5A4D] py-1">
-            <span>Ongkir</span>
+            <span>{{ t('checkout.shipping') }}</span>
             <strong :class="deliveryError ? 'text-brand-500' : 'text-cocoa-900'">
               <template v-if="deliveryFee !== null">
                 {{ formatRupiah(deliveryFee) }}
               </template>
-              <template v-else-if="deliveryError">Di luar radius</template>
-              <template v-else>Pin lokasi dulu</template>
+              <template v-else-if="deliveryError">{{ t('checkout.outOfRange') }}</template>
+              <template v-else>{{ t('checkout.pinFirst') }}</template>
             </strong>
           </div>
           <div class="flex justify-between text-[17px] font-extrabold pt-3 pb-4">
-            <span>Total</span>
+            <span>{{ t('checkout.total') }}</span>
             <span class="text-brand-500">{{ formatRupiah(total) }}</span>
           </div>
         </div>
 
         <!-- Important -->
         <div class="rounded-xl bg-cream-50 border border-cream-300 p-4 mb-4">
-          <h3 class="text-sm font-extrabold mb-2">Important</h3>
+          <h3 class="text-sm font-extrabold mb-2">{{ t('checkout.importantTitle') }}</h3>
           <ul class="text-xs text-[#6E5A4D] space-y-1 list-disc list-inside">
-            <li>DP min. 50% before production</li>
-            <li>Full payment by H-7</li>
-            <li>No cancellation after DP</li>
-            <li>DP non-refundable</li>
+            <li>{{ t('checkout.important.i1') }}</li>
+            <li>{{ t('checkout.important.i2') }}</li>
+            <li>{{ t('checkout.important.i3') }}</li>
+            <li>{{ t('checkout.important.i4') }}</li>
           </ul>
         </div>
 
@@ -730,11 +726,10 @@ onMounted(fetchCart)
           @click="submitOrder"
           class="w-full bg-brand-500 text-white rounded-full py-[15px] font-extrabold text-[15.5px] hover:bg-brand-600 transition-colors disabled:opacity-40"
         >
-          {{ isSubmitting ? 'Memproses...' : 'Simpan & lanjut ke WhatsApp' }}
+          {{ isSubmitting ? t('checkout.submitting') : t('checkout.submit') }}
         </button>
         <p class="text-[12.5px] text-cocoa-400 text-center mt-3 leading-relaxed">
-          Setelah disimpan, rangkuman pesanan otomatis disiapkan untuk dikirim
-          ke WhatsApp owner.
+          {{ t('checkout.afterSave') }}
         </p>
       </aside>
     </div>

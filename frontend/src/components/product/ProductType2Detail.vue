@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ProductImage from './ProductImage.vue'
 import ProductInfoHeader from './ProductInfoHeader.vue'
 import ProductPriceDisplay from './ProductPriceDisplay.vue'
@@ -13,6 +14,8 @@ import { CUSTOM_FLAVORS } from '@/config/constants'
 const props = defineProps({
   product: { type: Object, required: true },
 })
+
+const { t } = useI18n()
 
 const selectedFlavor = ref('')
 const designImage = ref(null)
@@ -38,11 +41,11 @@ const handleSubmit = async () => {
   submitSuccess.value = false
 
   if (!selectedFlavor.value) {
-    submitError.value = 'Pilih flavor terlebih dahulu'
+    submitError.value = t('product.chooseFlavorFirst')
     return
   }
   if (quantity.value < 1) {
-    submitError.value = 'Quantity minimal 1'
+    submitError.value = t('product.qtyMin')
     return
   }
 
@@ -58,7 +61,7 @@ const handleSubmit = async () => {
     })
     submitSuccess.value = true
   } catch (err) {
-    submitError.value = err.response?.data?.message || 'Gagal menambahkan ke keranjang'
+    submitError.value = err.response?.data?.message || t('product.addToCartFailed')
   } finally {
     isSubmitting.value = false
   }
@@ -83,7 +86,7 @@ const handleSubmit = async () => {
       <ProductFlavorPicker
         v-model="selectedFlavor"
         :flavors="CUSTOM_FLAVORS"
-        step-label="1 · Choose flavor"
+        :step-label="t('product.chooseFlavorStep1')"
       />
 
       <DesignReferencePicker v-model="designImage" />

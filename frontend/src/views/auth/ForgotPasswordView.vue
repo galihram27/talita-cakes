@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onUnmounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import api from '@/lib/api'
 import logo from '@/assets/images/logo.png'
 
+const { t } = useI18n()
 const router = useRouter()
 
 // step: 'email' (kirim OTP) -> 'otp' (isi kode)
@@ -35,7 +37,7 @@ const handleSendOtp = async () => {
   infoMessage.value = ''
 
   if (!email.value) {
-    errorMessage.value = 'Email wajib diisi'
+    errorMessage.value = t('auth.forgot.emailRequired')
     return
   }
 
@@ -46,7 +48,7 @@ const handleSendOtp = async () => {
     step.value = 'otp'
     startResendCooldown()
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Gagal mengirim kode OTP'
+    errorMessage.value = err.response?.data?.message || t('auth.forgot.sendFailed')
   } finally {
     isSubmitting.value = false
   }
@@ -64,7 +66,7 @@ const handleResendOtp = async () => {
     infoMessage.value = data.message
     startResendCooldown()
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Gagal mengirim ulang kode OTP'
+    errorMessage.value = err.response?.data?.message || t('auth.forgot.resendFailed')
   } finally {
     isSubmitting.value = false
   }
@@ -76,7 +78,7 @@ const handleVerifyOtp = async () => {
   infoMessage.value = ''
 
   if (code.value.length !== 6) {
-    errorMessage.value = 'Kode OTP harus 6 digit'
+    errorMessage.value = t('auth.forgot.otpLength')
     return
   }
 
@@ -93,7 +95,7 @@ const handleVerifyOtp = async () => {
       state: { email: email.value, code: code.value },
     })
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Kode OTP salah'
+    errorMessage.value = err.response?.data?.message || t('auth.forgot.otpWrong')
   } finally {
     isSubmitting.value = false
   }
@@ -119,19 +121,19 @@ const handleVerifyOtp = async () => {
       <!-- STEP 1: EMAIL -->
       <form v-if="step === 'email'" @submit.prevent="handleSendOtp" class="flex flex-col gap-3.5">
         <div>
-          <h1 class="font-display text-[28px] mb-1.5">Forgot password</h1>
+          <h1 class="font-display text-[28px] mb-1.5">{{ t('auth.forgot.title') }}</h1>
           <p class="text-[#6E5A4D] text-[14.5px]">
-            Enter your account email — we'll send a reset code.
+            {{ t('auth.forgot.subtitle') }}
           </p>
         </div>
 
         <div>
-          <label for="email" class="block font-extrabold text-[13.5px] mb-1.5">Email</label>
+          <label for="email" class="block font-extrabold text-[13.5px] mb-1.5">{{ t('auth.login.email') }}</label>
           <input
             id="email"
             v-model="email"
             type="email"
-            placeholder="name@email.com"
+            :placeholder="t('auth.login.emailPlaceholder')"
             autocomplete="email"
             class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
           />
@@ -149,25 +151,25 @@ const handleVerifyOtp = async () => {
           :disabled="isSubmitting"
           class="w-full rounded-full bg-brand-500 text-white py-3.5 text-[15px] font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isSubmitting ? 'Mengirim...' : 'Send reset code' }}
+          {{ isSubmitting ? t('auth.forgot.sending') : t('auth.forgot.sendCode') }}
         </button>
 
         <RouterLink
           to="/login"
           class="text-center text-[#6E5A4D] font-bold text-[13.5px] p-1 hover:text-brand-500 transition-colors"
         >
-          ← Back to sign in
+          {{ t('auth.forgot.backToSignIn') }}
         </RouterLink>
       </form>
 
       <!-- STEP 2: OTP -->
       <form v-else @submit.prevent="handleVerifyOtp" class="flex flex-col gap-3.5">
         <div>
-          <h1 class="font-display text-[28px] mb-1.5">Enter reset code</h1>
+          <h1 class="font-display text-[28px] mb-1.5">{{ t('auth.forgot.otpTitle') }}</h1>
           <p class="text-[#6E5A4D] text-[14.5px]">
-            We sent a 6-digit code to
+            {{ t('auth.forgot.otpSubtitle1') }}
             <strong class="text-cocoa-900">{{ email }}</strong
-            >. Enter it below.
+            >{{ t('auth.forgot.otpSubtitle2') }}
           </p>
         </div>
 
@@ -200,7 +202,7 @@ const handleVerifyOtp = async () => {
           :disabled="isSubmitting"
           class="w-full rounded-full bg-brand-500 text-white py-3.5 text-[15px] font-extrabold hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isSubmitting ? 'Memeriksa...' : 'Verify' }}
+          {{ isSubmitting ? t('auth.forgot.verifying') : t('auth.forgot.verify') }}
         </button>
 
         <button
@@ -209,7 +211,7 @@ const handleVerifyOtp = async () => {
           :disabled="resendCooldown > 0 || isSubmitting"
           class="text-brand-500 font-bold text-[13.5px] p-1 hover:opacity-70 disabled:text-cocoa-400 disabled:cursor-not-allowed"
         >
-          {{ resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code' }}
+          {{ resendCooldown > 0 ? t('auth.forgot.resendWithCooldown', { s: resendCooldown }) : t('auth.forgot.resend') }}
         </button>
 
         <button
@@ -217,7 +219,7 @@ const handleVerifyOtp = async () => {
           @click="step = 'email'; errorMessage = ''; infoMessage = ''"
           class="text-[#6E5A4D] font-bold text-[13.5px] p-1 hover:text-brand-500 transition-colors"
         >
-          Ganti email
+          {{ t('auth.forgot.changeEmail') }}
         </button>
       </form>
     </div>

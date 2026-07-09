@@ -1,7 +1,9 @@
 <script setup>
+import { useI18n } from "vue-i18n";
 import { STORE_INFO } from "@/config/constants";
 import logo from "@/assets/images/logo.png";
 
+const { t } = useI18n();
 const year = new Date().getFullYear();
 </script>
 
@@ -22,8 +24,7 @@ const year = new Date().getFullYear();
           </span>
         </div>
         <p class="text-[13.5px] leading-relaxed">
-          Homemade cakes full of love since {{ STORE_INFO.since }}. Every cake
-          is made to order.
+          {{ t("footer.tagline", { since: STORE_INFO.since }) }}
         </p>
       </div>
 
@@ -32,7 +33,7 @@ const year = new Date().getFullYear();
           <div
             class="text-xs font-extrabold tracking-[0.12em] uppercase text-[#8A7160] mb-3"
           >
-            Contact
+            {{ t("footer.contact") }}
           </div>
           <div class="flex flex-col gap-2 text-sm">
             <a
@@ -76,13 +77,40 @@ const year = new Date().getFullYear();
             </span>
           </div>
         </div>
+
+        <div>
+          <div
+            class="text-xs font-extrabold tracking-[0.12em] uppercase text-[#8A7160] mb-3"
+          >
+            {{ t("footer.legal") }}
+          </div>
+          <div class="flex flex-col gap-2 text-sm">
+            <RouterLink
+              :to="{ name: 'faq' }"
+              class="text-[#E6D3C2] hover:text-white transition-colors"
+            >
+              {{ t("footer.faq") }}
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'terms' }"
+              class="text-[#E6D3C2] hover:text-white transition-colors"
+            >
+              {{ t("footer.terms") }}
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'privacy' }"
+              class="text-[#E6D3C2] hover:text-white transition-colors"
+            >
+              {{ t("footer.privacy") }}
+            </RouterLink>
+          </div>
+        </div>
       </div>
     </div>
     <div
       class="border-t border-[#4A3A30] text-center text-[12.5px] py-4 px-4 text-[#8A7160]"
     >
-      © {{ year }} Talita's Cake &amp; Cupcakes · Pre-order 7 days ahead ·
-      Confirmed via WhatsApp
+      {{ t("footer.bottom", { year }) }}
     </div>
   </footer>
 </template>
