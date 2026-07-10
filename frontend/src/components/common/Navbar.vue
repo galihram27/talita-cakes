@@ -56,7 +56,7 @@ const navLinks = computed(() => [
 
 <template>
   <header
-    class="sticky top-0 z-50 bg-[#FADCEA]/90 backdrop-blur-md border-b border-[#F3C4DA]"
+    class="sticky top-0 z-50 bg-[#FDF2F7]/90 backdrop-blur-md border-b border-[#F5DCE8]"
   >
     <div
       class="max-w-[1160px] mx-auto flex items-center gap-7 px-5 md:px-8 h-[72px]"
@@ -223,13 +223,13 @@ const navLinks = computed(() => [
     <!-- Mobile nav -->
     <nav
       v-if="isNavOpen"
-      class="md:hidden flex flex-col border-t border-[#F3C4DA] bg-[#FADCEA] px-5 pt-2 pb-4"
+      class="md:hidden flex flex-col border-t border-[#F5DCE8] bg-[#FDF2F7] px-5 pt-2 pb-4"
     >
       <RouterLink
         v-for="link in navLinks"
         :key="link.to"
         :to="link.to"
-        class="py-3 px-2 text-cocoa-900 font-bold border-b border-[#F3C4DA] hover:text-brand-500 transition-colors"
+        class="py-3 px-2 text-cocoa-900 font-bold border-b border-[#F5DCE8] hover:text-brand-500 transition-colors"
         @click="closeNav"
       >
         {{ link.label }}
