@@ -51,7 +51,7 @@ const data = {
   rating: 5.0,
   totalReviews: 5,
   googleMapsUrl:
-    'https://www.google.com/maps/place/?q=place_id:ChIJGWhCQZjraS4RGsVnp6ic14c',
+    'https://www.google.com/maps/search/?api=1&query=Talita%27s%20Cake%20%26%20Cupcakes&query_place_id=ChIJGWhCQZjraS4RGsVnp6ic14c',
   reviews: [
     {
       author: 'agin',
