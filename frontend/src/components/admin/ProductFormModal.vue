@@ -11,6 +11,7 @@ import {
 } from '@/config/productOptions'
 import { createProduct, updateProduct } from '@/services/product.service'
 import { uploadImage } from '@/services/upload.service'
+import { useProductStore } from '@/stores/product.store'
 import PriceInput from '@/components/admin/PriceInput.vue'
 
 const props = defineProps({
@@ -21,6 +22,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'saved'])
 const { t } = useI18n()
+const productStore = useProductStore()
 
 const isEdit = computed(() => !!props.product)
 
@@ -68,6 +70,54 @@ const squareSizes = computed(() =>
   squareMinSize.value ? generateSizeRange(squareMinSize.value) : []
 )
 
+// ===== COPY HARGA DARI PRODUK LAIN (TYPE3/TYPE4) =====
+// Copy per bentuk: satu dropdown untuk Round, satu untuk Square. Sumber: produk
+// bervariasi (punya variant bentuk terkait) dari TYPE3/TYPE4 — lintas tipe
+// diizinkan — selain produk yang sedang diedit. Copy hanya mengisi HARGA untuk
+// ukuran yang sedang aktif; ukuran min & diskon tidak ikut diubah.
+const copySource = reactive({ ROUND: '', SQUARE: '' })
+const copyNotice = reactive({ ROUND: '', SQUARE: '' })
+const shapePrices = { ROUND: roundPrices, SQUARE: squarePrices }
+const shapeSizes = { ROUND: roundSizes, SQUARE: squareSizes }
+
+// produk yang punya minimal satu variant dengan bentuk tsb (kandidat sumber)
+const copyableProductsByShape = (shape) =>
+  productStore.products.filter(
+    (p) =>
+      (p.type === 'TYPE3' || p.type === 'TYPE4') &&
+      p.id !== props.product?.id &&
+      Array.isArray(p.variants) &&
+      p.variants.some((v) => v.shape === shape)
+  )
+const roundSourceOptions = computed(() => copyableProductsByShape('ROUND'))
+const squareSourceOptions = computed(() => copyableProductsByShape('SQUARE'))
+
+// baru boleh copy kalau grid ukuran bentuk tsb sudah muncul (ukuran min dipilih)
+const canCopyPrice = (shape) => shapeSizes[shape].value.length > 0
+
+const applyCopiedPrices = (shape) => {
+  copyNotice[shape] = ''
+  const source = copyableProductsByShape(shape).find((p) => p.id === copySource[shape])
+  // reset pilihan supaya memilih produk yang sama lagi tetap memicu copy ulang
+  copySource[shape] = ''
+  if (!source) return
+
+  const variants = source.variants ?? []
+  const prices = shapePrices[shape]
+  let matched = 0
+  for (const s of shapeSizes[shape].value) {
+    const v = variants.find((x) => x.shape === shape && Number(x.size) === Number(s))
+    if (v) {
+      prices[s] = Number(v.price)
+      matched++
+    }
+  }
+
+  copyNotice[shape] = matched
+    ? t('admin.productForm.copyPriceDone', { name: source.name })
+    : t('admin.productForm.copyPriceNoMatch', { name: source.name })
+}
+
 // pilihan kategori mengikuti type yang sedang dipilih
 const categoryOptions = computed(() => PRODUCT_CATEGORIES[form.type] ?? [])
 
@@ -99,6 +149,10 @@ const clearPriceMap = (map) => Object.keys(map).forEach((k) => delete map[k])
 const resetForm = () => {
   errorMessage.value = ''
   isSubmitting.value = false
+  copySource.ROUND = ''
+  copySource.SQUARE = ''
+  copyNotice.ROUND = ''
+  copyNotice.SQUARE = ''
   clearPriceMap(roundPrices)
   clearPriceMap(squarePrices)
   roundMinSize.value = null
@@ -530,6 +584,30 @@ const close = () => {
               />
             </div>
 
+            <!-- COPY HARGA ROUND DARI PRODUK LAIN -->
+            <div v-if="roundSizes.length" class="mt-3">
+              <label class="block text-xs font-semibold text-cocoa-500 mb-1.5">{{ t('admin.productForm.copyPrice') }}</label>
+              <div class="relative">
+                <select
+                  v-model="copySource.ROUND"
+                  :disabled="!canCopyPrice('ROUND')"
+                  @change="applyCopiedPrices('ROUND')"
+                  class="appearance-none w-full rounded-full border border-cream-300 pl-4 pr-10 py-2 text-sm bg-white focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="" disabled>{{ t('admin.productForm.copyPriceSelect') }}</option>
+                  <option v-for="p in roundSourceOptions" :key="p.id" :value="p.id">
+                    {{ p.name }}
+                  </option>
+                </select>
+                <ChevronDown
+                  class="w-4 h-4 text-cocoa-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
+                />
+              </div>
+              <p v-if="copyNotice.ROUND" class="text-xs text-brand-600 mt-1.5">
+                {{ copyNotice.ROUND }}
+              </p>
+            </div>
+
             <div
               v-if="roundSizes.length"
               class="mt-3 rounded-2xl border border-cream-300 p-4 space-y-3"
@@ -560,6 +638,30 @@ const close = () => {
               <ChevronDown
                 class="w-4 h-4 text-cocoa-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
               />
+            </div>
+
+            <!-- COPY HARGA SQUARE DARI PRODUK LAIN -->
+            <div v-if="squareSizes.length" class="mt-3">
+              <label class="block text-xs font-semibold text-cocoa-500 mb-1.5">{{ t('admin.productForm.copyPrice') }}</label>
+              <div class="relative">
+                <select
+                  v-model="copySource.SQUARE"
+                  :disabled="!canCopyPrice('SQUARE')"
+                  @change="applyCopiedPrices('SQUARE')"
+                  class="appearance-none w-full rounded-full border border-cream-300 pl-4 pr-10 py-2 text-sm bg-white focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="" disabled>{{ t('admin.productForm.copyPriceSelect') }}</option>
+                  <option v-for="p in squareSourceOptions" :key="p.id" :value="p.id">
+                    {{ p.name }}
+                  </option>
+                </select>
+                <ChevronDown
+                  class="w-4 h-4 text-cocoa-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
+                />
+              </div>
+              <p v-if="copyNotice.SQUARE" class="text-xs text-brand-600 mt-1.5">
+                {{ copyNotice.SQUARE }}
+              </p>
             </div>
 
             <div
