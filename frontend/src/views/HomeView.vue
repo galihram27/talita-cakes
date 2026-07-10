@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useProductStore } from '@/stores/product.store'
 import ProductCard from '@/components/product/ProductCard.vue'
 import GoogleReviews from '@/components/common/GoogleReviews.vue'
+import heroBg from '@/assets/images/Figure Fondant Cake.png'
 
 const { t } = useI18n()
 
@@ -68,7 +69,7 @@ const typeCards = computed(() => [
 ])
 
 const steps = computed(() =>
-  ['s1', 's2', 's3', 's4'].map((key, i) => ({
+  ['s1', 's2', 's3', 's4', 's5'].map((key, i) => ({
     n: String(i + 1),
     title: t(`home.steps.${key}.title`),
     desc: t(`home.steps.${key}.desc`),
@@ -84,8 +85,15 @@ const whyChoose = computed(() =>
 <template>
   <div class="tc-page">
     <!-- HERO -->
-    <section class="max-w-[1160px] mx-auto px-5 md:px-8 pt-16 md:pt-[72px] pb-16">
-      <div class="tc-fade">
+    <section
+      class="relative bg-cover bg-center"
+      :style="{ backgroundImage: `url(${heroBg})` }"
+    >
+      <!-- overlay lembut agar teks tetap terbaca di atas background -->
+      <div class="absolute inset-0 bg-gradient-to-r from-white/85 via-white/60 to-white/20"></div>
+      <div
+        class="relative max-w-[1160px] mx-auto px-5 md:px-8 pt-16 md:pt-[72px] pb-16 tc-fade"
+      >
         <h1
           class="font-display text-[clamp(38px,5vw,58px)] leading-[1.12] max-w-[620px] mb-4"
         >
@@ -126,8 +134,12 @@ const whyChoose = computed(() =>
     </section>
 
     <!-- TIPE KUE -->
-    <section class="bg-white border-y border-cream-200">
-      <div class="max-w-[1160px] mx-auto px-5 md:px-8 py-16">
+    <section
+      class="relative bg-cover bg-center border-y border-cream-200"
+      :style="{ backgroundImage: `url(${heroBg})` }"
+    >
+      <div class="absolute inset-0 bg-white/40"></div>
+      <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 py-16">
         <h2 class="font-display text-[32px] mb-2">
           {{ t('home.typesTitle') }}
         </h2>
@@ -164,7 +176,12 @@ const whyChoose = computed(() =>
     </section>
 
     <!-- FEATURED / FAVORITES -->
-    <section class="max-w-[1160px] mx-auto px-5 md:px-8 py-16">
+    <section
+      class="relative bg-cover bg-center"
+      :style="{ backgroundImage: `url(${heroBg})` }"
+    >
+      <div class="absolute inset-0 bg-white/40"></div>
+      <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 py-16">
       <div class="flex items-baseline justify-between gap-4 flex-wrap mb-7">
         <div>
           <h2 class="font-display text-[32px] mb-1">{{ t('home.favoritesTitle') }}</h2>
@@ -190,17 +207,23 @@ const whyChoose = computed(() =>
           :product="product"
         />
       </div>
+      </div>
     </section>
 
     <!-- CARA PESAN (4 LANGKAH) -->
-    <section class="bg-gradient-to-b from-cream-100 to-cream-400">
-      <div class="max-w-[1160px] mx-auto px-5 md:px-8 pt-16 pb-[76px]">
+    <section
+      class="relative bg-cover bg-center"
+      :style="{ backgroundImage: `url(${heroBg})` }"
+    >
+      <!-- overlay lembut agar konten tetap terbaca di atas background -->
+      <div class="absolute inset-0 bg-white/40"></div>
+      <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 pt-16 pb-[76px]">
         <div class="text-center max-w-[560px] mx-auto mb-11">
           <h2 class="font-display text-[38px] leading-tight">
             {{ t('home.stepsTitle') }}
           </h2>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
           <div
             v-for="step in steps"
             :key="step.n"
@@ -221,8 +244,12 @@ const whyChoose = computed(() =>
     </section>
 
     <!-- WHY CHOOSE -->
-    <section class="bg-white border-t border-cream-200">
-      <div class="max-w-[1160px] mx-auto px-5 md:px-8 py-16">
+    <section
+      class="relative bg-cover bg-center border-t border-cream-200"
+      :style="{ backgroundImage: `url(${heroBg})` }"
+    >
+      <div class="absolute inset-0 bg-white/40"></div>
+      <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 py-16">
         <div class="text-center max-w-[560px] mx-auto mb-10">
           <h2 class="font-display text-[34px] leading-tight">
             {{ t('home.whyTitle') }}
@@ -248,8 +275,14 @@ const whyChoose = computed(() =>
     </section>
 
     <!-- GOOGLE REVIEWS -->
-    <div class="mt-14">
-      <GoogleReviews narrow />
+    <div
+      class="relative bg-cover bg-center"
+      :style="{ backgroundImage: `url(${heroBg})` }"
+    >
+      <div class="absolute inset-0 bg-white/40"></div>
+      <div class="relative">
+        <GoogleReviews narrow />
+      </div>
     </div>
   </div>
 </template>

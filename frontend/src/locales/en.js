@@ -310,7 +310,7 @@ export default {
     favoritesSubtitle: "A few cakes you can order.",
     allMenu: "All menu →",
     loadingFavorites: "Loading favorite cakes...",
-    stepsTitle: "Order your cake in 4 simple steps",
+    stepsTitle: "Order your cake in 5 simple steps",
     steps: {
       s1: {
         title: "Choose Your Cake",
@@ -327,6 +327,10 @@ export default {
       s4: {
         title: "Order Confirmation",
         desc: "Our team will review your order, confirm availability, delivery details, and payment. Once everything is confirmed, your cake will be freshly baked and handcrafted for your special day.",
+      },
+      s5: {
+        title: "Need It Sooner?",
+        desc: "Some products may be available with shorter notice, depending on our production schedule. Feel free to contact us via WhatsApp, and we'll do our best to help.",
       },
     },
     whyTitle: "Why Choose Talita's Cake",

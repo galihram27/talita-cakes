@@ -138,7 +138,7 @@ const data = {
       <article
         v-for="(review, index) in data.reviews"
         :key="index"
-        class="rounded-2xl border border-gray-200 p-6 flex flex-col"
+        class="rounded-2xl border border-gray-200 bg-[#FFF6FA] p-6 flex flex-col"
         :class="grid ? '' : 'shrink-0 snap-start w-[85%] sm:w-80'"
       >
         <div class="flex items-center gap-3 mb-3">

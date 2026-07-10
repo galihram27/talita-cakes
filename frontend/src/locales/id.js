@@ -310,7 +310,7 @@ export default {
     favoritesSubtitle: "Beberapa kue yang bisa Anda pesan.",
     allMenu: "Semua menu →",
     loadingFavorites: "Memuat kue favorit...",
-    stepsTitle: "Pesan kue Anda dalam 4 langkah mudah",
+    stepsTitle: "Pesan kue Anda dalam 5 langkah mudah",
     steps: {
       s1: {
         title: "Pilih Kue Anda",
@@ -327,6 +327,10 @@ export default {
       s4: {
         title: "Konfirmasi Pesanan",
         desc: "Tim kami akan meninjau pesanan Anda, mengonfirmasi ketersediaan, detail pengiriman, dan pembayaran. Setelah semuanya terkonfirmasi, kue Anda akan dipanggang segar dan dibuat khusus untuk hari spesial Anda.",
+      },
+      s5: {
+        title: "Butuh Lebih Cepat?",
+        desc: "Beberapa produk mungkin tersedia dengan waktu pemesanan lebih singkat, tergantung jadwal produksi kami. Silakan hubungi kami via WhatsApp, dan kami akan berusaha sebaik mungkin untuk membantu.",
       },
     },
     whyTitle: "Kenapa Memilih Talita's Cake",
