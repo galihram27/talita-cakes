@@ -2,6 +2,7 @@
 import { useI18n } from "vue-i18n";
 import { STORE_INFO } from "@/config/constants";
 import logo from "@/assets/images/logo.png";
+import halalLogo from "@/assets/images/halal-indonesia-logo.png";
 
 const { t } = useI18n();
 const year = new Date().getFullYear();
@@ -94,6 +95,23 @@ const year = new Date().getFullYear();
                 <path d="M16.6 5.82a4.28 4.28 0 0 1-1.06-2.82h-3.1v12.4a2.6 2.6 0 0 1-2.6 2.52 2.6 2.6 0 0 1-2.6-2.6 2.6 2.6 0 0 1 3.4-2.47V9.66a5.7 5.7 0 0 0-.8-.06A5.72 5.72 0 0 0 4.1 15.3a5.72 5.72 0 0 0 5.72 5.72 5.72 5.72 0 0 0 5.72-5.72V9.01a7.3 7.3 0 0 0 4.36 1.43V7.34a4.29 4.29 0 0 1-3.3-1.52Z"/>
               </svg>
             </a>
+          </div>
+
+          <!-- Sertifikasi Halal Indonesia (BPJPH) -->
+          <div
+            v-if="STORE_INFO.halalCertNumber"
+            class="mt-6 w-[76px]"
+          >
+            <img
+              :src="halalLogo"
+              alt="Halal Indonesia (BPJPH)"
+              class="w-full h-auto object-contain"
+            />
+            <div
+              class="mt-2 w-full text-center text-[8px] leading-none tabular-nums text-white whitespace-nowrap"
+            >
+              {{ STORE_INFO.halalCertNumber }}
+            </div>
           </div>
         </div>
 

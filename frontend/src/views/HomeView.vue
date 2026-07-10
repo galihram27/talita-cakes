@@ -5,7 +5,6 @@ import { useI18n } from 'vue-i18n'
 import { useProductStore } from '@/stores/product.store'
 import ProductCard from '@/components/product/ProductCard.vue'
 import GoogleReviews from '@/components/common/GoogleReviews.vue'
-import heroBg from '@/assets/images/Figure Fondant Cake.png'
 
 const { t } = useI18n()
 
@@ -85,12 +84,7 @@ const whyChoose = computed(() =>
 <template>
   <div class="tc-page">
     <!-- HERO -->
-    <section
-      class="relative bg-cover bg-center"
-      :style="{ backgroundImage: `url(${heroBg})` }"
-    >
-      <!-- overlay lembut agar teks tetap terbaca di atas background -->
-      <div class="absolute inset-0 bg-gradient-to-r from-white/85 via-white/60 to-white/20"></div>
+    <section class="relative">
       <div
         class="relative max-w-[1160px] mx-auto px-5 md:px-8 pt-16 md:pt-[72px] pb-16 tc-fade"
       >
@@ -134,11 +128,7 @@ const whyChoose = computed(() =>
     </section>
 
     <!-- TIPE KUE -->
-    <section
-      class="relative bg-cover bg-center border-y border-cream-200"
-      :style="{ backgroundImage: `url(${heroBg})` }"
-    >
-      <div class="absolute inset-0 bg-white/40"></div>
+    <section class="relative border-y border-cream-200">
       <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 py-16">
         <h2 class="font-display text-[32px] mb-2">
           {{ t('home.typesTitle') }}
@@ -176,11 +166,7 @@ const whyChoose = computed(() =>
     </section>
 
     <!-- FEATURED / FAVORITES -->
-    <section
-      class="relative bg-cover bg-center"
-      :style="{ backgroundImage: `url(${heroBg})` }"
-    >
-      <div class="absolute inset-0 bg-white/40"></div>
+    <section class="relative">
       <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 py-16">
       <div class="flex items-baseline justify-between gap-4 flex-wrap mb-7">
         <div>
@@ -210,13 +196,8 @@ const whyChoose = computed(() =>
       </div>
     </section>
 
-    <!-- CARA PESAN (4 LANGKAH) -->
-    <section
-      class="relative bg-cover bg-center"
-      :style="{ backgroundImage: `url(${heroBg})` }"
-    >
-      <!-- overlay lembut agar konten tetap terbaca di atas background -->
-      <div class="absolute inset-0 bg-white/40"></div>
+    <!-- CARA PESAN (5 LANGKAH) -->
+    <section class="relative">
       <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 pt-16 pb-[76px]">
         <div class="text-center max-w-[560px] mx-auto mb-11">
           <h2 class="font-display text-[38px] leading-tight">
@@ -244,11 +225,7 @@ const whyChoose = computed(() =>
     </section>
 
     <!-- WHY CHOOSE -->
-    <section
-      class="relative bg-cover bg-center border-t border-cream-200"
-      :style="{ backgroundImage: `url(${heroBg})` }"
-    >
-      <div class="absolute inset-0 bg-white/40"></div>
+    <section class="relative border-t border-cream-200">
       <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 py-16">
         <div class="text-center max-w-[560px] mx-auto mb-10">
           <h2 class="font-display text-[34px] leading-tight">
@@ -275,14 +252,8 @@ const whyChoose = computed(() =>
     </section>
 
     <!-- GOOGLE REVIEWS -->
-    <div
-      class="relative bg-cover bg-center"
-      :style="{ backgroundImage: `url(${heroBg})` }"
-    >
-      <div class="absolute inset-0 bg-white/40"></div>
-      <div class="relative">
-        <GoogleReviews narrow />
-      </div>
+    <div class="relative">
+      <GoogleReviews narrow />
     </div>
   </div>
 </template>

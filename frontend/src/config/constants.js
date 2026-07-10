@@ -9,6 +9,8 @@ export const STORE_INFO = {
   threads: import.meta.env.VITE_OWNER_THREADS || '', // username tanpa "@", contoh: talitacakes
   tiktok: import.meta.env.VITE_OWNER_TIKTOK || '', // username tanpa "@", contoh: talitacakesdepok
   address: import.meta.env.VITE_STORE_ADDRESS || '', // alamat toko / area pengantaran
+  // Sertifikat Halal BPJPH — bisa dioverride lewat env.
+  halalCertNumber: import.meta.env.VITE_HALAL_CERT_NUMBER || '3211000038200522',
 }
 
 // Tarif ongkir berjenjang berdasarkan radius dari toko

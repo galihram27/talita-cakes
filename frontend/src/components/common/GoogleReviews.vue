@@ -189,13 +189,23 @@ const data = {
 <style scoped>
 .reviews-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #d1d5db transparent;
+  scrollbar-color: #e78fa6 rgba(185, 58, 60, 0.08);
 }
 .reviews-scroll::-webkit-scrollbar {
-  height: 6px;
+  height: 8px;
+}
+.reviews-scroll::-webkit-scrollbar-track {
+  background: rgba(185, 58, 60, 0.08);
+  border-radius: 9999px;
+  margin: 0 2px;
 }
 .reviews-scroll::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: linear-gradient(90deg, #f7b2c4, #e0607e);
   border-radius: 9999px;
+  transition: background 0.25s ease;
+}
+.reviews-scroll::-webkit-scrollbar-thumb:hover {
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(224, 96, 126, 0.5);
 }
 </style>

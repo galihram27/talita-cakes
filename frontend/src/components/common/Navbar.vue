@@ -56,7 +56,7 @@ const navLinks = computed(() => [
 
 <template>
   <header
-    class="sticky top-0 z-50 bg-cream-50/90 backdrop-blur-md border-b border-cream-300"
+    class="sticky top-0 z-50 bg-[#FADCEA]/90 backdrop-blur-md border-b border-[#F3C4DA]"
   >
     <div
       class="max-w-[1160px] mx-auto flex items-center gap-7 px-5 md:px-8 h-[72px]"
@@ -90,7 +90,7 @@ const navLinks = computed(() => [
           v-for="link in navLinks"
           :key="link.to"
           :to="link.to"
-          class="px-3 py-1.5 rounded-full text-cocoa-900 hover:text-cocoa-500 hover:bg-[#F0E3D6] transition-colors"
+          class="px-3 py-1.5 rounded-full text-cocoa-900 hover:text-cocoa-500 hover:bg-white/50 transition-colors"
           :exact-active-class="'text-brand-500 bg-brand-100'"
           :active-class="link.exact ? undefined : 'text-brand-500 bg-brand-100'"
         >
@@ -223,13 +223,13 @@ const navLinks = computed(() => [
     <!-- Mobile nav -->
     <nav
       v-if="isNavOpen"
-      class="md:hidden flex flex-col border-t border-cream-300 bg-cream-50 px-5 pt-2 pb-4"
+      class="md:hidden flex flex-col border-t border-[#F3C4DA] bg-[#FADCEA] px-5 pt-2 pb-4"
     >
       <RouterLink
         v-for="link in navLinks"
         :key="link.to"
         :to="link.to"
-        class="py-3 px-2 text-cocoa-900 font-bold border-b border-cream-200 hover:text-brand-500 transition-colors"
+        class="py-3 px-2 text-cocoa-900 font-bold border-b border-[#F3C4DA] hover:text-brand-500 transition-colors"
         @click="closeNav"
       >
         {{ link.label }}
