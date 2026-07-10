@@ -26,9 +26,16 @@ export const upsertVisitorLog = async (visitorId, date, userId) => {
 /**
  * Hitung total unique visitor sepanjang waktu (tanpa filter tanggal).
  * Dipakai untuk kebutuhan "total visitor sejak rilis".
+ *
+ * Catatan: 1 row visitor_logs = 1 visitor per HARI (unique constraint
+ * visitorId+date), jadi count row = jumlah "visitor-hari", bukan orang unik.
+ * Untuk total sejak rilis kita hitung visitorId yang DISTINCT.
  */
 export const countAllVisitors = async () => {
-   return prisma.visitorLog.count();
+   const [{ count }] = await prisma.$queryRaw`
+      SELECT COUNT(DISTINCT "visitorId")::int AS count FROM visitor_logs
+   `;
+   return count;
 };
 
 /**
