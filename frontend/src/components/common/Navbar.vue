@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from "vue";
-import { ShoppingCart, ChevronDown, User, LogOut, Menu } from "lucide-vue-next";
+import { ShoppingCart, ChevronDown, User, LogOut, Menu, X } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCartStore } from "@/stores/cart.store";
@@ -59,23 +59,25 @@ const navLinks = computed(() => [
     class="sticky top-0 z-50 bg-[#FDF2F7]/90 backdrop-blur-md border-b border-[#F5DCE8]"
   >
     <div
-      class="max-w-[1160px] mx-auto flex items-center gap-7 px-5 md:px-8 h-[72px]"
+      class="max-w-[1160px] mx-auto flex items-center gap-3 md:gap-7 px-5 md:px-8 h-[72px]"
     >
       <!-- Logo -->
       <RouterLink
         to="/"
-        class="flex items-center gap-3 text-cocoa-900 hover:opacity-70 transition-opacity"
+        class="flex items-center gap-2 md:gap-3 min-w-0 text-cocoa-900 hover:opacity-70 transition-opacity"
         @click="closeNav"
       >
         <img
           :src="logo"
           alt="Talita's Cake & Cupcakes"
-          class="h-[46px] w-[46px] object-contain"
+          class="h-[38px] w-[38px] md:h-[46px] md:w-[46px] object-contain shrink-0"
         />
         <span class="flex flex-col leading-tight">
-          <span class="font-display text-[19px]">Talita's Cake &amp; Cupcakes</span>
+          <span class="font-display text-[15px] md:text-[19px] leading-[1.15]"
+            >Talita's Cake<br class="md:hidden" /> &amp; Cupcakes</span
+          >
           <span
-            class="text-[10.5px] tracking-[0.14em] uppercase text-cocoa-400"
+            class="text-[9px] md:text-[10.5px] tracking-[0.14em] uppercase text-cocoa-400"
           >
             {{ t("nav.since") }}
           </span>
@@ -106,7 +108,7 @@ const navLinks = computed(() => [
       </nav>
 
       <!-- Right side -->
-      <div class="flex items-center gap-2.5 ml-auto md:ml-2">
+      <div class="flex items-center gap-2 md:gap-2.5 ml-auto md:ml-2 shrink-0">
         <!-- Language switcher -->
         <div
           class="hidden sm:inline-flex items-center h-[42px] p-1 rounded-full bg-white border border-[#EBDCCC] text-[12px] font-extrabold"
@@ -161,13 +163,13 @@ const navLinks = computed(() => [
         <RouterLink
           v-if="!authStore.isAuthenticated"
           to="/login"
-          class="inline-flex items-center h-[42px] px-5 rounded-full bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 transition-colors"
+          class="hidden md:inline-flex items-center h-[42px] px-5 rounded-full bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 transition-colors"
         >
           {{ t("nav.signIn") }}
         </RouterLink>
 
         <!-- LOGGED IN -->
-        <div v-else class="relative">
+        <div v-else class="relative hidden md:block">
           <button
             type="button"
             @click="toggleUserMenu"
@@ -214,16 +216,23 @@ const navLinks = computed(() => [
           type="button"
           @click="toggleNav"
           class="inline-flex md:hidden items-center justify-center w-[42px] h-[42px] rounded-full bg-white border border-[#EBDCCC] hover:border-brand-500 hover:bg-brand-100 transition-colors"
+          :aria-expanded="isNavOpen"
         >
-          <Menu class="w-5 h-5" stroke-width="1.7" />
+          <component
+            :is="isNavOpen ? X : Menu"
+            class="w-5 h-5 transition-transform duration-200"
+            stroke-width="1.7"
+          />
         </button>
       </div>
     </div>
 
     <!-- Mobile nav -->
+    <div class="md:hidden absolute left-0 right-0 top-full overflow-x-hidden z-40">
+    <Transition name="nav-slide">
     <nav
       v-if="isNavOpen"
-      class="md:hidden flex flex-col border-t border-[#F5DCE8] bg-[#FDF2F7] px-5 pt-2 pb-4"
+      class="flex flex-col border-t border-[#F5DCE8] bg-[#FDF2F7] shadow-[0_16px_30px_-16px_rgba(51,38,31,0.4)] px-5 pt-2 pb-4"
     >
       <RouterLink
         v-for="link in navLinks"
@@ -242,6 +251,34 @@ const navLinks = computed(() => [
       >
         🛠 {{ t("nav.adminPanel") }}
       </RouterLink>
+
+      <!-- Auth actions (mobile) -->
+      <RouterLink
+        v-if="!authStore.isAuthenticated"
+        to="/login"
+        class="mt-3 inline-flex items-center justify-center h-[44px] px-5 rounded-full bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 transition-colors"
+        @click="closeNav"
+      >
+        {{ t("nav.signIn") }}
+      </RouterLink>
+      <template v-else>
+        <RouterLink
+          to="/profile"
+          class="flex items-center gap-2.5 py-3 px-2 text-cocoa-900 font-bold border-b border-[#F5DCE8] hover:text-brand-500 transition-colors"
+          @click="closeNav"
+        >
+          <User class="w-4 h-4" stroke-width="1.8" />
+          {{ t("nav.profile") }}
+        </RouterLink>
+        <button
+          type="button"
+          @click="handleLogout"
+          class="flex items-center gap-2.5 py-3 px-2 text-left text-brand-500 font-bold hover:opacity-70 transition-opacity"
+        >
+          <LogOut class="w-4 h-4" stroke-width="1.8" />
+          {{ t("nav.logout") }}
+        </button>
+      </template>
 
       <!-- Language switcher (mobile) -->
       <div class="flex items-center gap-2 pt-3 sm:hidden">
@@ -271,5 +308,25 @@ const navLinks = computed(() => [
         </button>
       </div>
     </nav>
+    </Transition>
+    </div>
   </header>
 </template>
+
+<style scoped>
+.nav-slide-enter-active,
+.nav-slide-leave-active {
+  transition: transform 0.3s ease, opacity 0.25s ease;
+  overflow: hidden;
+}
+.nav-slide-enter-from,
+.nav-slide-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.nav-slide-enter-to,
+.nav-slide-leave-from {
+  transform: translateX(0);
+  opacity: 1;
+}
+</style>
