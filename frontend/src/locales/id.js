@@ -32,6 +32,7 @@ export default {
     tagline:
       "Kue rumahan penuh cinta sejak {since}. Setiap kue dibuat berdasarkan pesanan.",
     contact: "Kontak",
+    followUs: "Ikuti Kami",
     bottom:
       "© {year} Talita's Cake & Cupcakes · Pre-order 7 hari sebelumnya · Konfirmasi via WhatsApp",
     terms: "Syarat & Ketentuan",

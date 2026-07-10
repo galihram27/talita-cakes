@@ -32,6 +32,7 @@ export default {
     tagline:
       "Homemade cakes full of love since {since}. Every cake is made to order.",
     contact: "Contact",
+    followUs: "Follow Us",
     bottom:
       "© {year} Talita's Cake & Cupcakes · Pre-order 7 days ahead · Confirmed via WhatsApp",
     terms: "Terms & Conditions",
