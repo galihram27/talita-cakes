@@ -50,7 +50,7 @@ export default {
     items: [
       {
         q: "How far in advance should I order?",
-        a: "All cakes are made to order, so we recommend ordering at least 7 days before your desired date. For complex custom designs or busy dates (weekends & holiday seasons), the earlier the better to secure your slot.",
+        a: "All cakes are made to order, so we recommend ordering at least 3-7 days before your desired date. For complex custom designs or busy dates (weekends & holiday seasons), the earlier the better to secure your slot.\n\nNeed It Sooner?\nSome products may be available with shorter notice, depending on our production schedule.\nFeel free to contact us via WhatsApp, and we'll do our best to help.",
       },
       {
         q: "How do I place an order?",
@@ -455,6 +455,9 @@ export default {
     chooseShape: "1 · Choose shape",
     chooseSize: "2 · Choose size",
     chooseFlavor: "Choose flavor",
+    flavorGuide: "Flavor guide",
+    flavorGuideTitle: "Flavor Guide",
+    close: "Close",
     shape: "Shape",
     size: "Size",
     pricePlaceholder: "Select shape & size to see the price",
@@ -724,6 +727,7 @@ export default {
       description: "Description",
       descriptionId: "Description (Indonesian)",
       descriptionEn: "Description (English)",
+      descriptionHint: "Press Enter for a new line. Leave a blank line to start a new paragraph.",
       images: "Images",
       uploading: "Uploading...",
       upload: "Upload Image",

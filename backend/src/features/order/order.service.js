@@ -4,7 +4,7 @@ import * as orderRepository from './order.repository.js';
 import * as cartRepository from '../cart/cart.repository.js';
 import { checkoutSchema, previewSchema } from './order.validation.js';
 import { calculateDeliveryFee, MAX_DELIVERY_DISTANCE_KM } from './order.helper.js';
-import { calculateDistanceKm } from '../../utils/distance.js';
+import { getDeliveryDistanceKm } from '../../utils/distance.js';
 import { STORE_LOCATION, OWNER_WHATSAPP_NUMBER } from '../../config/store.config.js';
 import { buildWhatsappMessage, buildWhatsappLink } from '../../utils/whatsapp.js';
 
@@ -46,7 +46,7 @@ const buildOrderCalculation = async (userId, payload, schema = checkoutSchema) =
   let deliveryFee = 0;
 
   if (data.fulfillmentType === 'DELIVERY') {
-    distanceKm = calculateDistanceKm(
+    distanceKm = await getDeliveryDistanceKm(
       STORE_LOCATION.lat,
       STORE_LOCATION.lng,
       data.addressLat,

@@ -46,7 +46,7 @@ const toggle = (i) => (openIndex.value = openIndex.value === i ? -1 : i)
           />
         </button>
         <div v-if="openIndex === i" class="px-5 pb-5 -mt-1">
-          <p class="text-[15px] leading-[1.8] text-[#6E5A4D]">
+          <p class="text-[15px] leading-[1.8] text-[#6E5A4D] whitespace-pre-line">
             {{ rt(item.a) }}
           </p>
         </div>

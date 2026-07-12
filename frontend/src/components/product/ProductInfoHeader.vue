@@ -32,6 +32,6 @@ const shownDescription = computed(() =>
       {{ typeLabel(type) }}
     </span>
     <h1 class="font-display text-[38px] leading-tight mt-3.5 mb-2.5">{{ name }}</h1>
-    <p class="text-[15.5px] text-[#6E5A4D] leading-relaxed mb-7">{{ shownDescription }}</p>
+    <p class="text-[15.5px] text-[#6E5A4D] leading-relaxed mb-7 whitespace-pre-line">{{ shownDescription }}</p>
   </div>
 </template>

@@ -34,3 +34,31 @@ export const CUSTOM_FLAVORS = [
   'Vanilla Double Cheese',
   'Oreo Cheese',
 ]
+
+// Penjelasan rasa untuk popup di halaman detail produk (TYPE2 & TYPE4)
+export const FLAVOR_DESCRIPTIONS = {
+  Blackforest: {
+    id: 'Cake coklat lembut dengan lapisan Blueberry Jam dan Blueberry Cream yang manis, segar, dan seimbang.',
+    en: 'Soft chocolate cake layered with Blueberry Jam and Blueberry Cream for a perfectly balanced sweet and fruity flavor.',
+  },
+  'Double Choco Cream': {
+    id: 'Cake coklat lembut dengan lapisan Homemade Chocolate Ganache dan Choco Cream yang kaya rasa dan creamy.',
+    en: 'Soft chocolate cake layered with Homemade Chocolate Ganache and Choco Cream for a rich, creamy chocolate experience.',
+  },
+  'Oreo Choco': {
+    id: 'Cake coklat lembut dengan lapisan Homemade Chocolate Ganache dan Oreo Crumble yang renyah di setiap gigitan.',
+    en: 'Soft chocolate cake layered with Homemade Chocolate Ganache and crunchy Oreo Crumble for extra texture and flavor.',
+  },
+  'Snow White Double Cheese': {
+    id: 'Cake vanilla lembut dengan lapisan Cheddar Cream Cheese dan Strawberry Jam yang memadukan rasa gurih dan segar.',
+    en: 'Soft vanilla cake layered with Cheddar Cream Cheese and Strawberry Jam for a delightful sweet and savory combination.',
+  },
+  'Vanilla Double Cheese': {
+    id: 'Cake vanilla lembut dengan lapisan Cheddar Cream Cheese di setiap layer, menghadirkan rasa creamy dan gurih yang lembut.',
+    en: 'Soft vanilla cake layered with Cheddar Cream Cheese in every layer for a smooth, creamy, and cheesy flavor.',
+  },
+  'Oreo Cheese': {
+    id: 'Cake vanilla lembut dengan lapisan Cheddar Cream Cheese dan Oreo Crumble yang creamy dengan sentuhan renyah.',
+    en: 'Soft vanilla cake layered with Cheddar Cream Cheese and crunchy Oreo Crumble for a creamy flavor with a satisfying crunch.',
+  },
+}

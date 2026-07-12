@@ -50,7 +50,7 @@ export default {
     items: [
       {
         q: "Berapa lama sebelumnya saya harus memesan?",
-        a: "Seluruh kue dibuat berdasarkan pesanan, jadi kami menyarankan memesan minimal 7 hari sebelum tanggal yang Anda inginkan. Untuk desain custom yang rumit atau tanggal ramai (akhir pekan & musim perayaan), semakin awal semakin baik agar slot Anda terjamin.",
+        a: "Seluruh kue dibuat berdasarkan pesanan, jadi kami menyarankan memesan minimal 3-7 hari sebelum tanggal yang Anda inginkan. Untuk desain custom yang rumit atau tanggal ramai (akhir pekan & musim perayaan), semakin awal semakin baik agar slot Anda terjamin.\n\nButuh Lebih Cepat?\nBeberapa produk mungkin tersedia dengan pemberitahuan yang lebih singkat, tergantung jadwal produksi kami.\nJangan ragu menghubungi kami melalui WhatsApp, dan kami akan berusaha sebaik mungkin untuk membantu.",
       },
       {
         q: "Bagaimana cara memesan?",
@@ -456,6 +456,9 @@ export default {
     chooseShape: "1 · Pilih bentuk",
     chooseSize: "2 · Pilih ukuran",
     chooseFlavor: "Pilih rasa",
+    flavorGuide: "Penjelasan rasa",
+    flavorGuideTitle: "Penjelasan Rasa",
+    close: "Tutup",
     shape: "Bentuk",
     size: "Ukuran",
     pricePlaceholder: "Pilih bentuk & ukuran untuk melihat harga",
@@ -725,6 +728,7 @@ export default {
       description: "Deskripsi",
       descriptionId: "Deskripsi (Indonesia)",
       descriptionEn: "Deskripsi (English)",
+      descriptionHint: "Tekan Enter untuk baris baru. Beri satu baris kosong untuk memulai paragraf baru.",
       images: "Gambar",
       uploading: "Mengunggah...",
       upload: "Unggah Gambar",

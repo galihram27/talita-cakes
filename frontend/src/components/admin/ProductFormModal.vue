@@ -447,8 +447,9 @@ const close = () => {
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.descriptionId') }}</label>
           <textarea
             v-model="form.description"
-            rows="3"
-            class="w-full rounded-2xl border border-cream-300 px-4 py-3 text-sm focus:outline-none resize-none"
+            rows="4"
+            :placeholder="t('admin.productForm.descriptionHint')"
+            class="w-full rounded-2xl border border-cream-300 px-4 py-3 text-sm focus:outline-none resize-y whitespace-pre-line"
           ></textarea>
         </div>
 
@@ -457,8 +458,9 @@ const close = () => {
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.descriptionEn') }}</label>
           <textarea
             v-model="form.descriptionEn"
-            rows="3"
-            class="w-full rounded-2xl border border-cream-300 px-4 py-3 text-sm focus:outline-none resize-none"
+            rows="4"
+            :placeholder="t('admin.productForm.descriptionHint')"
+            class="w-full rounded-2xl border border-cream-300 px-4 py-3 text-sm focus:outline-none resize-y whitespace-pre-line"
           ></textarea>
         </div>
 
