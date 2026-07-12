@@ -177,22 +177,13 @@ const confirmDelete = async () => {
 <template>
   <div>
     <!-- HEADER -->
-    <div class="flex items-center justify-between gap-4 mb-8">
+    <div class="mb-8">
       <h1 class="text-4xl">{{ t('admin.products.title') }}</h1>
-
-      <button
-        type="button"
-        @click="openAddModal"
-        class="inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-5 py-2.5 text-sm font-bold hover:bg-brand-600 transition-colors shrink-0"
-      >
-        <Plus class="w-4 h-4" stroke-width="2.4" />
-        {{ t('admin.products.add') }}
-      </button>
     </div>
 
     <!-- SEARCH & FILTER -->
-    <div class="flex flex-col sm:flex-row gap-3 mb-6">
-      <div class="relative flex-1">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+      <div class="relative w-full sm:w-80">
         <Search class="w-4 h-4 text-cocoa-400 absolute left-4 top-1/2 -translate-y-1/2" />
         <input
           v-model="searchQuery"
@@ -215,6 +206,15 @@ const confirmDelete = async () => {
           class="w-4 h-4 text-cocoa-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
         />
       </div>
+
+      <button
+        type="button"
+        @click="openAddModal"
+        class="inline-flex items-center justify-center gap-2 rounded-full bg-brand-500 text-white px-5 py-2.5 text-sm font-bold hover:bg-brand-600 transition-colors shrink-0 w-full sm:w-auto sm:ml-auto"
+      >
+        <Plus class="w-4 h-4" stroke-width="2.4" />
+        {{ t('admin.products.add') }}
+      </button>
     </div>
 
     <!-- LOADING -->

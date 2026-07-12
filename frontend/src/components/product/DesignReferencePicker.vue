@@ -82,7 +82,7 @@ const remove = () => emit('update:modelValue', null)
       class="flex items-center gap-3.5 border border-cream-300 bg-white rounded-xl px-3.5 py-3"
     >
       <span
-        class="relative w-14 aspect-[3/4] rounded-lg overflow-hidden shrink-0 bg-[repeating-linear-gradient(45deg,#F6EDE4_0_8px,#F0E3D6_8px_16px)]"
+        class="relative w-14 aspect-square rounded-lg overflow-hidden shrink-0 bg-[repeating-linear-gradient(45deg,#F6EDE4_0_8px,#F0E3D6_8px_16px)]"
       >
         <img
           :src="modelValue.url"

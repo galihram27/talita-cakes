@@ -73,7 +73,7 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
   <div class="w-full max-w-sm mx-auto md:mx-0 md:sticky md:top-24">
     <!-- FOTO UTAMA -->
     <div
-      class="relative aspect-[3/4] rounded-[20px] border border-cream-300 overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_10px,#F0E3D6_10px_20px)]"
+      class="relative aspect-square rounded-[20px] border border-cream-300 overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_10px,#F0E3D6_10px_20px)]"
       @mouseenter="showControls"
       @mouseleave="scheduleHideControls"
     >
@@ -130,7 +130,7 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
         :key="index"
         type="button"
         @click="goTo(index)"
-        class="w-[72px] aspect-[3/4] rounded-[10px] border-2 overflow-hidden transition-colors bg-[repeating-linear-gradient(45deg,#F6EDE4_0_8px,#F0E3D6_8px_16px)]"
+        class="w-[72px] aspect-square rounded-[10px] border-2 overflow-hidden transition-colors bg-[repeating-linear-gradient(45deg,#F6EDE4_0_8px,#F0E3D6_8px_16px)]"
         :class="index === activeIndex ? 'border-brand-500' : 'border-transparent hover:border-brand-500'"
       >
         <img :src="img" :alt="`${alt} ${index + 1}`" class="w-full h-full object-cover" />

@@ -14,6 +14,8 @@ const email = ref('')
 const phone = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 const acceptedTerms = ref(false)
 
 const errorMessage = ref('')
@@ -118,7 +120,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="tc-page min-h-screen bg-page flex flex-col items-center justify-start px-5 pt-12 pb-20">
+  <div class="tc-page min-h-screen bg-[#FDF2F7] flex flex-col items-center justify-start px-5 pt-12 pb-20">
     <!-- LOGO -->
     <RouterLink to="/" class="flex flex-col items-center gap-3 mb-6">
       <img
@@ -204,19 +206,39 @@ const handleSubmit = async () => {
         <!-- PASSWORD -->
         <div>
           <label for="password" class="block font-extrabold text-[13.5px] mb-1.5">{{ t('auth.login.password') }}</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            :placeholder="t('auth.register.passwordPlaceholder')"
-            autocomplete="new-password"
-            @blur="touched.password = true"
-            :aria-invalid="!!passwordError"
-            :class="[
-              'w-full rounded-xl border-[1.5px] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]',
-              passwordError ? 'border-brand-500' : 'border-[#E4D3C1]',
-            ]"
-          />
+          <div class="relative">
+            <input
+              id="password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              :placeholder="t('auth.register.passwordPlaceholder')"
+              autocomplete="new-password"
+              @blur="touched.password = true"
+              :aria-invalid="!!passwordError"
+              :class="[
+                'w-full rounded-xl border-[1.5px] bg-white pl-4 pr-11 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]',
+                passwordError ? 'border-brand-500' : 'border-[#E4D3C1]',
+              ]"
+            />
+            <button
+              type="button"
+              @click="showPassword = !showPassword"
+              :aria-label="showPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')"
+              :aria-pressed="showPassword"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#B7A18E] hover:text-cocoa-900"
+            >
+              <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                <path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                <line x1="2" y1="2" x2="22" y2="22" />
+              </svg>
+            </button>
+          </div>
           <p v-if="passwordError" class="mt-1.5 text-brand-500 text-[12.5px] font-bold">
             {{ passwordError }}
           </p>
@@ -227,19 +249,39 @@ const handleSubmit = async () => {
           <label for="confirmPassword" class="block font-extrabold text-[13.5px] mb-1.5">
             {{ t('auth.register.confirmPassword') }}
           </label>
-          <input
-            id="confirmPassword"
-            v-model="confirmPassword"
-            type="password"
-            :placeholder="t('auth.register.confirmPasswordPlaceholder')"
-            autocomplete="new-password"
-            @blur="touched.confirmPassword = true"
-            :aria-invalid="!!confirmPasswordError"
-            :class="[
-              'w-full rounded-xl border-[1.5px] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]',
-              confirmPasswordError ? 'border-brand-500' : 'border-[#E4D3C1]',
-            ]"
-          />
+          <div class="relative">
+            <input
+              id="confirmPassword"
+              v-model="confirmPassword"
+              :type="showConfirmPassword ? 'text' : 'password'"
+              :placeholder="t('auth.register.confirmPasswordPlaceholder')"
+              autocomplete="new-password"
+              @blur="touched.confirmPassword = true"
+              :aria-invalid="!!confirmPasswordError"
+              :class="[
+                'w-full rounded-xl border-[1.5px] bg-white pl-4 pr-11 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]',
+                confirmPasswordError ? 'border-brand-500' : 'border-[#E4D3C1]',
+              ]"
+            />
+            <button
+              type="button"
+              @click="showConfirmPassword = !showConfirmPassword"
+              :aria-label="showConfirmPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')"
+              :aria-pressed="showConfirmPassword"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#B7A18E] hover:text-cocoa-900"
+            >
+              <svg v-if="!showConfirmPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                <path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                <line x1="2" y1="2" x2="22" y2="22" />
+              </svg>
+            </button>
+          </div>
           <p v-if="confirmPasswordError" class="mt-1.5 text-brand-500 text-[12.5px] font-bold">
             {{ confirmPasswordError }}
           </p>

@@ -97,6 +97,10 @@ model Product {
   name        String
   description String
 
+  // deskripsi versi Inggris. Default "" hanya supaya data lama aman saat
+  // migrasi; wajib diisi via validasi app layer (product.validation.js).
+  descriptionEn String @default("")
+
   // image = foto utama / cover (dipakai di listing, card, keranjang).
   // Selalu di-sync dari images[0] di app layer, jadi tetap kompatibel
   // dengan konsumen lama yang masih membaca `image`.

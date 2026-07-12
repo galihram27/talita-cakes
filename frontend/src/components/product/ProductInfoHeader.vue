@@ -1,7 +1,8 @@
 <script setup>
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // label tipe memakai kamus yang sama dengan kartu tipe di HomeView
 const typeLabel = (type) => {
@@ -9,11 +10,18 @@ const typeLabel = (type) => {
   return num ? t(`home.types.t${num}.tag`) : type
 }
 
-defineProps({
+const props = defineProps({
   type: { type: String, required: true },
   name: { type: String, required: true },
   description: { type: String, default: '' },
+  descriptionEn: { type: String, default: '' },
 })
+
+// deskripsi mengikuti bahasa aktif; fallback ke versi Indonesia
+// untuk data lama yang versi Inggrisnya masih kosong
+const shownDescription = computed(() =>
+  locale.value === 'en' && props.descriptionEn ? props.descriptionEn : props.description
+)
 </script>
 
 <template>
@@ -24,6 +32,6 @@ defineProps({
       {{ typeLabel(type) }}
     </span>
     <h1 class="font-display text-[38px] leading-tight mt-3.5 mb-2.5">{{ name }}</h1>
-    <p class="text-[15.5px] text-[#6E5A4D] leading-relaxed mb-7">{{ description }}</p>
+    <p class="text-[15.5px] text-[#6E5A4D] leading-relaxed mb-7">{{ shownDescription }}</p>
   </div>
 </template>

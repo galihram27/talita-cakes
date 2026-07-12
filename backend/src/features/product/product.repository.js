@@ -47,6 +47,7 @@ export const searchProductsByKeyword = async (keyword) => {
   const orConditions = [
     { name: { contains: keyword, mode: 'insensitive' } },
     { description: { contains: keyword, mode: 'insensitive' } },
+    { descriptionEn: { contains: keyword, mode: 'insensitive' } },
     { flavor: { contains: keyword, mode: 'insensitive' } },
     { category: { contains: keyword, mode: 'insensitive' } },
   ];

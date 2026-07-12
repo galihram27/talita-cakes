@@ -1,12 +1,15 @@
 import { createI18n } from "vue-i18n";
 import en from "@/locales/en";
 import id from "@/locales/id";
-// Teks Home (ID) dipisah ke file sendiri agar mudah diedit owner tanpa
-// menyentuh id.js. File ini menimpa bagian `home` di id.js.
-import idHome from "@/locales/id/home.js";
+// Teks yang bisa diedit owner (per halaman) ditaruh di folder locales/id/.
+// File-file ini MENIMPA bagian yang sama di id.js. id.js sendiri tidak diubah.
+import idAbout from "@/locales/id/about.js";
 
-// Gabungkan: pakai semua teks id.js, tapi bagian `home` diambil dari idHome.
-const idMessages = { ...id, home: idHome };
+// Pakai semua teks id.js, lalu timpa bagian tertentu dengan file editable owner.
+const idMessages = {
+  ...id,
+  about: idAbout,
+};
 
 const STORAGE_KEY = "talita_locale";
 

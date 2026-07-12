@@ -103,7 +103,7 @@ const handleVerifyOtp = async () => {
 </script>
 
 <template>
-  <div class="tc-page min-h-screen bg-page flex flex-col items-center justify-start px-5 pt-12 pb-20">
+  <div class="tc-page min-h-screen bg-[#FDF2F7] flex flex-col items-center justify-start px-5 pt-12 pb-20">
     <!-- LOGO -->
     <RouterLink to="/" class="flex flex-col items-center gap-3 mb-6">
       <img

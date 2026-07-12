@@ -43,6 +43,7 @@ const form = reactive({
   type: 'TYPE1',
   name: '',
   description: '',
+  descriptionEn: '',
   images: [], // banyak foto per produk; foto pertama = cover
   category: '',
   flavor: '',
@@ -163,6 +164,7 @@ const resetForm = () => {
       type: 'TYPE1',
       name: '',
       description: '',
+      descriptionEn: '',
       images: [],
       category: '',
       flavor: '',
@@ -180,6 +182,7 @@ const resetForm = () => {
     type: p.type,
     name: p.name ?? '',
     description: p.description ?? '',
+    descriptionEn: p.descriptionEn ?? '',
     images: prefillImages,
     category: p.category ?? '',
     flavor: p.flavor ?? '',
@@ -272,6 +275,7 @@ const buildVariantList = () => {
 const validate = () => {
   if (!form.name.trim()) return t('admin.productForm.nameRequired')
   if (!form.description.trim()) return t('admin.productForm.descriptionRequired')
+  if (!form.descriptionEn.trim()) return t('admin.productForm.descriptionEnRequired')
   if (!form.images.length) return t('admin.productForm.imageRequired')
   if (!form.category) return t('admin.productForm.categoryRequired')
   if (showFlavor.value && !form.flavor.trim()) return t('admin.productForm.flavorRequired')
@@ -299,6 +303,7 @@ const buildPayload = () => {
   const base = {
     name: form.name.trim(),
     description: form.description.trim(),
+    descriptionEn: form.descriptionEn.trim(),
     images: [...form.images],
     category: form.category,
     discount: Number(form.discount) || 0,
@@ -437,11 +442,21 @@ const close = () => {
           />
         </div>
 
-        <!-- DESCRIPTION -->
+        <!-- DESCRIPTION (ID) -->
         <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.description') }}</label>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.descriptionId') }}</label>
           <textarea
             v-model="form.description"
+            rows="3"
+            class="w-full rounded-2xl border border-cream-300 px-4 py-3 text-sm focus:outline-none resize-none"
+          ></textarea>
+        </div>
+
+        <!-- DESCRIPTION (EN) -->
+        <div>
+          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.descriptionEn') }}</label>
+          <textarea
+            v-model="form.descriptionEn"
             rows="3"
             class="w-full rounded-2xl border border-cream-300 px-4 py-3 text-sm focus:outline-none resize-none"
           ></textarea>

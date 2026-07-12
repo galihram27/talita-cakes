@@ -94,7 +94,7 @@ const stats = computed(() => [
         class="flex flex-col gap-2 bg-white border border-cream-300 rounded-2xl p-5 text-cocoa-900 hover:border-brand-500 transition-colors"
       >
         <span class="w-11 h-11 flex items-center justify-center">
-          <img :src="whatsappIcon" alt="WhatsApp" class="w-6 h-6 object-contain" />
+          <img :src="whatsappIcon" alt="WhatsApp" class="w-9 h-9 object-contain" />
         </span>
         <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
           WhatsApp
@@ -145,7 +145,7 @@ const stats = computed(() => [
         class="flex flex-col gap-2 bg-white border border-cream-300 rounded-2xl p-5 text-cocoa-900 hover:border-brand-500 transition-colors"
       >
         <span class="w-11 h-11 flex items-center justify-center">
-          <img :src="tiktokIcon" alt="TikTok" class="w-6 h-6 object-contain" />
+          <img :src="tiktokIcon" alt="TikTok" class="w-9 h-9 object-contain" />
         </span>
         <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
           TikTok
@@ -159,7 +159,7 @@ const stats = computed(() => [
         class="flex flex-col gap-2 bg-white border border-cream-300 rounded-2xl p-5 text-cocoa-900"
       >
         <span class="w-11 h-11 flex items-center justify-center">
-          <img :src="addressIcon" alt="Store" class="w-6 h-6 object-contain" />
+          <img :src="addressIcon" alt="Store" class="w-9 h-9 object-contain" />
         </span>
         <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
           {{ t('about.store') }}

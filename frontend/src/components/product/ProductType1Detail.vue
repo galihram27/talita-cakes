@@ -62,7 +62,7 @@ const handleSubmit = async () => {
     <ProductImage :image="product.image" :images="product.images" :alt="product.name" />
 
     <div>
-      <ProductInfoHeader :type="product.type" :name="product.name" :description="product.description" />
+      <ProductInfoHeader :type="product.type" :name="product.name" :description="product.description" :description-en="product.descriptionEn" />
 
       <ProductPriceDisplay
         :price="finalPrice"

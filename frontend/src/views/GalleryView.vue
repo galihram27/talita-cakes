@@ -169,7 +169,7 @@ const downloadImage = async (item) => {
           :key="item.id"
           type="button"
           @click="openDetail(item)"
-          class="group relative aspect-[3/4] rounded-2xl border border-cream-300 overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_10px,#F0E3D6_10px_20px)] transition-all hover:shadow-[0_16px_32px_-16px_rgba(88,46,35,0.3)] hover:-translate-y-0.5"
+          class="group relative aspect-square rounded-2xl border border-cream-300 overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_10px,#F0E3D6_10px_20px)] transition-all hover:shadow-[0_16px_32px_-16px_rgba(88,46,35,0.3)] hover:-translate-y-0.5"
         >
           <img
             :src="item.imageUrl"

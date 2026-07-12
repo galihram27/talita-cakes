@@ -48,9 +48,9 @@ const getDisplaySize = () => {
     :to="{ name: 'product-detail', params: { id: product.id } }"
     class="group flex flex-col bg-white border border-cream-300 rounded-2xl overflow-hidden text-cocoa-900 transition-all duration-150 hover:shadow-[0_16px_32px_-16px_rgba(88,46,35,0.3)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
   >
-    <!-- IMAGE (rasio 3:4) -->
+    <!-- IMAGE (rasio 1:1) -->
     <div
-      class="relative aspect-[3/4] overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_10px,#F0E3D6_10px_20px)]"
+      class="relative aspect-square overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_10px,#F0E3D6_10px_20px)]"
     >
       <img
         v-if="product.image"

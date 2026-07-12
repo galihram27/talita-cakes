@@ -28,7 +28,7 @@ const withDerivedCover = (fields) => {
  * Membuat produk baru beserta variannya berdasarkan tipe produk.
  */
 export const createProduct = async (payload) => {
-  const { type, name, description, images, discount, flavor, category } = payload;
+  const { type, name, description, descriptionEn, images, discount, flavor, category } = payload;
 
   let variantsData = [];
 
@@ -51,6 +51,7 @@ export const createProduct = async (payload) => {
     type,
     name,
     description,
+    descriptionEn,
     // cover di-sync dari foto pertama; images menyimpan seluruh galeri
     image: images[0],
     images,
