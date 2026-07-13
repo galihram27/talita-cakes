@@ -73,8 +73,8 @@ export default {
         a: "Bisa. Anda dapat memilih mengambil pesanan langsung di toko kami pada waktu yang disepakati. Alamat toko tersedia di halaman Tentang Kami.",
       },
       {
-        q: "Bagaimana kebijakan pembatalan dan pengembalian dana?",
-        a: "Pembatalan dapat dilakukan minimal 3 hari sebelum tanggal pengiriman untuk pengembalian dana sebagian, setelah dikurangi biaya bahan dan persiapan. Pembatalan kurang dari 3 hari atau setelah produksi dimulai tidak dapat dikembalikan.",
+        q: "Kebijakan Pembatalan Pesanan",
+        a: "Setiap pesanan di Talita's Cake & Cupcakes dibuat khusus setelah pesanan dikonfirmasi, sehingga kami akan langsung menjadwalkan produksi, menyiapkan bahan baku, dan mengalokasikan slot pengerjaan sesuai tanggal yang dipilih.\n\nOleh karena itu, mohon diperhatikan bahwa:\n\n• Pesanan yang telah dikonfirmasi tidak dapat dibatalkan.\n• Apabila terdapat perubahan rencana, pesanan dapat dijadwalkan ulang ke tanggal lain sesuai dengan ketersediaan slot produksi.\n• Apabila pelanggan tetap memilih untuk membatalkan pesanan secara sepihak, maka seluruh pembayaran yang telah diterima tidak dapat dikembalikan (non-refundable) dan dianggap hangus.\n\nTerima kasih atas pengertiannya. Kebijakan ini dibuat agar kami dapat menjaga kualitas, ketersediaan bahan, dan jadwal produksi untuk seluruh pelanggan.",
       },
       {
         q: "Bagaimana dengan alergi makanan?",

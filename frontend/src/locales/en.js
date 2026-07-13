@@ -73,8 +73,8 @@ export default {
         a: "Yes. You may choose to pick up your order directly at our store at an agreed time. Our store address is available on the About Us page.",
       },
       {
-        q: "What is your cancellation and refund policy?",
-        a: "Cancellations can be made at least 3 days before the delivery date for a partial refund, after deducting ingredient and preparation costs. Cancellations less than 3 days before, or after production has begun, are non-refundable.",
+        q: "Cancellation & Reschedule Policy",
+        a: "Every order at Talita's Cake is freshly prepared and scheduled specifically for your requested date. Once an order has been confirmed, ingredients, production time, and delivery slots are reserved exclusively for you.\n\nPlease note:\n\n• Orders cannot be cancelled once they have been confirmed.\n• If you are unable to proceed on the original date, your order may be rescheduled to another available date, subject to our production schedule.\n• If the order is cancelled unilaterally by the customer, all payments that have been made are non-refundable and will be considered forfeited.\n\nThank you for your understanding and for supporting our handcrafted, made-to-order cakes.",
       },
       {
         q: "What about food allergies?",
