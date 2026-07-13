@@ -5,7 +5,7 @@ const toRad = (deg) => (deg * Math.PI) / 180;
 
 /**
  * Hitung jarak garis lurus (bukan jarak jalan/rute) antara 2 titik koordinat.
- * Dipakai sebagai FALLBACK kalau OpenRouteService tidak tersedia / gagal.
+ * Dipakai sebagai FALLBACK kalau HERE Routing tidak tersedia / gagal.
  */
 export const calculateDistanceKm = (lat1, lng1, lat2, lng2) => {
   const dLat = toRad(lat2 - lat1);
@@ -20,83 +20,85 @@ export const calculateDistanceKm = (lat1, lng1, lat2, lng2) => {
   return EARTH_RADIUS_KM * c;
 };
 
-// Endpoint OpenRouteService Matrix. Profil driving-car = jarak rute mengikuti
-// jalan (untuk tarif ongkir berjenjang, praktis setara jalur motor).
-const ORS_MATRIX_URL =
-  'https://api.openrouteservice.org/v2/matrix/driving-car';
+// Endpoint HERE Routing v8. transportMode=scooter = rute kendaraan roda dua
+// (motor/skuter), lebih akurat untuk ongkir dibanding profil mobil.
+const HERE_ROUTES_URL = 'https://router.hereapi.com/v8/routes';
 
-// Timeout panggilan API supaya checkout tidak menggantung kalau ORS lambat.
+// Timeout panggilan API supaya checkout tidak menggantung kalau HERE lambat.
 const ROUTE_API_TIMEOUT_MS = 8000;
 
 /**
- * Hitung jarak rute jalan (km) via OpenRouteService Matrix API.
+ * Hitung jarak rute motor (km) via HERE Routing API (mode scooter).
  * Mengembalikan angka km bila sukses, atau `null` bila:
- * - ORS_API_KEY belum di-set,
- * - API error / timeout / kena limit harian,
+ * - HERE_API_KEY belum di-set,
+ * - API error / timeout / kena limit,
  * - rute tidak ditemukan.
  * Caller wajib menyiapkan fallback (lihat getDeliveryDistanceKm).
- *
- * Catatan: ORS memakai urutan koordinat [longitude, latitude] (bukan lat,lng).
  */
-const getRouteDistanceKmOrs = async (lat1, lng1, lat2, lng2) => {
-  const apiKey = process.env.ORS_API_KEY;
+const getRouteDistanceKmHere = async (lat1, lng1, lat2, lng2) => {
+  const apiKey = process.env.HERE_API_KEY;
   if (!apiKey) return null;
 
   try {
-    const res = await fetch(ORS_MATRIX_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: apiKey,
-      },
-      body: JSON.stringify({
-        // urutan ORS: [lng, lat]
-        locations: [
-          [lng1, lat1],
-          [lng2, lat2],
-        ],
-        sources: [0], // dari toko
-        destinations: [1], // ke lokasi pelanggan
-        metrics: ['distance'],
-        units: 'km',
-      }),
+    const params = new URLSearchParams({
+      transportMode: 'scooter',
+      origin: `${lat1},${lng1}`,
+      destination: `${lat2},${lng2}`,
+      return: 'summary', // cukup ringkasan (panjang & durasi), tanpa geometri
+      apikey: apiKey,
+    });
+
+    const res = await fetch(`${HERE_ROUTES_URL}?${params.toString()}`, {
+      method: 'GET',
       signal: AbortSignal.timeout(ROUTE_API_TIMEOUT_MS),
     });
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       console.warn(
-        `[distance] ORS Matrix HTTP ${res.status} -> fallback garis lurus. ${body.slice(0, 200)}`
+        `[distance] HERE Routing HTTP ${res.status} -> fallback garis lurus. ${body.slice(0, 200)}`
       );
       return null;
     }
 
     const data = await res.json();
-    // distances = [[jarak_toko_ke_pelanggan]] (km, karena units: 'km')
-    const km = data?.distances?.[0]?.[0];
+    const sections = data?.routes?.[0]?.sections;
 
-    if (typeof km !== 'number' || Number.isNaN(km)) {
+    if (!Array.isArray(sections) || sections.length === 0) {
       console.warn(
-        '[distance] ORS Matrix: jarak tidak valid / rute tidak ditemukan -> fallback garis lurus'
+        '[distance] HERE Routing: rute tidak ditemukan -> fallback garis lurus'
       );
       return null;
     }
 
-    return km;
+    // total panjang (meter) = jumlah length semua section rute
+    const meters = sections.reduce(
+      (sum, s) => sum + (s?.summary?.length ?? 0),
+      0
+    );
+
+    if (!meters || meters <= 0) {
+      console.warn(
+        '[distance] HERE Routing: panjang rute tidak valid -> fallback garis lurus'
+      );
+      return null;
+    }
+
+    return meters / 1000;
   } catch (err) {
     console.warn(
-      `[distance] ORS Matrix error: ${err.message} -> fallback garis lurus`
+      `[distance] HERE Routing error: ${err.message} -> fallback garis lurus`
     );
     return null;
   }
 };
 
 /**
- * Jarak untuk perhitungan ongkir: pakai rute jalan (OpenRouteService) bila bisa,
+ * Jarak untuk perhitungan ongkir: pakai rute motor (HERE, mode scooter) bila bisa,
  * kalau tidak jatuh ke jarak garis lurus (haversine) supaya checkout tetap jalan.
  */
 export const getDeliveryDistanceKm = async (lat1, lng1, lat2, lng2) => {
-  const routeKm = await getRouteDistanceKmOrs(lat1, lng1, lat2, lng2);
+  const routeKm = await getRouteDistanceKmHere(lat1, lng1, lat2, lng2);
   if (routeKm != null) return routeKm;
   return calculateDistanceKm(lat1, lng1, lat2, lng2);
 };

@@ -49,7 +49,7 @@ const storeIcon = L.divIcon({
 // Lokasi toko (Sukamaju, Cilodong, Depok). Dipakai untuk pusat peta awal &
 // penanda toko. Perhitungan jarak/ongkir tetap dilakukan backend dari
 // STORE_LOCATION di env — nilai ini harus sinkron dengan STORE_LATITUDE/LONGITUDE.
-const STORE_LOCATION = { lat: -6.418, lng: 106.851 }
+const STORE_LOCATION = { lat: -6.398744125589499, lng: 106.85493737965412 }
 const DEFAULT_MAP_CENTER = STORE_LOCATION
 
 const router = useRouter()
