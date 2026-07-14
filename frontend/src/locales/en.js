@@ -388,7 +388,7 @@ export default {
     empty: "No images in the gallery yet.",
     loadMore: "Load More",
     loadingMore: "Loading...",
-    download: "⬇ Download Image",
+    download: "Download Image",
     downloading: "Downloading...",
     picker: {
       title: "Choose from Gallery",

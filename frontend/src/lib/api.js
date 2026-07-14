@@ -63,6 +63,18 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null)
         authStore.clearSession() // refresh token juga invalid -> logout paksa
+
+        // Sesi benar-benar habis / guest melakukan aksi yang butuh login (mis.
+        // menambah produk ke keranjang). Alih-alih membiarkan pesan mentah
+        // "Refresh token required" muncul, arahkan ke halaman login sambil
+        // menyimpan halaman saat ini di query.redirect supaya bisa balik ke
+        // sini setelah login (LoginView membaca route.query.redirect).
+        // Dynamic import router: hindari circular dependency api <-> router.
+        const { default: router } = await import('@/router')
+        const current = router.currentRoute.value
+        if (current.name !== 'login') {
+          router.push({ name: 'login', query: { redirect: current.fullPath } })
+        }
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

@@ -86,7 +86,7 @@ const whyChoose = computed(() =>
     <!-- HERO -->
     <section class="relative">
       <div
-        class="relative max-w-[1160px] mx-auto px-5 md:px-8 pt-16 md:pt-[72px] pb-16 tc-fade"
+        class="relative max-w-[1160px] mx-auto px-5 md:px-8 pt-8 md:pt-10 pb-16 tc-fade"
       >
         <h1
           class="font-display text-[clamp(38px,5vw,58px)] leading-[1.12] max-w-[620px] mb-4"

@@ -389,7 +389,7 @@ export default {
     empty: "Belum ada gambar di galeri.",
     loadMore: "Muat Lebih Banyak",
     loadingMore: "Memuat...",
-    download: "⬇ Unduh Gambar",
+    download: "Unduh Gambar",
     downloading: "Mengunduh...",
     picker: {
       title: "Pilih dari Galeri",

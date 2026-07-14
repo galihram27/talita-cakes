@@ -193,7 +193,7 @@ onMounted(fetchCart)
           >
             <!-- Gambar produk -->
             <span
-              class="relative shrink-0 w-[84px] aspect-square rounded-[10px] overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_8px,#F0E3D6_8px_16px)]"
+              class="relative shrink-0 self-start w-[84px] aspect-square rounded-[10px] overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_8px,#F0E3D6_8px_16px)]"
             >
               <img
                 v-if="item.productImage"
