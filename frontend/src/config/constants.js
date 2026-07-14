@@ -24,7 +24,16 @@ export const DELIVERY_FEE_TIERS = [
   { label: 'Radius 21–25 km', fee: 75000 },
 ]
 
-// daftar rasa yang bisa dipilih user untuk TYPE2 & TYPE4
+// daftar rasa yang bisa dipilih user untuk TYPE2 (petite cake custom decor)
+// (mirror dari backend product.constant.js -> TYPE2_FLAVORS)
+export const TYPE2_FLAVORS = [
+  'Double Choco',
+  'Choco Blueberry',
+  'Vanilla Cheese',
+  'Vanilla Strawberry',
+]
+
+// daftar rasa yang bisa dipilih user untuk TYPE4 (custom cake)
 // (mirror dari backend product.constant.js -> CUSTOM_FLAVORS)
 export const CUSTOM_FLAVORS = [
   'Blackforest',

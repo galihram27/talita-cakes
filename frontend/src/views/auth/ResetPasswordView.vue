@@ -15,6 +15,8 @@ const code = ref('')
 
 const newPassword = ref('')
 const confirmPassword = ref('')
+const showNewPassword = ref(false)
+const showConfirmPassword = ref(false)
 const errorMessage = ref('')
 const isSubmitting = ref(false)
 const isSuccess = ref(false)
@@ -120,14 +122,34 @@ const handleSubmit = async () => {
           <label for="newPassword" class="block font-extrabold text-[13.5px] mb-1.5">
             {{ t('auth.reset.newPassword') }}
           </label>
-          <input
-            id="newPassword"
-            v-model="newPassword"
-            type="password"
-            :placeholder="t('auth.reset.newPasswordPlaceholder')"
-            autocomplete="new-password"
-            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
-          />
+          <div class="relative">
+            <input
+              id="newPassword"
+              v-model="newPassword"
+              :type="showNewPassword ? 'text' : 'password'"
+              :placeholder="t('auth.reset.newPasswordPlaceholder')"
+              autocomplete="new-password"
+              class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white pl-4 pr-11 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
+            />
+            <button
+              type="button"
+              @click="showNewPassword = !showNewPassword"
+              :aria-label="showNewPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')"
+              :aria-pressed="showNewPassword"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#B7A18E] hover:text-cocoa-900"
+            >
+              <svg v-if="!showNewPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                <path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                <line x1="2" y1="2" x2="22" y2="22" />
+              </svg>
+            </button>
+          </div>
           <p class="mt-1.5 text-xs text-cocoa-400">
             {{ t('auth.reset.passwordRules') }}
           </p>
@@ -137,14 +159,34 @@ const handleSubmit = async () => {
           <label for="confirmPassword" class="block font-extrabold text-[13.5px] mb-1.5">
             {{ t('auth.register.confirmPassword') }}
           </label>
-          <input
-            id="confirmPassword"
-            v-model="confirmPassword"
-            type="password"
-            :placeholder="t('auth.reset.confirmPasswordPlaceholder')"
-            autocomplete="new-password"
-            class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
-          />
+          <div class="relative">
+            <input
+              id="confirmPassword"
+              v-model="confirmPassword"
+              :type="showConfirmPassword ? 'text' : 'password'"
+              :placeholder="t('auth.reset.confirmPasswordPlaceholder')"
+              autocomplete="new-password"
+              class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white pl-4 pr-11 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
+            />
+            <button
+              type="button"
+              @click="showConfirmPassword = !showConfirmPassword"
+              :aria-label="showConfirmPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')"
+              :aria-pressed="showConfirmPassword"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#B7A18E] hover:text-cocoa-900"
+            >
+              <svg v-if="!showConfirmPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                <path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                <line x1="2" y1="2" x2="22" y2="22" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div

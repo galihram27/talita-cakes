@@ -111,8 +111,14 @@ const handleSubmit = async () => {
     // register sukses -> user diarahkan ke halaman verifikasi OTP
     router.push({ path: '/verify-email', query: { email: email.value } })
   } catch (err) {
-    errorMessage.value =
-      err.response?.data?.message || t('auth.register.failed')
+    const serverMessage = err.response?.data?.message
+    // Email sudah dipakai (pesan backend berbahasa Indonesia) -> tampilkan
+    // versi terlokalisasi sesuai bahasa aktif, bukan pesan mentah backend.
+    if (serverMessage === 'Email sudah terdaftar') {
+      errorMessage.value = t('auth.register.emailTaken')
+    } else {
+      errorMessage.value = serverMessage || t('auth.register.failed')
+    }
   } finally {
     isSubmitting.value = false
   }

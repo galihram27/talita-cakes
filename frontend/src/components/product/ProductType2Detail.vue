@@ -9,7 +9,7 @@ import ProductFlavorPicker from './ProductFlavorPicker.vue'
 import DesignReferencePicker from './DesignReferencePicker.vue'
 import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
-import { CUSTOM_FLAVORS } from '@/config/constants'
+import { TYPE2_FLAVORS } from '@/config/constants'
 
 const props = defineProps({
   product: { type: Object, required: true },
@@ -85,7 +85,7 @@ const handleSubmit = async () => {
       <!-- Flavor: pilihan user, khusus TYPE2 -->
       <ProductFlavorPicker
         v-model="selectedFlavor"
-        :flavors="CUSTOM_FLAVORS"
+        :flavors="TYPE2_FLAVORS"
         :step-label="t('product.chooseFlavorStep1')"
       />
 

@@ -27,8 +27,17 @@ export const PRODUCT_CATEGORIES = {
    ],
 };
 
-// daftar rasa yang bisa dipilih user untuk TYPE2 & TYPE4
-// (produk tipe ini tidak punya flavor fixed, user pilih sendiri saat order)
+// Rasa yang bisa dipilih user untuk TYPE2 (petite cake custom decor).
+// (mirror ke frontend/src/config/constants.js -> TYPE2_FLAVORS)
+export const TYPE2_FLAVORS = [
+   "Double Choco",
+   "Choco Blueberry",
+   "Vanilla Cheese",
+   "Vanilla Strawberry",
+];
+
+// Rasa yang bisa dipilih user untuk TYPE4 (custom cake).
+// (mirror ke frontend/src/config/constants.js -> CUSTOM_FLAVORS)
 export const CUSTOM_FLAVORS = [
    "Blackforest",
    "Double Choco Cream",
@@ -37,3 +46,13 @@ export const CUSTOM_FLAVORS = [
    "Vanilla Double Cheese",
    "Oreo Cheese",
 ];
+
+// Map rasa per tipe produk — dipakai validasi service layer sesuai Product.type.
+export const FLAVORS_BY_TYPE = {
+   TYPE2: TYPE2_FLAVORS,
+   TYPE4: CUSTOM_FLAVORS,
+};
+
+// Gabungan semua rasa — dipakai validasi bentuk payload di schema (enum),
+// validasi "rasa mana untuk tipe apa" tetap di service layer.
+export const ALL_FLAVORS = [...TYPE2_FLAVORS, ...CUSTOM_FLAVORS];

@@ -2,7 +2,7 @@
 import { AppError } from "../../utils/appError.js";
 import * as cartRepository from "./cart.repository.js";
 import * as productRepository from "../../features/product/product.repository.js";
-import { CUSTOM_FLAVORS } from "../../features/product/product.constant.js";
+import { FLAVORS_BY_TYPE } from "../../features/product/product.constant.js";
 
 const PRODUCT_TYPE = {
    TYPE1: "TYPE1",
@@ -31,14 +31,16 @@ const applyDiscount = (basePrice, discountPercent) => {
 const resolveItemDetails = async (product, payload) => {
    const { type, discount } = product;
 
-   // flavor pilihan user wajib untuk TYPE2 & TYPE4, dan harus dari CUSTOM_FLAVORS
-   const validateCustomFlavor = (flavor) => {
+   // flavor pilihan user wajib untuk TYPE2 & TYPE4; daftar rasa yang valid
+   // berbeda per tipe (lihat FLAVORS_BY_TYPE).
+   const validateCustomFlavor = (flavor, productType) => {
+      const allowed = FLAVORS_BY_TYPE[productType] ?? [];
       if (!flavor) {
          throw new AppError("flavor wajib diisi untuk tipe produk ini", 422);
       }
-      if (!CUSTOM_FLAVORS.includes(flavor)) {
+      if (!allowed.includes(flavor)) {
          throw new AppError(
-            `flavor tidak valid, pilih salah satu: ${CUSTOM_FLAVORS.join(", ")}`,
+            `flavor tidak valid, pilih salah satu: ${allowed.join(", ")}`,
             422
          );
       }
@@ -55,7 +57,7 @@ const resolveItemDetails = async (product, payload) => {
 
       // TYPE 2: user pilih flavor + dekorasi (custom image)
       if (type === PRODUCT_TYPE.TYPE2) {
-         validateCustomFlavor(payload.flavor);
+         validateCustomFlavor(payload.flavor, PRODUCT_TYPE.TYPE2);
       }
 
       return {
@@ -81,7 +83,7 @@ const resolveItemDetails = async (product, payload) => {
 
       // TYPE 4: user juga pilih flavor + dekorasi (custom image)
       if (type === PRODUCT_TYPE.TYPE4) {
-         validateCustomFlavor(payload.flavor);
+         validateCustomFlavor(payload.flavor, PRODUCT_TYPE.TYPE4);
       }
 
       return {

@@ -2,18 +2,22 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { CircleCheck } from 'lucide-vue-next'
 import api from '@/lib/api'
+import { useAuthStore } from '@/stores/auth.store'
 import logo from '@/assets/images/logo.png'
 
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const email = ref('')
 const code = ref('')
 const errorMessage = ref('')
 const infoMessage = ref('')
 const isSubmitting = ref(false)
+const isVerified = ref(false)
 
 // Cooldown kirim ulang OTP (samakan dengan cooldown backend: 60 detik)
 const resendCooldown = ref(0)
@@ -48,12 +52,15 @@ const handleVerify = async () => {
 
   isSubmitting.value = true
   try {
-    await api.post('/auth/verify-email', {
+    const { data } = await api.post('/auth/verify-email', {
       email: email.value,
       code: code.value,
     })
-    // verifikasi sukses -> arahkan ke login
-    router.push({ name: 'login' })
+    // verifikasi sukses -> backend sudah set refresh token cookie + balas
+    // accessToken & user, jadi langsung auto-login (user tak perlu login lagi).
+    authStore.handleAuthSuccess(data.data)
+    isVerified.value = true
+    clearInterval(cooldownTimer)
   } catch (err) {
     errorMessage.value = err.response?.data?.message || t('auth.forgot.otpWrong')
   } finally {
@@ -97,8 +104,31 @@ const handleResend = async () => {
       </span>
     </RouterLink>
 
-    <!-- CARD -->
-    <div class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
+    <!-- CARD: SUKSES VERIFIKASI -->
+    <div
+      v-if="isVerified"
+      class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7 text-center"
+    >
+      <div
+        class="mx-auto mb-5 w-16 h-16 rounded-full bg-[#E9F6EE] flex items-center justify-center"
+      >
+        <CircleCheck class="w-9 h-9 text-[#2E9E6B]" stroke-width="2.2" />
+      </div>
+      <h1 class="font-display text-[28px] mb-2">{{ t('auth.verify.successTitle') }}</h1>
+      <p class="text-[#6E5A4D] text-[14.5px] leading-[1.7] mb-6">
+        {{ t('auth.verify.successMessage') }}
+      </p>
+
+      <RouterLink
+        :to="{ name: 'menu' }"
+        class="block w-full rounded-full bg-brand-500 text-white py-3.5 text-[15px] font-extrabold hover:bg-brand-600 transition-colors"
+      >
+        {{ t('auth.verify.goToMenu') }}
+      </RouterLink>
+    </div>
+
+    <!-- CARD: FORM VERIFIKASI -->
+    <div v-else class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
       <h1 class="font-display text-[28px] mb-1.5">{{ t('auth.verify.title') }}</h1>
       <p class="text-[#6E5A4D] text-[14.5px] mb-6">
         {{ t('auth.forgot.otpSubtitle1') }}

@@ -42,9 +42,6 @@ const OTP_PURPOSE = {
 // Dipakai bareng oleh register, resendOtp, dan forgotPassword.
 const issueOtp = async (user, purpose) => {
    const code = generateOtpCode();
-   if (process.env.NODE_ENV !== "production") {
-      console.log(`[DEV OTP] ${purpose} untuk ${user.email}: ${code}`);
-   }
    const hashedCode = await hashOtpCode(code);
 
    await deleteOtpsByUserAndPurpose(user.id, purpose); // biar cuma 1 OTP aktif per purpose

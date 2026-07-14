@@ -625,6 +625,7 @@ export default {
       confirmRequired: "Password confirmation is required",
       passwordMismatch: "Password and Confirm Password do not match",
       mustAcceptTerms: "You must agree to the Terms of Use & Privacy Policy",
+      emailTaken: "This email is already registered. Please sign in instead.",
       failed: "Registration failed, please try again",
     },
     forgot: {
@@ -669,6 +670,10 @@ export default {
     verify: {
       title: "Verify your email",
       newCodeSent: "A new code has been sent.",
+      successTitle: "Email verified!",
+      successMessage:
+        "Your email has been verified and you're now signed in. Start exploring our cakes and place your first order.",
+      goToMenu: "Browse the menu",
     },
   },
   profile: {

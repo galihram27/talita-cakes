@@ -1,11 +1,11 @@
 // src/features/cart/cart.validation.js
 import { z } from 'zod';
-import { CUSTOM_FLAVORS } from '../product/product.constant.js';
+import { ALL_FLAVORS } from '../product/product.constant.js';
 
 const baseAddItemSchema = z.object({
   productId: z.string().uuid({ message: 'productId tidak valid' }),
   variantId: z.string().uuid({ message: 'variantId tidak valid' }).optional(),
-   flavor: z.enum(CUSTOM_FLAVORS, { message: `flavor harus salah satu dari: ${CUSTOM_FLAVORS.join(', ')}` }).optional(),
+   flavor: z.enum(ALL_FLAVORS, { message: `flavor harus salah satu dari: ${ALL_FLAVORS.join(', ')}` }).optional(),
   customImage: z.string().min(1).optional(),
   textOnCake: z.string().optional(),
   notes: z.string().optional(),

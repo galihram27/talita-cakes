@@ -626,6 +626,7 @@ export default {
       confirmRequired: "Konfirmasi password wajib diisi",
       passwordMismatch: "Password dan Konfirmasi Password tidak sama",
       mustAcceptTerms: "Kamu harus menyetujui Syarat & Ketentuan serta Kebijakan Privasi",
+      emailTaken: "Email ini sudah terdaftar. Silakan masuk saja.",
       failed: "Registrasi gagal, silakan coba lagi",
     },
     forgot: {
@@ -670,6 +671,10 @@ export default {
     verify: {
       title: "Verifikasi email Anda",
       newCodeSent: "Kode baru sudah dikirim.",
+      successTitle: "Email terverifikasi!",
+      successMessage:
+        "Email Anda berhasil diverifikasi dan Anda sudah otomatis masuk. Jelajahi menu kue kami dan buat pesanan pertama Anda.",
+      goToMenu: "Lihat menu",
     },
   },
   profile: {
