@@ -49,11 +49,11 @@ const checkoutBaseSchema = z.object({
 const makeCheckoutRefine = (requireFullDetails) => (data, ctx) => {
   // ===== validasi tanggal, berlaku untuk PICKUP maupun DELIVERY =====
   // Di PREVIEW tanggal boleh belum diisi (ongkir hanya butuh koordinat) —
-  // validasi H+7 hanya dijalankan kalau tanggalnya memang dikirim.
+  // validasi H+4 hanya dijalankan kalau tanggalnya memang dikirim.
   if (data.requestCakeDate !== undefined && !isRequestCakeDateValid(data.requestCakeDate)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Request cake date minimal 7 hari dari sekarang',
+      message: 'Request cake date minimal 4 hari dari sekarang',
       path: ['requestCakeDate'],
     });
   }

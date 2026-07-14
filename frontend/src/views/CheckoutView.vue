@@ -3,8 +3,8 @@ import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { MapPin, Phone, LocateFixed, Route } from 'lucide-vue-next'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import maplibregl from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
 import markImageUrl from '@/assets/images/pin-21504.png'
 import api from '@/lib/api'
 import { useCartStore } from '@/stores/cart.store'
@@ -20,19 +20,33 @@ const { t } = useI18n()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 
-// Icon marker custom (gambar pin sendiri, bukan icon default Leaflet).
-// Gambarnya square; ujung pin ada di ~88% tinggi gambar -> anchor [24, 42].
-const markerIcon = L.icon({
-  iconUrl: markImageUrl,
-  iconSize: [48, 48],
-  iconAnchor: [24, 42],
-})
+// Style peta MapTiler + API key (dibaca dari env). Ambil key gratis di
+// https://cloud.maptiler.com — free tier ~100k map loads/bulan, tanpa kartu.
+// Kalau key belum diisi, jatuh ke style keyless OpenFreeMap supaya peta tetap
+// tampil (masih MapLibre, sama-sama gratis).
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || ''
+const MAP_STYLE_URL = MAPTILER_KEY
+  ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`
+  : 'https://tiles.openfreemap.org/styles/liberty'
 
-// Penanda lokasi toko: pin bulat berisi ikon rumah (divIcon inline SVG, tidak
-// perlu file gambar). Dibedakan dari marker tujuan user supaya jelas mana toko.
-const storeIcon = L.divIcon({
-  className: 'store-marker',
-  html: `
+// Elemen marker tujuan user: gambar pin custom (bukan marker default MapLibre).
+// Gambarnya square; anchor 'bottom' menaruh ujung pin tepat di titik koordinat.
+const createDestMarkerEl = () => {
+  const img = document.createElement('img')
+  img.src = markImageUrl
+  img.width = 48
+  img.height = 48
+  img.alt = ''
+  img.draggable = false
+  return img
+}
+
+// Penanda lokasi toko: pin bulat berisi ikon rumah (inline SVG, tidak perlu
+// file gambar). Dibedakan dari marker tujuan user supaya jelas mana toko.
+const createStoreMarkerEl = () => {
+  const el = document.createElement('div')
+  el.className = 'store-marker'
+  el.innerHTML = `
     <div class="store-pin">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2"
            stroke-linecap="round" stroke-linejoin="round">
@@ -40,11 +54,9 @@ const storeIcon = L.divIcon({
         <path d="M5 9.5V20h14V9.5" />
         <path d="M9.5 20v-5h5v5" />
       </svg>
-    </div>`,
-  iconSize: [40, 40],
-  iconAnchor: [20, 38],
-  popupAnchor: [0, -34],
-})
+    </div>`
+  return el
+}
 
 // Lokasi toko (Sukamaju, Cilodong, Depok). Dipakai untuk pusat peta awal &
 // penanda toko. Perhitungan jarak/ongkir tetap dilakukan backend dari
@@ -82,24 +94,36 @@ const pinError = ref('')
 // terisi kalau alamat di luar radius pengiriman (maks. 25 km)
 const deliveryError = ref('')
 
-// Batas minimal tanggal: H+7 dari hari ini (sinkron dengan validasi backend).
+// Batas minimal tanggal: H+4 dari hari ini (sinkron dengan validasi backend).
 // Format manual pakai tanggal lokal — toISOString() memakai UTC sehingga
 // sebelum jam 07:00 WIB batasnya mundur 1 hari dan ditolak backend.
 const minDate = computed(() => {
   const d = new Date()
-  d.setDate(d.getDate() + 7)
+  d.setDate(d.getDate() + 4)
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 })
 
 // Pesan error tanggal: tampil begitu user memilih tanggal lebih awal dari
-// batas minimal (H+7). Input date bisa saja diisi manual sehingga atribut
+// batas minimal (H+4). Input date bisa saja diisi manual sehingga atribut
 // `min` tidak selalu mencegahnya — validasi ini memberi tahu user langsung.
 const dateError = computed(() =>
   requestCakeDate.value && requestCakeDate.value < minDate.value
     ? t('checkout.dateTooEarly', { date: minDate.value })
     : ''
 )
+
+// Tier ongkir yang aktif berdasarkan jarak rute — mirror batas
+// calculateDeliveryFee di backend. -1 = belum ada jarak / di luar radius.
+const activeTierIndex = computed(() => {
+  const d = distanceKm.value
+  if (d === null || d <= 0 || d > MAX_DELIVERY_DISTANCE_KM) return -1
+  if (d < 5) return 0
+  if (d <= 10) return 1
+  if (d <= 15) return 2
+  if (d <= 20) return 3
+  return 4
+})
 
 const isDelivery = computed(() => fulfillmentType.value === 'DELIVERY')
 const isForSomeoneElse = computed(
@@ -128,7 +152,7 @@ const canSubmit = computed(() => {
   return true
 })
 
-// ===== LEAFLET MAP =====
+// ===== MAPLIBRE MAP =====
 const mapEl = ref(null)
 let map = null
 let marker = null
@@ -160,48 +184,56 @@ const setPoint = (lat, lng, { pan = true, syncAddress = false } = {}) => {
 
   if (!map) return
   if (!marker) {
-    marker = L.marker([lat, lng], { icon: markerIcon, draggable: true }).addTo(map)
+    marker = new maplibregl.Marker({
+      element: createDestMarkerEl(),
+      anchor: 'bottom',
+      draggable: true,
+    })
+      .setLngLat([lng, lat])
+      .addTo(map)
     // user geser marker -> titik lokasi ikut pindah + alamat ikut diperbarui
     marker.on('dragend', () => {
-      const pos = marker.getLatLng()
+      const pos = marker.getLngLat()
       addressLat.value = pos.lat
       addressLng.value = pos.lng
       reverseGeocode(pos.lat, pos.lng)
     })
   } else {
-    marker.setLatLng([lat, lng])
+    marker.setLngLat([lng, lat])
   }
-  if (pan) map.setView([lat, lng], Math.max(map.getZoom(), 16))
+  if (pan) map.easeTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16) })
   if (syncAddress) reverseGeocode(lat, lng)
 }
 
 const initMap = () => {
   if (map || !mapEl.value) return
 
-  map = L.map(mapEl.value).setView(
-    [DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng],
-    13
-  )
+  map = new maplibregl.Map({
+    container: mapEl.value,
+    style: MAP_STYLE_URL,
+    center: [DEFAULT_MAP_CENTER.lng, DEFAULT_MAP_CENTER.lat],
+    zoom: 13,
+    attributionControl: { compact: true },
+  })
 
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(map)
+  // Kontrol zoom di kanan atas (tanpa kompas).
+  map.addControl(
+    new maplibregl.NavigationControl({ showCompass: false }),
+    'top-right'
+  )
 
   // Penanda toko (tetap, tidak bisa digeser). Beri popup nama/alamat toko.
-  const storeMarker = L.marker([STORE_LOCATION.lat, STORE_LOCATION.lng], {
-    icon: storeIcon,
-    interactive: true,
-    keyboard: false,
-    zIndexOffset: -100, // di bawah marker tujuan user kalau bertumpuk
-  }).addTo(map)
-  storeMarker.bindPopup(
+  const storePopup = new maplibregl.Popup({ offset: 34, closeButton: false }).setHTML(
     `<strong>Talita's Cake</strong>${STORE_INFO.address ? `<br/>${STORE_INFO.address}` : ''}`
   )
+  new maplibregl.Marker({ element: createStoreMarkerEl(), anchor: 'bottom' })
+    .setLngLat([STORE_LOCATION.lng, STORE_LOCATION.lat])
+    .setPopup(storePopup)
+    .addTo(map)
 
   // user klik peta -> taruh/pindahkan marker + isi alamat otomatis
   map.on('click', (e) =>
-    setPoint(e.latlng.lat, e.latlng.lng, { pan: false, syncAddress: true })
+    setPoint(e.lngLat.lat, e.lngLat.lng, { pan: false, syncAddress: true })
   )
 
   // kalau titik sudah ada (mis. balik dari PICKUP ke DELIVERY), pulihkan marker
@@ -438,6 +470,18 @@ onMounted(fetchCart)
             {{ t('checkout.dateHint1') }}
             <strong class="text-cocoa-900">{{ minDate }}</strong> {{ t('checkout.dateHint2') }}
           </p>
+          <p class="text-[13.5px] text-cocoa-400 mb-3">
+            {{ t('checkout.dateHint3') }} {{ t('checkout.dateHintChat') }}
+            <a
+              v-if="STORE_INFO.whatsappNumber"
+              :href="`https://wa.me/${STORE_INFO.whatsappNumber}`"
+              target="_blank"
+              rel="noopener"
+              class="font-extrabold text-[#3E7A4E] underline"
+            >
+              {{ t('checkout.dateHintWhatsApp') }}
+            </a>
+          </p>
           <input
             v-model="requestCakeDate"
             type="date"
@@ -604,7 +648,7 @@ onMounted(fetchCart)
             />
           </div>
 
-          <!-- Peta interaktif (Leaflet + OpenStreetMap) -->
+          <!-- Peta interaktif (MapLibre GL + MapTiler) -->
           <div
             class="mt-3.5 rounded-[14px] border border-cream-300 overflow-hidden h-[320px] relative z-0 bg-[#F0E3D6]"
           >
@@ -676,12 +720,22 @@ onMounted(fetchCart)
             </div>
             <div class="flex flex-col border border-cream-300 rounded-xl overflow-hidden">
               <div
-                v-for="tier in DELIVERY_FEE_TIERS"
+                v-for="(tier, i) in DELIVERY_FEE_TIERS"
                 :key="tier.label"
-                class="flex justify-between px-4 py-2.5 text-[13.5px] text-[#6E5A4D] border-b border-[#F6EDE2] last:border-b-0"
+                class="flex justify-between px-4 py-2.5 text-[13.5px] border-b border-[#F6EDE2] last:border-b-0 transition-colors"
+                :class="
+                  i === activeTierIndex
+                    ? 'bg-[#EDF6EF] text-[#3E7A4E] font-bold'
+                    : 'text-[#6E5A4D]'
+                "
               >
                 <span>{{ tier.label }}</span>
-                <span class="font-bold text-cocoa-900">{{ formatRupiah(tier.fee) }}</span>
+                <span
+                  class="font-bold"
+                  :class="i === activeTierIndex ? 'text-[#3E7A4E]' : 'text-cocoa-900'"
+                >
+                  {{ formatRupiah(tier.fee) }}
+                </span>
               </div>
             </div>
             <p class="text-xs text-cocoa-400 mt-2">
@@ -788,7 +842,7 @@ onMounted(fetchCart)
   </div>
 </template>
 
-<!-- Tidak scoped: elemen divIcon dibuat oleh Leaflet di luar pohon komponen,
+<!-- Tidak scoped: elemen marker toko dibuat MapLibre di luar pohon komponen,
      sehingga style scoped tidak akan mengenainya. Nama class dibuat unik. -->
 <style>
 .store-marker .store-pin {
