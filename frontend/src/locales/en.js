@@ -531,17 +531,19 @@ export default {
       "I have the recipient's permission to share their name & phone number with Talita's Cake for delivery purposes.",
     addressTitle: "Delivery address",
     addressHint:
-      'Click a location on the map or press "Use my location" — the address & delivery fee are filled in automatically.',
+      'Type an address to search, click a location on the map, or press "Use my location" — the address & delivery fee are filled in automatically.',
     useMyLocation: "Use my location",
     locating: "Detecting location...",
     geoUnsupported: "Your device/browser does not support location detection.",
     geoDenied:
       "Location permission denied. Enable location access in your browser, or pin manually on the map.",
     geoFailed: "Failed to detect your location. Try again or pin manually on the map.",
-    addressPlaceholder: "The address will be filled in automatically from the pinned location...",
+    addressPlaceholder: "Type an address, e.g. Jalan Merdeka...",
+    addressNotFound: "Address not found. Try a different keyword, or pin the location on the map.",
+    addressSearchFailed: "Address search failed. Try again, or pin the location on the map.",
     fetchingAddress: "Fetching the address from the pinned location...",
     mapHintNoPin:
-      'Click a location directly on the map, or press "Use my location" — the address will be filled in automatically.',
+      'Type an address in the field above and pick a suggestion, click a location directly on the map, or press "Use my location".',
     mapHintHasPin:
       "Drag the marker or click the map to adjust the location; the address updates automatically.",
     distanceLabel: "Distance from store",
@@ -569,6 +571,18 @@ export default {
     submit: "Save & continue to WhatsApp",
     afterSave:
       "After saving, your order summary is automatically prepared to be sent to the owner's WhatsApp.",
+    confirm: {
+      title: "Confirm your order",
+      intro:
+        "Please check once more before we save your order. Next you'll be taken to the owner's WhatsApp for confirmation & payment.",
+      date: "Cake date",
+      method: "Method",
+      address: "Address",
+      recipient: "Recipient",
+      email: "Email",
+      back: "Check again",
+      submit: "Yes, save my order",
+    },
   },
   orderSuccess: {
     title: "Order created successfully!",
@@ -852,6 +866,15 @@ export default {
       delivery: "Delivery",
       pickup: "Pick Up",
       total: "Total",
+      status: {
+        PENDING: "Pending",
+        CONFIRMED: "Confirmed",
+        COMPLETED: "Completed",
+        CANCELLED: "Cancelled",
+      },
+      statusAria: "Change order status",
+      statusUpdated: "Status changed to {status}",
+      statusUpdateFailed: "Failed to change order status",
     },
   },
   reviews: {

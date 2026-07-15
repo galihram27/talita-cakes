@@ -97,6 +97,10 @@ export const buildWhatsappMessage = (order, { includeEmail = false } = {}) => {
     lines.push(
       `Lokasi: https://www.google.com/maps?q=${order.addressLat},${order.addressLng}`
     );
+    // Jarak dari toko (dipakai untuk menentukan ongkir) — tampilkan kalau ada.
+    if (order.distanceKm != null) {
+      lines.push(`Jarak: ± ${Number(order.distanceKm).toFixed(1)} km`);
+    }
   }
 
   lines.push('');

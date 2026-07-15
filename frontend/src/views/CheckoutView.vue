@@ -2,7 +2,7 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { MapPin, Phone, LocateFixed, Route } from 'lucide-vue-next'
+import { MapPin, Phone, LocateFixed, Route, Search, Loader2 } from 'lucide-vue-next'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import markImageUrl from '@/assets/images/pin-21504.png'
@@ -10,6 +10,8 @@ import api from '@/lib/api'
 import { useCartStore } from '@/stores/cart.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { formatRupiah } from '@/utils/formatCurrency'
+import { searchAddress, reverseGeocode as reverseGeocodeApi } from '@/utils/geocode'
+import OrderConfirmModal from '@/components/checkout/OrderConfirmModal.vue'
 import {
   DELIVERY_FEE_TIERS,
   MAX_DELIVERY_DISTANCE_KM,
@@ -157,16 +159,16 @@ const mapEl = ref(null)
 let map = null
 let marker = null
 
-// Reverse geocode: koordinat -> alamat teks (Nominatim / OpenStreetMap).
+// Reverse geocode: koordinat -> alamat teks.
 // Dipakai saat user klik peta / geser marker supaya field alamat terisi otomatis.
 const reverseGeocode = async (lat, lng) => {
   isReverseGeocoding.value = true
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
-    const res = await fetch(url, { headers: { Accept: 'application/json' } })
-    const result = await res.json()
-    if (result?.display_name) {
-      address.value = result.display_name
+    const found = await reverseGeocodeApi(lat, lng)
+    if (found) {
+      // isi field alamat lewat setter ini, BUKAN dari event @input, supaya
+      // daftar saran tidak ikut terbuka setiap kali user klik peta
+      address.value = found
       pinError.value = ''
     }
   } catch {
@@ -204,6 +206,120 @@ const setPoint = (lat, lng, { pan = true, syncAddress = false } = {}) => {
   if (pan) map.easeTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16) })
   if (syncAddress) reverseGeocode(lat, lng)
 }
+
+// ===== CARI ALAMAT (alamat -> titik di peta) =====
+// User mengetik alamat -> muncul daftar saran -> pilih salah satu -> marker
+// pindah ke sana. Pencarian TIDAK otomatis memindahkan marker tanpa user
+// memilih: query seperti "jalan merdeka" ada di banyak kota, jadi biar user
+// yang memutuskan. Field alamat tetap bebas disunting untuk menambah patokan /
+// nomor rumah tanpa menggeser titik yang sudah benar.
+const suggestions = ref([])
+const isSearching = ref(false)
+const showSuggestions = ref(false)
+const activeSuggestion = ref(-1) // -1 = belum ada yang disorot keyboard
+const searchError = ref('')
+const addressBoxEl = ref(null)
+
+let searchDebounceTimer = null
+let searchAbort = null
+
+const closeSuggestions = () => {
+  showSuggestions.value = false
+  activeSuggestion.value = -1
+}
+
+const runSearch = async (query) => {
+  // Batalkan request sebelumnya supaya hasil ketikan lama tidak menimpa hasil
+  // ketikan terbaru. `controller` dipegang lokal, lalu dibandingkan dengan
+  // searchAbort setelah await: kalau sudah tidak sama berarti request ini basi
+  // (user sudah mengetik lagi) — hasilnya dibuang dan spinner dibiarkan menyala
+  // untuk request yang baru.
+  searchAbort?.abort()
+  const controller = new AbortController()
+  searchAbort = controller
+
+  isSearching.value = true
+  searchError.value = ''
+  try {
+    const results = await searchAddress(query, {
+      proximity: STORE_LOCATION,
+      signal: controller.signal,
+    })
+    if (searchAbort !== controller) return
+
+    suggestions.value = results
+    showSuggestions.value = true
+    activeSuggestion.value = -1
+    if (results.length === 0) searchError.value = t('checkout.addressNotFound')
+  } catch (err) {
+    if (err.name === 'AbortError' || searchAbort !== controller) return
+    suggestions.value = []
+    searchError.value = t('checkout.addressSearchFailed')
+  } finally {
+    if (searchAbort === controller) isSearching.value = false
+  }
+}
+
+// Hanya dipanggil dari event @input (ketikan user) — perubahan address.value
+// secara programatik (hasil reverse geocode) sengaja tidak memicu ini.
+const handleAddressInput = () => {
+  clearTimeout(searchDebounceTimer)
+  searchError.value = ''
+
+  const query = address.value.trim()
+  // di bawah 3 huruf hasilnya terlalu acak untuk ditampilkan
+  if (query.length < 3) {
+    suggestions.value = []
+    closeSuggestions()
+    return
+  }
+
+  searchDebounceTimer = setTimeout(() => runSearch(query), 500)
+}
+
+const selectSuggestion = (item) => {
+  address.value = item.label
+  // syncAddress: false — alamat sudah diisi dari label saran, tidak perlu
+  // ditimpa lagi oleh reverse geocode
+  setPoint(item.lat, item.lng, { pan: true, syncAddress: false })
+  suggestions.value = []
+  closeSuggestions()
+}
+
+const handleAddressKeydown = (e) => {
+  if (!showSuggestions.value || suggestions.value.length === 0) return
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    activeSuggestion.value = (activeSuggestion.value + 1) % suggestions.value.length
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    activeSuggestion.value =
+      activeSuggestion.value <= 0
+        ? suggestions.value.length - 1
+        : activeSuggestion.value - 1
+  } else if (e.key === 'Enter') {
+    if (activeSuggestion.value >= 0) {
+      e.preventDefault()
+      selectSuggestion(suggestions.value[activeSuggestion.value])
+    }
+  } else if (e.key === 'Escape') {
+    closeSuggestions()
+  }
+}
+
+// Klik di luar kotak alamat menutup daftar saran. Pakai pointerdown supaya
+// tetap jalan sebelum fokus berpindah.
+const handlePointerDownOutside = (e) => {
+  if (addressBoxEl.value && !addressBoxEl.value.contains(e.target)) closeSuggestions()
+}
+
+onMounted(() => document.addEventListener('pointerdown', handlePointerDownOutside))
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handlePointerDownOutside)
+  clearTimeout(searchDebounceTimer)
+  searchAbort?.abort()
+})
 
 const initMap = () => {
   if (map || !mapEl.value) return
@@ -390,6 +506,32 @@ watch([fulfillmentType, addressLat, addressLng], () => {
   fetchPreview()
 })
 
+// ===== KONFIRMASI: rekap pesanan sebelum order dibuat =====
+// Tombol simpan hanya membuka modal; order baru dibuat setelah user menekan
+// konfirmasi di dalamnya.
+const isConfirmOpen = ref(false)
+
+const confirmDetails = computed(() => ({
+  requestCakeDate: requestCakeDate.value,
+  fulfillmentType: fulfillmentType.value,
+  recipientType: recipientType.value,
+  recipientName: recipientName.value,
+  recipientPhone: recipientPhone.value,
+  address: address.value,
+  distanceKm: isDelivery.value ? distanceKm.value : null,
+  items: cart.value.items,
+  subtotal: cart.value.subtotal,
+  deliveryFee: deliveryFee.value,
+  total: total.value,
+  includeEmail: includeEmail.value,
+  email: authStore.user?.email ?? '',
+}))
+
+const openConfirm = () => {
+  errorMessage.value = ''
+  isConfirmOpen.value = true
+}
+
 // ===== CONFIRM: buat order + buka WhatsApp =====
 const submitOrder = async () => {
   isSubmitting.value = true
@@ -428,6 +570,9 @@ const submitOrder = async () => {
       fieldMessages.length > 0
         ? fieldMessages.join(' — ')
         : err.response?.data?.message || t('checkout.createFailed')
+
+    // tutup modal supaya pesan error di kolom ringkasan tidak tertutup olehnya
+    isConfirmOpen.value = false
   } finally {
     isSubmitting.value = false
   }
@@ -634,19 +779,54 @@ onMounted(fetchCart)
 
           <p v-if="pinError" class="text-xs text-brand-600 mt-2">{{ pinError }}</p>
 
-          <!-- Alamat terisi otomatis dari titik lokasi; masih bisa disunting
-               user untuk memperjelas (patokan, no. rumah, dsb). -->
-          <div class="relative mt-3.5">
+          <!-- Alamat: ketik untuk mencari lokasi (pilih saran -> marker pindah),
+               atau terisi otomatis dari titik lokasi saat user klik peta.
+               Tetap bisa disunting untuk memperjelas (patokan, no. rumah, dsb). -->
+          <div ref="addressBoxEl" class="relative mt-3.5">
             <MapPin
               class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-cocoa-400"
             />
             <input
               v-model="address"
+              @input="handleAddressInput"
+              @keydown="handleAddressKeydown"
+              @focus="suggestions.length && (showSuggestions = true)"
               type="text"
+              role="combobox"
+              aria-autocomplete="list"
+              :aria-expanded="showSuggestions"
               :placeholder="t('checkout.addressPlaceholder')"
-              class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white pl-10 pr-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
+              class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white pl-10 pr-10 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
             />
+            <Loader2
+              v-if="isSearching"
+              class="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-cocoa-400 animate-spin"
+            />
+            <Search
+              v-else
+              class="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-cocoa-400"
+            />
+
+            <!-- Daftar saran alamat -->
+            <ul
+              v-if="showSuggestions && suggestions.length > 0"
+              class="absolute z-20 left-0 right-0 top-full mt-1.5 bg-white border border-cream-300 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
+            >
+              <li
+                v-for="(item, i) in suggestions"
+                :key="item.id"
+                @click="selectSuggestion(item)"
+                @mouseenter="activeSuggestion = i"
+                class="flex items-start gap-2.5 px-4 py-2.5 text-[13.5px] leading-snug cursor-pointer border-b border-[#F6EDE2] last:border-b-0"
+                :class="i === activeSuggestion ? 'bg-[#F4D6D1]' : 'hover:bg-cream-50'"
+              >
+                <MapPin class="w-3.5 h-3.5 mt-0.5 shrink-0 text-brand-500" />
+                <span class="text-cocoa-900">{{ item.label }}</span>
+              </li>
+            </ul>
           </div>
+
+          <p v-if="searchError" class="text-xs text-cocoa-400 mt-2">{{ searchError }}</p>
 
           <!-- Peta interaktif (MapLibre GL + MapTiler) -->
           <div
@@ -829,7 +1009,7 @@ onMounted(fetchCart)
         <button
           type="button"
           :disabled="!canSubmit || isSubmitting"
-          @click="submitOrder"
+          @click="openConfirm"
           class="w-full bg-brand-500 text-white rounded-full py-[15px] font-extrabold text-[15.5px] hover:bg-brand-600 transition-colors disabled:opacity-40"
         >
           {{ isSubmitting ? t('checkout.submitting') : t('checkout.submit') }}
@@ -839,6 +1019,15 @@ onMounted(fetchCart)
         </p>
       </aside>
     </div>
+
+    <!-- KONFIRMASI PESANAN (checkpoint terakhir sebelum order dibuat) -->
+    <OrderConfirmModal
+      :open="isConfirmOpen"
+      :is-submitting="isSubmitting"
+      :details="confirmDetails"
+      @confirm="submitOrder"
+      @cancel="isConfirmOpen = false"
+    />
   </div>
 </template>
 

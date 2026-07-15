@@ -1,6 +1,7 @@
 // src/stores/adminOrders.store.js
 import { defineStore } from 'pinia'
 import api from '@/lib/api'
+import { updateOrderStatus } from '@/services/order.service'
 
 const STORAGE_KEY = 'tc.adminOrders'
 
@@ -61,6 +62,28 @@ export const useAdminOrdersStore = defineStore('adminOrders', {
           })
       }
       return this._inflight
+    },
+
+    // Ubah status 1 order. Optimistic: badge langsung berubah, lalu di-rollback
+    // ke nilai lama kalau request gagal supaya UI tidak bohong.
+    async updateStatus(orderId, status) {
+      const order = this.orders.find((o) => o.id === orderId)
+      const previousStatus = order?.status
+
+      if (order) {
+        order.status = status
+        savePersisted(this.orders)
+      }
+
+      try {
+        await updateOrderStatus(orderId, status)
+      } catch (err) {
+        if (order) {
+          order.status = previousStatus
+          savePersisted(this.orders)
+        }
+        throw err
+      }
     },
 
     // Kosongkan cache order (dipanggil saat logout) supaya data pesanan yang

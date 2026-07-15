@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Search } from 'lucide-vue-next'
+import { Search, ChevronDown } from 'lucide-vue-next'
 import { useAdminOrdersStore } from '@/stores/adminOrders.store'
 import { formatRupiah } from '@/utils/formatCurrency'
+import Toast from '@/components/common/Toast.vue'
 
 // Data order diambil dari cache store (stale-while-revalidate):
 // kunjungan kedua langsung tampil tanpa loading, refresh jalan di background.
@@ -12,6 +13,20 @@ const adminOrdersStore = useAdminOrdersStore()
 
 const errorMessage = ref('')
 const searchQuery = ref('')
+const toastMessage = ref('')
+const statusError = ref('')
+
+// Harus sama persis dengan enum OrderStatus di prisma schema / updateOrderStatusSchema
+const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED']
+
+const STATUS_CLASSES = {
+  PENDING: 'bg-amber-100 text-amber-700',
+  CONFIRMED: 'bg-blue-100 text-blue-700',
+  COMPLETED: 'bg-emerald-100 text-emerald-700',
+  CANCELLED: 'bg-red-100 text-red-700',
+}
+
+const statusClass = (status) => STATUS_CLASSES[status] || 'bg-cream-100 text-cocoa-500'
 
 // Loading hanya saat cache belum pernah terisi sama sekali
 const isLoading = computed(() => !adminOrdersStore.hasLoaded && !errorMessage.value)
@@ -42,6 +57,30 @@ const filteredOrders = computed(() => {
     return matchesUser || matchesProduct
   })
 })
+
+// Order yang statusnya sedang dikirim ke server — dipakai untuk disable select
+// supaya admin tidak menembak dua perubahan sekaligus di kartu yang sama.
+const updatingOrderId = ref(null)
+
+const handleStatusChange = async (order, event) => {
+  const nextStatus = event.target.value
+  if (nextStatus === order.status) return
+
+  statusError.value = ''
+  updatingOrderId.value = order.id
+
+  try {
+    await adminOrdersStore.updateStatus(order.id, nextStatus)
+    toastMessage.value = t('admin.orders.statusUpdated', {
+      status: t(`admin.orders.status.${nextStatus}`),
+    })
+  } catch (err) {
+    // store sudah rollback nilai lamanya; cukup beri tahu adminnya
+    statusError.value = err.response?.data?.message || t('admin.orders.statusUpdateFailed')
+  } finally {
+    updatingOrderId.value = null
+  }
+}
 
 const formatDate = (dateString) =>
   new Date(dateString).toLocaleDateString(locale.value === 'en' ? 'en-US' : 'id-ID', {
@@ -87,52 +126,80 @@ const formatDate = (dateString) =>
     </div>
 
     <!-- ORDER LIST -->
-    <div v-else class="space-y-5">
-      <div
-        v-for="order in filteredOrders"
-        :key="order.id"
-        class="bg-white rounded-2xl shadow-[0_2px_10px_-4px_rgba(51,38,31,0.12)] p-6"
-      >
-        <!-- Header: tanggal + pemesan + badge tipe pemesanan -->
-        <div class="flex items-center justify-between gap-4 mb-4">
-          <div class="min-w-0">
-            <p class="text-sm text-cocoa-400">{{ formatDate(order.createdAt) }}</p>
-            <p v-if="order.user" class="text-sm font-bold text-cocoa-900 truncate">
-              {{ order.user.name }}
-              <span class="font-normal text-cocoa-400">· {{ order.user.phone }}</span>
-            </p>
+    <template v-else>
+      <p v-if="statusError" class="text-sm text-brand-600 mb-4">{{ statusError }}</p>
+
+      <div class="space-y-5">
+        <div
+          v-for="order in filteredOrders"
+          :key="order.id"
+          class="bg-white rounded-2xl shadow-[0_2px_10px_-4px_rgba(51,38,31,0.12)] p-6"
+        >
+          <!-- Header: tanggal + pemesan + badge tipe pemesanan -->
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <div class="min-w-0">
+              <p class="text-sm text-cocoa-400">{{ formatDate(order.createdAt) }}</p>
+              <p v-if="order.user" class="text-sm font-bold text-cocoa-900 truncate">
+                {{ order.user.name }}
+                <span class="font-normal text-cocoa-400">· {{ order.user.phone }}</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span
+                class="rounded-full px-4 py-1 text-xs font-bold"
+                :class="
+                  order.fulfillmentType === 'DELIVERY'
+                    ? 'bg-brand-100 text-brand-600'
+                    : 'bg-cream-100 text-cocoa-500'
+                "
+              >
+                {{ order.fulfillmentType === 'DELIVERY' ? t('admin.orders.delivery') : t('admin.orders.pickup') }}
+              </span>
+
+              <!-- UBAH STATUS -->
+              <div class="relative">
+                <select
+                  :value="order.status"
+                  :disabled="updatingOrderId === order.id"
+                  @change="handleStatusChange(order, $event)"
+                  :aria-label="t('admin.orders.statusAria')"
+                  class="appearance-none cursor-pointer rounded-full pl-4 pr-9 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:opacity-60 disabled:cursor-wait"
+                  :class="statusClass(order.status)"
+                >
+                  <option v-for="status in ORDER_STATUSES" :key="status" :value="status">
+                    {{ t(`admin.orders.status.${status}`) }}
+                  </option>
+                </select>
+                <ChevronDown
+                  class="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-70"
+                />
+              </div>
+            </div>
           </div>
-          <span
-            class="shrink-0 rounded-full px-4 py-1 text-xs font-bold"
-            :class="
-              order.fulfillmentType === 'DELIVERY'
-                ? 'bg-brand-100 text-brand-600'
-                : 'bg-cream-100 text-cocoa-500'
-            "
-          >
-            {{ order.fulfillmentType === 'DELIVERY' ? t('admin.orders.delivery') : t('admin.orders.pickup') }}
-          </span>
-        </div>
 
-        <!-- Item pesanan -->
-        <div class="space-y-2">
-          <div
-            v-for="item in order.items"
-            :key="item.id"
-            class="flex items-center justify-between text-sm text-cocoa-500"
-          >
-            <span>{{ item.productName }} x {{ item.quantity }}</span>
-            <span>{{ formatRupiah(item.price * item.quantity) }}</span>
+          <!-- Item pesanan -->
+          <div class="space-y-2">
+            <div
+              v-for="item in order.items"
+              :key="item.id"
+              class="flex items-center justify-between text-sm text-cocoa-500"
+            >
+              <span>{{ item.productName }} x {{ item.quantity }}</span>
+              <span>{{ formatRupiah(item.price * item.quantity) }}</span>
+            </div>
           </div>
-        </div>
 
-        <hr class="my-4 border-cream-200" />
+          <hr class="my-4 border-cream-200" />
 
-        <div class="flex items-center justify-between text-sm font-bold">
-          <span class="text-cocoa-900">{{ t('admin.orders.total') }}</span>
-          <span class="text-brand-600 font-extrabold">{{ formatRupiah(order.total) }}</span>
+          <div class="flex items-center justify-between text-sm font-bold">
+            <span class="text-cocoa-900">{{ t('admin.orders.total') }}</span>
+            <span class="text-brand-600 font-extrabold">{{ formatRupiah(order.total) }}</span>
+          </div>
         </div>
       </div>
-    </div>
+    </template>
+
+    <!-- SUCCESS TOAST -->
+    <Toast v-model:message="toastMessage" />
   </div>
 </template>

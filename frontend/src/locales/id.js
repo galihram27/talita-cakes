@@ -532,17 +532,19 @@ export default {
       "Saya sudah mendapat izin dari penerima untuk membagikan nama & nomor HP-nya kepada Talita's Cake untuk keperluan pengiriman.",
     addressTitle: "Alamat tujuan",
     addressHint:
-      'Klik titik lokasi di peta atau tekan "Gunakan lokasi saya" — alamat & ongkir terisi otomatis.',
+      'Ketik alamat untuk mencari, klik titik lokasi di peta, atau tekan "Gunakan lokasi saya" — alamat & ongkir terisi otomatis.',
     useMyLocation: "Gunakan lokasi saya",
     locating: "Mendeteksi lokasi...",
     geoUnsupported: "Perangkat/browser tidak mendukung deteksi lokasi.",
     geoDenied:
       "Izin lokasi ditolak. Aktifkan izin lokasi di browser, atau pin manual di peta.",
     geoFailed: "Gagal mendeteksi lokasi. Coba lagi atau pin manual di peta.",
-    addressPlaceholder: "Alamat akan terisi otomatis dari titik lokasi...",
+    addressPlaceholder: "Ketik alamat, misal Jalan Merdeka...",
+    addressNotFound: "Alamat tidak ditemukan. Coba kata kunci lain, atau pin lokasi di peta.",
+    addressSearchFailed: "Pencarian alamat gagal. Coba lagi, atau pin lokasi di peta.",
     fetchingAddress: "Mengambil alamat dari titik lokasi...",
     mapHintNoPin:
-      'Klik langsung titik lokasi di peta, atau tekan "Gunakan lokasi saya" — alamat akan terisi otomatis.',
+      'Ketik alamat di kolom atas lalu pilih sarannya, klik langsung titik lokasi di peta, atau tekan "Gunakan lokasi saya".',
     mapHintHasPin:
       "Geser marker atau klik peta untuk koreksi titik lokasi; alamat ikut diperbarui otomatis.",
     distanceLabel: "Jarak dari toko",
@@ -570,6 +572,18 @@ export default {
     submit: "Simpan & lanjut ke WhatsApp",
     afterSave:
       "Setelah disimpan, rangkuman pesanan otomatis disiapkan untuk dikirim ke WhatsApp owner.",
+    confirm: {
+      title: "Konfirmasi pesanan",
+      intro:
+        "Cek sekali lagi sebelum pesanan disimpan. Setelah ini Anda akan diarahkan ke WhatsApp owner untuk konfirmasi & pembayaran.",
+      date: "Tanggal kue",
+      method: "Pengambilan",
+      address: "Alamat",
+      recipient: "Penerima",
+      email: "Email",
+      back: "Cek lagi",
+      submit: "Ya, simpan pesanan",
+    },
   },
   orderSuccess: {
     title: "Pesanan berhasil dibuat!",
@@ -853,6 +867,15 @@ export default {
       delivery: "Delivery",
       pickup: "Ambil Sendiri",
       total: "Total",
+      status: {
+        PENDING: "Menunggu",
+        CONFIRMED: "Dikonfirmasi",
+        COMPLETED: "Selesai",
+        CANCELLED: "Dibatalkan",
+      },
+      statusAria: "Ubah status pesanan",
+      statusUpdated: "Status diubah ke {status}",
+      statusUpdateFailed: "Gagal mengubah status pesanan",
     },
   },
   reviews: {
