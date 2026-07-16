@@ -8,6 +8,10 @@ import { visitorTrackingMiddleware } from "./middlewares/visitorTracking.middlew
 
 const app = express();
 
+// di production backend jalan di belakang proxy (Render), tanpa ini req.ip
+// berisi IP proxy, bukan IP pengunjung
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173", // sesuaikan port Vite kamu
