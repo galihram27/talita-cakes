@@ -298,6 +298,10 @@ export default {
         tag: "Fully Custom Cake",
         desc: "Create a cake that's uniquely yours.",
       },
+      t5: {
+        tag: "Non-Cake",
+        desc: "Breads, cheesecakes, and brownies beyond our cakes.",
+      },
     },
     features: {
       fixedSize: "Fixed Size",
@@ -744,6 +748,8 @@ export default {
       productType: "Product Type",
       category: "Category",
       selectCategory: "Select a category...",
+      subcategory: "Subcategory",
+      selectSubcategory: "Select a subcategory...",
       name: "Product Name",
       namePlaceholder: "Product Name...",
       description: "Description",
@@ -779,6 +785,7 @@ export default {
       descriptionEnRequired: "Description (English) is required",
       imageRequired: "At least 1 product image is required",
       categoryRequired: "Category is required",
+      subcategoryRequired: "Subcategory is required",
       flavorRequired: "Flavor is required",
       sizeInvalid: "Size must be a positive whole number (max 100)",
       priceInvalid: "Price must be greater than 0",

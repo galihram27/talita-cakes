@@ -8,6 +8,7 @@ import ProductType1Detail from '@/components/product/ProductType1Detail.vue'
 import ProductType2Detail from '@/components/product/ProductType2Detail.vue'
 import ProductType3Detail from '@/components/product/ProductType3Detail.vue'
 import ProductType4Detail from '@/components/product/ProductType4Detail.vue'
+import ProductType5Detail from '@/components/product/ProductType5Detail.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -58,6 +59,7 @@ onMounted(fetchProduct)
     <ProductType2Detail v-else-if="product.type === 'TYPE2'" :product="product" />
     <ProductType3Detail v-else-if="product.type === 'TYPE3'" :product="product" />
     <ProductType4Detail v-else-if="product.type === 'TYPE4'" :product="product" />
+    <ProductType5Detail v-else-if="product.type === 'TYPE5'" :product="product" />
 
     <div v-else class="text-center py-24 text-gray-500">
       {{ t('product.typeUnavailable') }}

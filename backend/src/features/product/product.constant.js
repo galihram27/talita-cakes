@@ -25,7 +25,26 @@ export const PRODUCT_CATEGORIES = {
       "Signature Royal Custom Decor",
       "Signature Simple Roses Cake",
    ],
+   // TYPE5 (non-cake): kategori level-1. Sub-kategori level-2 ada di
+   // TYPE5_SUBCATEGORIES di bawah.
+   TYPE5: ["Bread", "Cheese Cake", "Brownies"],
 };
+
+// Sub-kategori (level-2) untuk TYPE5, dikelompokkan per kategori level-1.
+// (mirror ke frontend/src/config/productOptions.js -> TYPE5_SUBCATEGORIES)
+export const TYPE5_SUBCATEGORIES = {
+   Bread: ["CINROLLS VAN DEPOK", "MOZZARELLA SAUSAGE ROLLS"],
+   "Cheese Cake": ["BASQUE BURNT CHEESE CAKE"],
+   Brownies: [
+      "SIGNATURE PREMIUM FUDGE BROWNIES",
+      "SIGNATURE ASSORTED BROWNIES BOX",
+      "SIGNATURE CUSTOM BROWNIES BOX",
+   ],
+};
+
+// Gabungan semua sub-kategori TYPE5 — dipakai validasi saat update partial
+// yang mungkin mengirim subcategory tanpa category.
+export const ALL_TYPE5_SUBCATEGORIES = Object.values(TYPE5_SUBCATEGORIES).flat();
 
 // Rasa yang bisa dipilih user untuk TYPE2 (petite cake custom decor).
 // (mirror ke frontend/src/config/constants.js -> TYPE2_FLAVORS)

@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
@@ -9,12 +10,30 @@ const { t } = useI18n()
 
 // Label tipe, sama dengan section di halaman Menu
 const typeLabel = (type) => {
-  const num = { TYPE1: 1, TYPE2: 2, TYPE3: 3, TYPE4: 4 }[type]
+  const num = { TYPE1: 1, TYPE2: 2, TYPE3: 3, TYPE4: 4, TYPE5: 5 }[type]
   return num ? t(`home.types.t${num}.tag`) : type
 }
 
 // type dengan 1 variant fixed (tidak ada pilihan shape & size)
 const isSingleVariantType = (type) => type === 'TYPE1' || type === 'TYPE2'
+
+// hanya TYPE3/TYPE4 yang harganya rentang ("mulai dari"); TYPE5 harga tunggal
+const showsPriceRange = (type) => type === 'TYPE3' || type === 'TYPE4'
+
+// Label di atas nama produk memakai kategori, bukan nama tipe:
+// TYPE5 (non-cake) pakai sub-kategori (mis. "CINROLLS VAN DEPOK"),
+// TYPE1–TYPE4 pakai kategori (mis. "Custom Paper Topper Cake").
+// Label tipe tetap jadi fallback untuk data lama yang kategorinya masih kosong.
+const cardLabel = computed(() => {
+  const { type, category, subcategory } = props.product
+  if (type === 'TYPE5') return subcategory || category || typeLabel(type)
+  return category || typeLabel(type)
+})
+
+// nama kategori (level-1) yang ditempel di pojok kanan atas foto, khusus TYPE5
+const cornerCategory = computed(() =>
+  props.product.type === 'TYPE5' ? props.product.category : null
+)
 
 const formatRupiah = (amount) => `Rp${Number(amount).toLocaleString('id-ID')}`
 
@@ -71,23 +90,33 @@ const getDisplaySize = () => {
       >
         -{{ Number(product.discount) }}%
       </span>
+
+      <!-- Kategori level-1 (TYPE5): pojok kanan atas foto -->
+      <span
+        v-if="cornerCategory"
+        class="absolute top-3 right-3 rounded-full bg-white/90 backdrop-blur-sm border border-cream-300 px-2.5 py-1 text-[11px] font-extrabold text-cocoa-900 shadow-[0_2px_8px_-2px_rgba(51,38,31,0.25)]"
+      >
+        {{ cornerCategory }}
+      </span>
     </div>
 
-    <!-- INFO -->
-    <div class="flex flex-col gap-1.5 px-4 pt-4 pb-4">
+    <!-- INFO (flex-1 supaya blok ini mengisi sisa tinggi kartu) -->
+    <div class="flex flex-col flex-1 gap-1.5 px-4 pt-4 pb-4">
       <span
-        class="text-[11.5px] font-extrabold tracking-[0.1em] uppercase text-cocoa-400"
+        class="text-[11.5px] font-extrabold uppercase tracking-[0.1em] text-cocoa-400"
       >
-        {{ typeLabel(product.type) }}
+        {{ cardLabel }}
       </span>
       <h3 class="font-display text-lg leading-snug">
         {{ product.name }}
       </h3>
 
-      <div class="flex items-baseline gap-2 flex-wrap">
+      <!-- mt-auto: harga selalu menempel di dasar kartu, berapa pun
+           panjang label kategori & nama produk di atasnya -->
+      <div class="flex items-baseline gap-2 flex-wrap mt-auto pt-1.5">
         <template v-if="getDisplayPrice() !== null">
           <span
-            v-if="!isSingleVariantType(product.type)"
+            v-if="showsPriceRange(product.type)"
             class="text-[10px] text-cocoa-400"
           >
             {{ t('product.startingFrom') }}

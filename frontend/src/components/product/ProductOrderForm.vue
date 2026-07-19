@@ -8,6 +8,7 @@ defineProps({
   notes: { type: String, default: '' },
   quantity: { type: Number, default: 1 },
   useStepper: { type: Boolean, default: false }, // TYPE3 pakai stepper "Amount", TYPE1/2 pakai input angka
+  showTextOnCake: { type: Boolean, default: true }, // TYPE5 (non-cake) menyembunyikan tulisan di atas cake
   isSubmitting: { type: Boolean, default: false },
   submitError: { type: String, default: '' },
   submitSuccess: { type: Boolean, default: false },
@@ -23,7 +24,7 @@ const decreaseQuantity = (current) => {
 
 <template>
   <div class="max-w-md">
-    <div class="mb-4">
+    <div v-if="showTextOnCake" class="mb-4">
       <label class="block text-[15px] font-extrabold mb-2">
         {{ t('product.orderForm.writingLabel') }}
         <span class="text-[#B7A18E] font-semibold text-[13px]">{{ t('product.orderForm.optional') }}</span>

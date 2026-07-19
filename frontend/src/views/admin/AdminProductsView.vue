@@ -18,6 +18,7 @@ const TYPE_OPTIONS = computed(() => [
   { value: 'TYPE2', label: t('admin.products.type', { num: 2 }) },
   { value: 'TYPE3', label: t('admin.products.type', { num: 3 }) },
   { value: 'TYPE4', label: t('admin.products.type', { num: 4 }) },
+  { value: 'TYPE5', label: t('admin.products.type', { num: 5 }) },
 ])
 
 // Nama singkat per tipe untuk kolom "Tipe" (mis. "Tipe 1 · Shortcake Series")
@@ -26,6 +27,7 @@ const TYPE_SHORT_NAMES = {
   TYPE2: 'Petite Cake',
   TYPE3: 'Original Cake',
   TYPE4: 'Custom Cake',
+  TYPE5: 'Non-Cake',
 }
 
 // Kategori panjang dari backend dipendekkan supaya tabel tetap rapi

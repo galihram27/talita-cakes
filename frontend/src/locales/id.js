@@ -298,6 +298,10 @@ export default {
         tag: "Full Custom Cake",
         desc: "Wujudkan cake impian Anda dengan desain yang dibuat khusus sesuai keinginan.",
       },
+      t5: {
+        tag: "Non-Cake",
+        desc: "Aneka bread, cheese cake, dan brownies selain koleksi cake kami.",
+      },
     },
     features: {
       fixedSize: "Ukuran Tetap",
@@ -745,6 +749,8 @@ export default {
       productType: "Tipe Produk",
       category: "Kategori",
       selectCategory: "Pilih kategori...",
+      subcategory: "Sub-kategori",
+      selectSubcategory: "Pilih sub-kategori...",
       name: "Nama Produk",
       namePlaceholder: "Nama Produk...",
       description: "Deskripsi",
@@ -780,6 +786,7 @@ export default {
       descriptionEnRequired: "Deskripsi (English) wajib diisi",
       imageRequired: "Minimal 1 gambar produk wajib diunggah",
       categoryRequired: "Kategori wajib dipilih",
+      subcategoryRequired: "Sub-kategori wajib dipilih",
       flavorRequired: "Rasa wajib diisi",
       sizeInvalid: "Ukuran harus bilangan bulat positif (maks 100)",
       priceInvalid: "Harga harus lebih dari 0",

@@ -1031,8 +1031,6 @@ onMounted(fetchCart)
   </div>
 </template>
 
-<!-- Tidak scoped: elemen marker toko dibuat MapLibre di luar pohon komponen,
-     sehingga style scoped tidak akan mengenainya. Nama class dibuat unik. -->
 <style>
 .store-marker .store-pin {
   width: 40px;

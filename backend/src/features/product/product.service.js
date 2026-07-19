@@ -28,7 +28,8 @@ const withDerivedCover = (fields) => {
  * Membuat produk baru beserta variannya berdasarkan tipe produk.
  */
 export const createProduct = async (payload) => {
-  const { type, name, description, descriptionEn, images, discount, flavor, category } = payload;
+  const { type, name, description, descriptionEn, images, discount, flavor, category, subcategory } =
+    payload;
 
   let variantsData = [];
 
@@ -37,6 +38,9 @@ export const createProduct = async (payload) => {
     variantsData = [
       { shape: payload.shape, size: payload.size, price: payload.price },
     ];
+  } else if (type === 'TYPE5') {
+    // TYPE5 (non-cake): satu varian harga tunggal, tanpa shape/size
+    variantsData = [{ shape: null, size: null, price: payload.price }];
   } else {
     // TYPE3 & TYPE4: varian berupa array yang di-mapping
     variantsData = payload.variants.map((v) => ({
@@ -56,9 +60,11 @@ export const createProduct = async (payload) => {
     image: images[0],
     images,
     category,
-    // hanya TYPE1 & TYPE3 yang punya flavor fixed;
+    // subcategory hanya relevan untuk TYPE5; tipe lain null
+    subcategory: type === 'TYPE5' ? subcategory : null,
+    // TYPE1, TYPE3 & TYPE5 punya flavor fixed;
     // TYPE2 & TYPE4 flavor dipilih user saat order
-    flavor: type === 'TYPE1' || type === 'TYPE3' ? flavor : null,
+    flavor: type === 'TYPE1' || type === 'TYPE3' || type === 'TYPE5' ? flavor : null,
     discount,
     variants: {
       create: variantsData,
@@ -137,8 +143,9 @@ export const updateProduct = async (id, body) => {
 
   const payload = parsed.data;
 
+  // TYPE1/TYPE2/TYPE5 sama-sama punya 1 variant; TYPE3/TYPE4 pakai grid variant
   const updated =
-    type === 'TYPE1' || type === 'TYPE2'
+    type === 'TYPE1' || type === 'TYPE2' || type === 'TYPE5'
       ? await updateSingleVariantType(id, existing, payload)
       : await updateVariantGridType(id, payload);
 

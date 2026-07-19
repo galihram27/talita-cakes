@@ -9,6 +9,7 @@ const PRODUCT_TYPE = {
    TYPE2: "TYPE2",
    TYPE3: "TYPE3",
    TYPE4: "TYPE4",
+   TYPE5: "TYPE5",
 };
 
 /**
@@ -46,8 +47,13 @@ const resolveItemDetails = async (product, payload) => {
       }
    };
 
-   // TYPE 1 & TYPE 2: variant fixed (1 row), tidak disimpan di cart item
-   if (type === PRODUCT_TYPE.TYPE1 || type === PRODUCT_TYPE.TYPE2) {
+   // TYPE 1, TYPE 2 & TYPE 5: variant fixed (1 row), tidak disimpan di cart item.
+   // TYPE5 (non-cake) tidak ada shape/size/flavor pilihan user — cukup note & qty.
+   if (
+      type === PRODUCT_TYPE.TYPE1 ||
+      type === PRODUCT_TYPE.TYPE2 ||
+      type === PRODUCT_TYPE.TYPE5
+   ) {
       const variant = await productRepository.findSingleVariantByProductId(
          product.id
       );

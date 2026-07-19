@@ -7,6 +7,7 @@ export const PRODUCT_TYPE_OPTIONS = [
   { value: 'TYPE2', label: 'Type 2 (Flavor & Design Choice)' },
   { value: 'TYPE3', label: 'Type 3 (Choose Your Size)' },
   { value: 'TYPE4', label: 'Type 4 (Fully Custom Cake)' },
+  { value: 'TYPE5', label: 'Type 5 (Non-Cake)' },
 ]
 
 // mirror dari backend product.constant.js -> PRODUCT_CATEGORIES
@@ -29,6 +30,20 @@ export const PRODUCT_CATEGORIES = {
     'Signature Premium Custom Decor',
     'Signature Royal Custom Decor',
     'Signature Simple Roses Cake',
+  ],
+  // TYPE5 (non-cake): kategori level-1; sub-kategori di TYPE5_SUBCATEGORIES
+  TYPE5: ['Bread', 'Cheese Cake', 'Brownies'],
+}
+
+// mirror dari backend product.constant.js -> TYPE5_SUBCATEGORIES
+// sub-kategori (level-2) TYPE5 dikelompokkan per kategori level-1
+export const TYPE5_SUBCATEGORIES = {
+  Bread: ['CINROLLS VAN DEPOK', 'MOZZARELLA SAUSAGE ROLLS'],
+  'Cheese Cake': ['BASQUE BURNT CHEESE CAKE'],
+  Brownies: [
+    'SIGNATURE PREMIUM FUDGE BROWNIES',
+    'SIGNATURE ASSORTED BROWNIES BOX',
+    'SIGNATURE CUSTOM BROWNIES BOX',
   ],
 }
 

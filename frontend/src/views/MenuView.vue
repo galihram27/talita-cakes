@@ -14,10 +14,12 @@ const isLoading = ref(!productStore.hasLoaded)
 const errorMessage = ref('')
 
 const search = ref('')
-const activeFilter = ref('ALL') // ALL | TYPE1 | TYPE2 | TYPE3 | TYPE4
+const activeFilter = ref('ALL') // ALL | TYPE1 | TYPE2 | TYPE3 | TYPE4 | TYPE5
 const activeSort = ref('default') // default | az | priceAsc | priceDesc
 // kategori aktif per type, misal { TYPE1: 'Birthday' } — default 'ALL'
 const sectionCategory = ref({})
+// sub-kategori aktif per type (level-2, dipakai TYPE5) — default 'ALL'
+const sectionSubcategory = ref({})
 
 // Opsi pengurutan untuk dropdown di sebelah kotak pencarian
 const SORT_OPTIONS = computed(() => [
@@ -59,7 +61,7 @@ onUnmounted(() => {
 // ===== CONFIG SECTION (label & hint sesuai desain) =====
 // label & hint memakai kamus yang sama dengan kartu tipe di HomeView
 const TYPE_SECTIONS = computed(() =>
-  [1, 2, 3, 4].map((num) => ({
+  [1, 2, 3, 4, 5].map((num) => ({
     key: `TYPE${num}`,
     num,
     label: t(`home.types.t${num}.tag`),
@@ -73,6 +75,7 @@ const FILTERS = computed(() => [
   { key: 'TYPE2', label: t('home.types.t2.tag') },
   { key: 'TYPE3', label: t('home.types.t3.tag') },
   { key: 'TYPE4', label: t('home.types.t4.tag') },
+  { key: 'TYPE5', label: t('home.types.t5.tag') },
 ])
 
 // Catatan sebelum memesan (dari desain)
@@ -109,6 +112,23 @@ const categoriesByType = (typeKey) => {
 const getSectionCategory = (typeKey) => sectionCategory.value[typeKey] || 'ALL'
 const setSectionCategory = (typeKey, category) => {
   sectionCategory.value = { ...sectionCategory.value, [typeKey]: category }
+  // ganti kategori -> reset sub-kategori supaya tidak nyangkut dari kategori lama
+  sectionSubcategory.value = { ...sectionSubcategory.value, [typeKey]: 'ALL' }
+}
+
+// sub-kategori (level-2) yang tersedia di type tsb. Kalau kategori masih 'ALL',
+// tampilkan seluruh sub-kategori; kalau sudah dipilih, persempit ke kategori itu.
+const subcategoriesByType = (typeKey) => {
+  const category = getSectionCategory(typeKey)
+  const pool = products.value.filter(
+    (p) => p.type === typeKey && (category === 'ALL' || p.category === category),
+  )
+  return [...new Set(pool.map((p) => p.subcategory).filter(Boolean))]
+}
+
+const getSectionSubcategory = (typeKey) => sectionSubcategory.value[typeKey] || 'ALL'
+const setSectionSubcategory = (typeKey, subcategory) => {
+  sectionSubcategory.value = { ...sectionSubcategory.value, [typeKey]: subcategory }
 }
 
 // shape hanya relevan untuk TYPE1/TYPE2 (fixed oleh admin);
@@ -134,8 +154,7 @@ const sectionsToShow = computed(() => {
   return TYPE_SECTIONS.value.filter((s) => s.key === activeFilter.value)
 })
 
-// Harga acuan untuk sort: variant termurah setelah diskon
-// (mirror ProductCard.getDiscountedPrice). Produk tanpa variant → paling akhir.
+
 const sortPriceOf = (product) => {
   if (!product.variants?.length) return Infinity
   const min = Math.min(...product.variants.map((v) => Number(v.price)))
@@ -143,7 +162,7 @@ const sortPriceOf = (product) => {
   return discount > 0 ? min - (min * discount) / 100 : min
 }
 
-// Urutkan salinan list sesuai activeSort (tidak memutasi data asli)
+
 const sortProducts = (list) => {
   const arr = [...list]
   switch (activeSort.value) {
@@ -162,13 +181,17 @@ const sortProducts = (list) => {
 
 const productsByType = (typeKey) => {
   const category = getSectionCategory(typeKey)
+  const subcategory = getSectionSubcategory(typeKey)
   const list = filteredProducts.value.filter(
-    (p) => p.type === typeKey && (category === 'ALL' || p.category === category),
+    (p) =>
+      p.type === typeKey &&
+      (category === 'ALL' || p.category === category) &&
+      (subcategory === 'ALL' || p.subcategory === subcategory),
   )
   return sortProducts(list)
 }
 
-// grid section kosong bisa karena filter kategori, bukan karena produknya tidak ada
+
 const sectionHasProducts = (typeKey) =>
   filteredProducts.value.some((p) => p.type === typeKey)
 
@@ -177,6 +200,7 @@ const resetMenu = () => {
   activeFilter.value = 'ALL'
   activeSort.value = 'default'
   sectionCategory.value = {}
+  sectionSubcategory.value = {}
 }
 </script>
 
@@ -374,6 +398,33 @@ const resetMenu = () => {
                 {{ c }}
               </button>
             </div>
+
+            <!-- FILTER SUB-KATEGORI (level-2, muncul saat kategori dipilih; mis. TYPE5) -->
+            <div
+              v-if="subcategoriesByType(section.key).length"
+              class="flex flex-wrap items-center gap-2 mt-2.5 pl-[38px]"
+            >
+              <button
+                @click="setSectionSubcategory(section.key, 'ALL')"
+                class="rounded-full border px-[13px] py-1 text-[11.5px] font-bold transition-colors"
+                :class="getSectionSubcategory(section.key) === 'ALL'
+                  ? 'bg-cocoa-900 text-white border-cocoa-900'
+                  : 'bg-white text-cocoa-500 border-[#E4D3C1] hover:border-cocoa-900 hover:text-cocoa-900'"
+              >
+                {{ t('common.all') }}
+              </button>
+              <button
+                v-for="sc in subcategoriesByType(section.key)"
+                :key="sc"
+                @click="setSectionSubcategory(section.key, sc)"
+                class="rounded-full border px-[13px] py-1 text-[11.5px] font-bold transition-colors"
+                :class="getSectionSubcategory(section.key) === sc
+                  ? 'bg-cocoa-900 text-white border-cocoa-900'
+                  : 'bg-white text-cocoa-500 border-[#E4D3C1] hover:border-cocoa-900 hover:text-cocoa-900'"
+              >
+                {{ sc }}
+              </button>
+            </div>
           </div>
 
           <!-- EMPTY (karena filter kategori) -->
@@ -399,7 +450,6 @@ const resetMenu = () => {
 </template>
 
 <style scoped>
-/* Transisi buka/tutup dropdown sort */
 .tc-drop-enter-active,
 .tc-drop-leave-active {
   transition: opacity 0.15s ease, transform 0.15s ease;

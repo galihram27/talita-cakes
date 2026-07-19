@@ -50,6 +50,7 @@ export const searchProductsByKeyword = async (keyword) => {
     { descriptionEn: { contains: keyword, mode: 'insensitive' } },
     { flavor: { contains: keyword, mode: 'insensitive' } },
     { category: { contains: keyword, mode: 'insensitive' } },
+    { subcategory: { contains: keyword, mode: 'insensitive' } },
   ];
 
   if (matchedShapes.length > 0) {

@@ -4,12 +4,8 @@ import { useI18n } from 'vue-i18n'
 import ProductImage from './ProductImage.vue'
 import ProductInfoHeader from './ProductInfoHeader.vue'
 import ProductPriceDisplay from './ProductPriceDisplay.vue'
-import ProductFixedSpec from './ProductFixedSpec.vue'
-import ProductFlavorPicker from './ProductFlavorPicker.vue'
-import DesignReferencePicker from './DesignReferencePicker.vue'
 import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
-import { TYPE2_FLAVORS } from '@/config/constants'
 
 const props = defineProps({
   product: { type: Object, required: true },
@@ -17,16 +13,13 @@ const props = defineProps({
 
 const { t } = useI18n()
 
-const selectedFlavor = ref('')
-const designImage = ref(null)
-const textOnCake = ref('')
 const notes = ref('')
 const quantity = ref(1)
 const isSubmitting = ref(false)
 const submitError = ref('')
 const submitSuccess = ref(false)
 
-// TYPE2 cuma punya 1 variant fixed (shape & size tidak bisa dipilih)
+// TYPE5 (non-cake) punya 1 variant harga tunggal (tanpa shape/size)
 const variant = computed(() => props.product.variants?.[0] ?? null)
 
 const finalPrice = computed(() => {
@@ -40,10 +33,6 @@ const handleSubmit = async () => {
   submitError.value = ''
   submitSuccess.value = false
 
-  if (!selectedFlavor.value) {
-    submitError.value = t('product.chooseFlavorFirst')
-    return
-  }
   if (quantity.value < 1) {
     submitError.value = t('product.qtyMin')
     return
@@ -51,12 +40,10 @@ const handleSubmit = async () => {
 
   isSubmitting.value = true
   try {
+    // TYPE5: user hanya mengirim note & quantity (tanpa flavor/shape/size)
     await addItemToCart({
       productId: props.product.id,
-      flavor: selectedFlavor.value,
-      customImage: designImage.value?.url,
       quantity: quantity.value,
-      textOnCake: textOnCake.value || undefined,
       notes: notes.value || undefined,
     })
     submitSuccess.value = true
@@ -73,29 +60,40 @@ const handleSubmit = async () => {
     <ProductImage :image="product.image" :images="product.images" :alt="product.name" />
 
     <div>
-      <ProductInfoHeader :type="product.type" :name="product.name" :description="product.description" :description-en="product.descriptionEn" :category="product.category" />
+      <ProductInfoHeader
+        :type="product.type"
+        :name="product.name"
+        :description="product.description"
+        :description-en="product.descriptionEn"
+        :category="product.category"
+        :subcategory="product.subcategory"
+      />
 
       <ProductPriceDisplay
         :price="finalPrice"
         :original-price="Number(product.discount) > 0 ? Number(variant?.price) : null"
       />
 
-      <ProductFixedSpec :shape="variant?.shape" :size="variant?.size" />
+      <!-- Flavor fixed untuk TYPE5, read-only -->
+      <div
+        v-if="product.flavor"
+        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
+      >
+        <span class="flex flex-col gap-0.5 min-w-0">
+          <span class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">
+            {{ t('product.flavor') }}
+          </span>
+          <span class="font-display text-[16.5px] text-cocoa-900 leading-tight">
+            {{ product.flavor }}
+          </span>
+        </span>
+      </div>
 
-      <!-- Flavor: pilihan user, khusus TYPE2 -->
-      <ProductFlavorPicker
-        v-model="selectedFlavor"
-        :flavors="TYPE2_FLAVORS"
-        :step-label="t('product.chooseFlavorStep1')"
-      />
-
-      <DesignReferencePicker v-model="designImage" />
-
+      <!-- TYPE5: user hanya isi note & jumlah item -->
       <ProductOrderForm
-        v-model:text-on-cake="textOnCake"
         v-model:notes="notes"
         v-model:quantity="quantity"
-        use-stepper
+        :show-text-on-cake="false"
         :is-submitting="isSubmitting"
         :submit-error="submitError"
         :submit-success="submitSuccess"

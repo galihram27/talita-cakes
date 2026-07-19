@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { PRODUCT_CATEGORIES } from './product.constant.js';
+import {
+  PRODUCT_CATEGORIES,
+  TYPE5_SUBCATEGORIES,
+  ALL_TYPE5_SUBCATEGORIES,
+} from './product.constant.js';
 import {
   isValidSize,
   isValidManualSize,
@@ -141,11 +145,35 @@ const type4Schema = z.object({
   variants: z.array(variantSchema).min(2, 'Minimal harus ada size Round dan Square'),
 }).superRefine(refineVariantsCompleteness);
 
+// refine subcategory TYPE5: harus salah satu sub-kategori milik category-nya.
+const refineType5Subcategory = (data, ctx) => {
+  const allowed = TYPE5_SUBCATEGORIES[data.category] ?? [];
+  if (!allowed.includes(data.subcategory)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Subcategory tidak valid untuk kategori ${data.category}`,
+      path: ['subcategory'],
+    });
+  }
+};
+
+// ===== TYPE 5 (non-cake: flavor fixed, tanpa shape/size, harga tunggal) =====
+// User hanya mengisi note & quantity saat order.
+const type5Schema = z.object({
+  type: z.literal('TYPE5'),
+  ...baseFields,
+  category: categoryFieldFor('TYPE5'),
+  subcategory: z.string().trim().min(1, 'Subcategory wajib diisi'),
+  flavor: z.string().trim().min(1, 'Flavor wajib diisi'),
+  price: z.coerce.number().positive('Price harus lebih dari 0'),
+}).superRefine(refineType5Subcategory);
+
 export const createProductSchema = z.discriminatedUnion('type', [
   type1Schema,
   type2Schema,
   type3Schema,
   type4Schema,
+  type5Schema,
 ]);
 
 // ===== UPDATE SCHEMAS (semua field opsional, partial update) =====
@@ -192,9 +220,35 @@ const updateType4Schema = z.object({
   removeVariants: z.array(removeVariantSchema).optional(),
 });
 
+// TYPE5: semua opsional (partial update). Harga tunggal, tanpa shape/size.
+const updateType5Schema = z
+  .object({
+    ...partialBaseFields,
+    category: categoryFieldFor('TYPE5').optional(),
+    subcategory: z.string().trim().min(1, 'Subcategory tidak boleh kosong').optional(),
+    flavor: z.string().trim().min(1, 'Flavor tidak boleh kosong').optional(),
+    price: z.coerce.number().positive('Price harus lebih dari 0').optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.subcategory === undefined) return;
+    // kalau category ikut dikirim, subcategory harus cocok dengan category itu;
+    // kalau tidak, cukup pastikan subcategory adalah sub-kategori TYPE5 yang sah.
+    const allowed = data.category
+      ? TYPE5_SUBCATEGORIES[data.category] ?? []
+      : ALL_TYPE5_SUBCATEGORIES;
+    if (!allowed.includes(data.subcategory)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Subcategory tidak valid',
+        path: ['subcategory'],
+      });
+    }
+  });
+
 export const updateProductSchemaMap = {
   TYPE1: updateType1Schema,
   TYPE2: updateType2Schema,
   TYPE3: updateType3Schema,
   TYPE4: updateType4Schema,
+  TYPE5: updateType5Schema,
 };
