@@ -99,6 +99,11 @@ const routes = [
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },
 ]
 
+// Posisi scroll terakhir di halaman Menu. Tautan "kembali ke menu" pada detail
+// produk adalah navigasi push, bukan back browser, sehingga savedPosition kosong
+// dan pengunjung terlempar ke hero section. Posisinya kita ingat sendiri.
+let menuScrollTop = 0
+
 const router = createRouter({
   history: createWebHistory(),
   routes,
@@ -106,8 +111,24 @@ const router = createRouter({
   // kembalikan ke posisi scroll sebelumnya.
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) return savedPosition
+
+    // Kembali ke Menu dari detail produk: pulihkan posisi terakhir supaya
+    // pengunjung mendarat lagi di kartu yang tadi dibuka. Menunggu satu frame
+    // karena daftar produk perlu ter-render dulu — kalau halaman masih pendek,
+    // browser mengabaikan offset-nya dan tetap berhenti di atas.
+    if (to.name === 'menu' && from.name === 'product-detail' && menuScrollTop > 0) {
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => resolve({ top: menuScrollTop }))
+      })
+    }
+
     return { top: 0 }
   },
+})
+
+// Rekam posisi scroll tepat sebelum meninggalkan halaman Menu.
+router.beforeEach((to, from) => {
+  if (from.name === 'menu') menuScrollTop = window.scrollY
 })
 
 // Navigation guard: proteksi route berdasarkan meta requiresAuth / requiresAdmin

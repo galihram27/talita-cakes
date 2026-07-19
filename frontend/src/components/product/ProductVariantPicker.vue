@@ -12,7 +12,10 @@ const props = defineProps({
   variantId: { type: String, default: null }, // v-model
 })
 
-const emit = defineEmits(['update:variantId'])
+// update:shape dipakai induk untuk menggeser galeri ke foto bentuk terpilih.
+// Bentuk dikabarkan terpisah dari variantId karena saat bentuk baru dipilih,
+// ukuran ikut direset (variantId sempat null) — galeri tetap harus berpindah.
+const emit = defineEmits(['update:variantId', 'update:shape'])
 
 const selectedShape = ref('ROUND')
 
@@ -35,6 +38,7 @@ const applyDiscount = (price) => {
 
 const selectShape = (shape) => {
   selectedShape.value = shape
+  emit('update:shape', shape)
   emit('update:variantId', null) // reset pilihan size setiap ganti shape
 }
 
@@ -47,6 +51,8 @@ watch(
     if (!variants || variants.length === 0) return
     const shapes = new Set(variants.map((v) => v.shape))
     selectedShape.value = shapes.has('ROUND') ? 'ROUND' : 'SQUARE'
+    // kabarkan bentuk awal juga, supaya galeri langsung selaras sejak muat
+    emit('update:shape', selectedShape.value)
   },
   { immediate: true }
 )

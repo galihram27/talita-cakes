@@ -106,6 +106,10 @@ model ProductVariant {
   shape      Shape?
   size       Int?
   price      Decimal     @db.Decimal(12, 2)
+  // foto yang mewakili varian ini, dipilih dari Product.images.
+  // Dipakai TYPE6: memilih isi box menggeser galeri ke foto box tsb.
+  // null = varian tidak punya foto khusus, galeri dibiarkan apa adanya.
+  image      String?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   cartItems  CartItem[]

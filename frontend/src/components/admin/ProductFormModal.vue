@@ -62,12 +62,18 @@ const nonCakePrice = ref(null)
 
 // TYPE6 (cupcakes): harga per isi box -> { [isiBox]: price }
 const boxPrices = reactive({})
+// TYPE6: foto yang mewakili tiap isi box -> { [isiBox]: url }.
+// Diambil dari foto yang sudah diunggah (form.images), bukan unggahan terpisah.
+const boxImages = reactive({})
 
 // TYPE3 / TYPE4: min size per shape + harga per size
 const roundMinSize = ref(null)
 const squareMinSize = ref(null)
 const roundPrices = reactive({}) // { [size]: price }
 const squarePrices = reactive({})
+// TYPE3 / TYPE4: satu foto per BENTUK -> { ROUND: url, SQUARE: url }.
+// Foto ini nanti dilekatkan ke semua ukuran milik bentuk tsb.
+const shapeImages = reactive({ ROUND: '', SQUARE: '' })
 
 const fileInputRef = ref(null)
 const isSubmitting = ref(false)
@@ -163,6 +169,9 @@ watch(
       Object.keys(boxPrices).forEach((size) => {
         if (!allowed.includes(Number(size))) delete boxPrices[size]
       })
+      Object.keys(boxImages).forEach((size) => {
+        if (!allowed.includes(Number(size))) delete boxImages[size]
+      })
     }
   }
 )
@@ -211,6 +220,9 @@ const resetForm = () => {
   clearPriceMap(roundPrices)
   clearPriceMap(squarePrices)
   clearPriceMap(boxPrices)
+  clearPriceMap(boxImages)
+  shapeImages.ROUND = ''
+  shapeImages.SQUARE = ''
   roundMinSize.value = null
   squareMinSize.value = null
   nonCakePrice.value = null
@@ -269,6 +281,7 @@ const resetForm = () => {
     // TYPE6: tiap variant = satu isi box; `size` menyimpan jumlah pcs
     variants.forEach((v) => {
       boxPrices[v.size] = Number(v.price)
+      if (v.image) boxImages[v.size] = v.image
     })
     return
   }
@@ -280,10 +293,13 @@ const resetForm = () => {
   if (round.length) {
     roundMinSize.value = Math.min(...round.map((v) => v.size))
     round.forEach((v) => (roundPrices[v.size] = Number(v.price)))
+    // foto bentuk sama untuk semua ukuran; ambil yang pertama punya
+    shapeImages.ROUND = round.find((v) => v.image)?.image ?? ''
   }
   if (square.length) {
     squareMinSize.value = Math.min(...square.map((v) => v.size))
     square.forEach((v) => (squarePrices[v.size] = Number(v.price)))
+    shapeImages.SQUARE = square.find((v) => v.image)?.image ?? ''
   }
 }
 
@@ -322,7 +338,15 @@ const handleFileChange = async (e) => {
 }
 
 const removeImage = (index) => {
-  form.images.splice(index, 1)
+  const [removed] = form.images.splice(index, 1)
+  // Lepas foto ini dari isi box mana pun yang memakainya. Tanpa ini, varian
+  // akan menunjuk URL yang sudah tidak ada di galeri dan server menolaknya.
+  Object.keys(boxImages).forEach((size) => {
+    if (boxImages[size] === removed) delete boxImages[size]
+  })
+  Object.keys(shapeImages).forEach((shape) => {
+    if (shapeImages[shape] === removed) shapeImages[shape] = ''
+  })
 }
 
 // jadikan foto tertentu sebagai cover (pindahkan ke posisi pertama)
@@ -335,13 +359,24 @@ const makeCover = (index) => {
 // ===== SUBMIT =====
 const buildVariantList = () => {
   const variants = []
+  // foto bentuk dilekatkan ke setiap ukuran milik bentuk tsb, supaya halaman
+  // detail bisa menemukannya dari ukuran mana pun yang sedang dipilih
   for (const size of roundSizes.value) {
-    variants.push({ shape: 'ROUND', size, price: Number(roundPrices[size]) })
+    const v = { shape: 'ROUND', size, price: Number(roundPrices[size]) }
+    if (shapeImages.ROUND) v.image = shapeImages.ROUND
+    variants.push(v)
   }
   for (const size of squareSizes.value) {
-    variants.push({ shape: 'SQUARE', size, price: Number(squarePrices[size]) })
+    const v = { shape: 'SQUARE', size, price: Number(squarePrices[size]) }
+    if (shapeImages.SQUARE) v.image = shapeImages.SQUARE
+    variants.push(v)
   }
   return variants
+}
+
+// klik thumbnail untuk menetapkan foto bentuk; klik lagi untuk melepasnya
+const toggleShapeImage = (shape, url) => {
+  shapeImages[shape] = shapeImages[shape] === url ? '' : url
 }
 
 // TYPE6: hanya isi box yang diberi harga > 0 yang dijadikan varian.
@@ -349,7 +384,18 @@ const buildVariantList = () => {
 const buildBoxVariants = () =>
   cupcakeBoxes.value
     .filter((size) => Number(boxPrices[size]) > 0)
-    .map((size) => ({ size, price: Number(boxPrices[size]) }))
+    .map((size) => {
+      const variant = { size, price: Number(boxPrices[size]) }
+      // foto opsional; hanya dikirim kalau admin memilihnya
+      if (boxImages[size]) variant.image = boxImages[size]
+      return variant
+    })
+
+// klik thumbnail untuk menetapkan foto box; klik lagi untuk melepasnya
+const toggleBoxImage = (size, url) => {
+  if (boxImages[size] === url) delete boxImages[size]
+  else boxImages[size] = url
+}
 
 const validate = () => {
   if (!form.name.trim()) return t('admin.productForm.nameRequired')
@@ -748,13 +794,36 @@ const close = () => {
               <p class="text-xs text-cocoa-400 mb-2">
                 {{ t('admin.productForm.boxPriceHint') }}
               </p>
-              <div class="rounded-2xl border border-cream-300 p-4 space-y-3">
+              <div class="rounded-2xl border border-cream-300 p-4 space-y-4">
                 <div v-for="b in cupcakeBoxes" :key="`box-${b}`">
                   <p class="text-sm mb-1">{{ t('product.boxOf', { count: b }) }}</p>
                   <PriceInput
                     v-model="boxPrices[b]"
                     class="w-full rounded-full border border-cream-300 px-4 py-2 text-sm focus:outline-none"
                   />
+
+                  <!-- Foto yang mewakili isi box ini, dipilih dari foto yang
+                       sudah diunggah di atas. Opsional. -->
+                  <template v-if="form.images.length">
+                    <p class="text-xs text-cocoa-400 mt-2 mb-1.5">
+                      {{ t('admin.productForm.boxImageHint') }}
+                    </p>
+                    <div class="flex gap-2 flex-wrap">
+                      <button
+                        v-for="(img, i) in form.images"
+                        :key="`box-${b}-img-${i}`"
+                        type="button"
+                        @click="toggleBoxImage(b, img)"
+                        class="w-11 aspect-square rounded-lg border-2 overflow-hidden transition-colors bg-cream-100"
+                        :class="boxImages[b] === img
+                          ? 'border-brand-500'
+                          : 'border-transparent hover:border-brand-400'"
+                        :title="t('admin.productForm.boxImageHint')"
+                      >
+                        <img :src="img" alt="" class="w-full h-full object-cover" />
+                      </button>
+                    </div>
+                  </template>
                 </div>
               </div>
             </template>
@@ -815,6 +884,27 @@ const close = () => {
               </p>
             </div>
 
+            <!-- FOTO UNTUK BENTUK ROUND (opsional) -->
+            <div v-if="roundSizes.length && form.images.length" class="mt-3">
+              <label class="block text-xs font-semibold text-cocoa-500 mb-1.5">
+                {{ t('admin.productForm.shapeImageHint') }}
+              </label>
+              <div class="flex gap-2 flex-wrap">
+                <button
+                  v-for="(img, i) in form.images"
+                  :key="`round-img-${i}`"
+                  type="button"
+                  @click="toggleShapeImage('ROUND', img)"
+                  class="w-11 aspect-square rounded-lg border-2 overflow-hidden transition-colors bg-cream-100"
+                  :class="shapeImages.ROUND === img
+                    ? 'border-brand-500'
+                    : 'border-transparent hover:border-brand-400'"
+                >
+                  <img :src="img" alt="" class="w-full h-full object-cover" />
+                </button>
+              </div>
+            </div>
+
             <div
               v-if="roundSizes.length"
               class="mt-3 rounded-2xl border border-cream-300 p-4 space-y-3"
@@ -869,6 +959,27 @@ const close = () => {
               <p v-if="copyNotice.SQUARE" class="text-xs text-brand-600 mt-1.5">
                 {{ copyNotice.SQUARE }}
               </p>
+            </div>
+
+            <!-- FOTO UNTUK BENTUK SQUARE (opsional) -->
+            <div v-if="squareSizes.length && form.images.length" class="mt-3">
+              <label class="block text-xs font-semibold text-cocoa-500 mb-1.5">
+                {{ t('admin.productForm.shapeImageHint') }}
+              </label>
+              <div class="flex gap-2 flex-wrap">
+                <button
+                  v-for="(img, i) in form.images"
+                  :key="`square-img-${i}`"
+                  type="button"
+                  @click="toggleShapeImage('SQUARE', img)"
+                  class="w-11 aspect-square rounded-lg border-2 overflow-hidden transition-colors bg-cream-100"
+                  :class="shapeImages.SQUARE === img
+                    ? 'border-brand-500'
+                    : 'border-transparent hover:border-brand-400'"
+                >
+                  <img :src="img" alt="" class="w-full h-full object-cover" />
+                </button>
+              </div>
             </div>
 
             <div

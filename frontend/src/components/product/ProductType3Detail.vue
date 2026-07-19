@@ -15,6 +15,7 @@ const props = defineProps({
 const { t } = useI18n()
 
 const selectedVariantId = ref(null)
+const selectedShape = ref('')
 const textOnCake = ref('')
 const notes = ref('')
 const quantity = ref(1)
@@ -24,6 +25,14 @@ const submitSuccess = ref(false)
 
 const selectedVariant = computed(() =>
   props.product.variants?.find((v) => v.id === selectedVariantId.value) ?? null
+)
+
+// Foto yang mewakili bentuk terpilih. Admin menetapkan satu foto per bentuk,
+// dilekatkan ke semua ukuran bentuk tsb — jadi cukup ambil yang pertama ada.
+const shapeImage = computed(
+  () =>
+    props.product.variants?.find((v) => v.shape === selectedShape.value && v.image)
+      ?.image ?? ''
 )
 
 const finalPrice = computed(() => {
@@ -66,7 +75,13 @@ const handleSubmit = async () => {
 
 <template>
   <div class="grid md:grid-cols-[minmax(0,384px)_minmax(0,448px)] justify-center gap-6 md:gap-8 items-start">
-    <ProductImage :image="product.image" :images="product.images" :alt="product.name" />
+    <!-- memilih bentuk menggeser galeri ke foto bentuk tsb (kalau ada fotonya) -->
+    <ProductImage
+      :image="product.image"
+      :images="product.images"
+      :alt="product.name"
+      :active-url="shapeImage"
+    />
 
     <div>
       <ProductInfoHeader :type="product.type" :name="product.name" :description="product.description" :description-en="product.descriptionEn" :category="product.category" />
@@ -92,6 +107,7 @@ const handleSubmit = async () => {
 
       <ProductVariantPicker
         v-model:variant-id="selectedVariantId"
+        @update:shape="selectedShape = $event"
         :variants="product.variants"
         :discount="product.discount"
       />

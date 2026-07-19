@@ -762,6 +762,8 @@ export default {
       selectCategoryFirst: "Pilih kategori dulu untuk melihat pilihan isi box.",
       boxPrices: "Harga per isi box",
       boxPriceHint: "Kosongkan bila isi box tersebut tidak dijual untuk produk ini.",
+      boxImageHint: "Pilih foto untuk isi box ini (opsional) — klik lagi untuk melepas.",
+      shapeImageHint: "Foto untuk bentuk ini (opsional) — klik lagi untuk melepas.",
       name: "Nama Produk",
       namePlaceholder: "Nama Produk...",
       description: "Deskripsi",

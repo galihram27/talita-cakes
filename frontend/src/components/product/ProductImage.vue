@@ -11,6 +11,10 @@ const props = defineProps({
   // seluruh foto produk; kalau ada, ditampilkan sebagai galeri
   images: { type: Array, default: () => [] },
   alt: { type: String, default: '' },
+  // URL foto yang ingin ditampilkan dari luar (mis. TYPE6: memilih isi box
+  // menggeser galeri ke foto box tsb). Hanya mengarahkan, tidak mengunci —
+  // pengunjung tetap bebas menggeser galeri setelahnya.
+  activeUrl: { type: String, default: '' },
 })
 
 // daftar foto final: pakai images kalau ada, kalau tidak fallback ke image tunggal
@@ -50,6 +54,19 @@ const goTo = (index) => {
   slideDirection.value = index > activeIndex.value ? 'left' : 'right'
   activeIndex.value = index
 }
+
+// Arahkan galeri ke foto yang diminta induk. Kalau URL-nya kosong atau tidak
+// ada di galeri (mis. varian belum diberi foto), galeri dibiarkan pada foto
+// yang sedang tampil — lebih baik daripada melompat ke foto yang keliru.
+watch(
+  () => props.activeUrl,
+  (url) => {
+    if (!url) return
+    const index = gallery.value.indexOf(url)
+    if (index >= 0) goTo(index)
+  },
+  { immediate: true }
+)
 
 // tombol panah tampil saat pointer di atas foto, lalu hilang 2 detik setelah pointer keluar
 const controlsVisible = ref(false)

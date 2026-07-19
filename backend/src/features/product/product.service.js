@@ -57,6 +57,7 @@ export const createProduct = async (payload) => {
       shape: null,
       size: v.size,
       price: v.price,
+      image: v.image ?? null,
     }));
   } else {
     // TYPE3 & TYPE4: varian berupa array yang di-mapping
@@ -64,6 +65,7 @@ export const createProduct = async (payload) => {
       shape: v.shape,
       size: v.size,
       price: v.price,
+      image: v.image ?? null,
     }));
   }
 

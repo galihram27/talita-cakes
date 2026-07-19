@@ -140,8 +140,16 @@ export const updatePartialProductWithVariants = async (id, productFields, varian
           where: {
             productId_shape_size: { productId: id, shape: v.shape, size: v.size },
           },
-          update: { price: v.price },
-          create: { productId: id, shape: v.shape, size: v.size, price: v.price },
+          // image ikut di-update supaya admin bisa mengganti foto per bentuk
+          // tanpa harus menghapus & membuat ulang seluruh varian
+          update: { price: v.price, image: v.image ?? null },
+          create: {
+            productId: id,
+            shape: v.shape,
+            size: v.size,
+            price: v.price,
+            image: v.image ?? null,
+          },
         });
       }
 
@@ -193,6 +201,7 @@ export const replaceProductVariants = async (id, productFields, variants) => {
             shape: null,
             size: v.size,
             price: v.price,
+            image: v.image ?? null,
           })),
         });
       }

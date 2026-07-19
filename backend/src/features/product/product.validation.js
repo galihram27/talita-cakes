@@ -62,11 +62,34 @@ const variantSchema = z
     shape: z.enum(['ROUND', 'SQUARE'], { message: 'Shape harus ROUND atau SQUARE' }),
     size: z.coerce.number().int(),
     price: z.coerce.number().positive('Price harus lebih dari 0'),
+    // foto yang mewakili varian ini. Untuk TYPE3/TYPE4 admin memilih satu foto
+    // per BENTUK, lalu foto itu dilekatkan ke semua ukuran bentuk tsb.
+    image: z.string().trim().min(1).optional(),
   })
   .refine((v) => isValidSize(v.shape, v.size), {
     message: 'Size tidak valid untuk shape tersebut',
     path: ['size'],
   });
+
+/**
+ * Foto varian harus benar-benar ada di galeri produk, supaya tidak menunjuk
+ * URL yang sudah dihapus. Saat update parsial `images` bisa tidak dikirim —
+ * dalam kasus itu pengecekan dilewati karena galeri lama tidak ikut terbawa.
+ */
+const refineVariantImages = (data, ctx) => {
+  if (!Array.isArray(data.images)) return;
+
+  const orphan = (data.variants ?? []).find(
+    (v) => v.image && !data.images.includes(v.image)
+  );
+  if (orphan) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Foto varian harus salah satu foto produk yang diunggah',
+      path: ['variants'],
+    });
+  }
+};
 
 const removeVariantSchema = z.object({
   shape: z.enum(['ROUND', 'SQUARE']),
@@ -137,7 +160,10 @@ const type3Schema = z.object({
   category: categoryFieldFor('TYPE3'),
   flavor: z.string().trim().min(1, 'Flavor wajib diisi'),
   variants: z.array(variantSchema).min(2, 'Minimal harus ada size Round dan Square'),
-}).superRefine(refineVariantsCompleteness);
+}).superRefine((data, ctx) => {
+  refineVariantsCompleteness(data, ctx);
+  refineVariantImages(data, ctx);
+});
 
 // ===== TYPE 4 (user pilih shape & size + flavor + dekorasi, tanpa flavor fixed) =====
 const type4Schema = z.object({
@@ -145,7 +171,10 @@ const type4Schema = z.object({
   ...baseFields,
   category: categoryFieldFor('TYPE4'),
   variants: z.array(variantSchema).min(2, 'Minimal harus ada size Round dan Square'),
-}).superRefine(refineVariantsCompleteness);
+}).superRefine((data, ctx) => {
+  refineVariantsCompleteness(data, ctx);
+  refineVariantImages(data, ctx);
+});
 
 // refine subcategory TYPE5: harus salah satu sub-kategori milik category-nya.
 const refineType5Subcategory = (data, ctx) => {
@@ -175,6 +204,8 @@ const type5Schema = z.object({
 const boxVariantSchema = z.object({
   size: z.coerce.number().int().positive(),
   price: z.coerce.number().positive('Price harus lebih dari 0'),
+  // foto yang mewakili isi box ini; harus salah satu foto produk (lihat refine di bawah)
+  image: z.string().trim().min(1).optional(),
 });
 
 // Box yang dikirim harus termasuk pilihan box milik kategori tsb, tanpa duplikat,
@@ -199,6 +230,7 @@ const refineCupcakeBoxes = (data, ctx) => {
       path: ['variants'],
     });
   }
+
 };
 
 // Rasa fixed hanya wajib untuk kategori ber-fixedFlavor (American Butter).
@@ -225,6 +257,7 @@ const type6Schema = z
   .superRefine((data, ctx) => {
     refineCupcakeBoxes(data, ctx);
     refineCupcakeFlavor(data, ctx);
+    refineVariantImages(data, ctx);
   });
 
 export const createProductSchema = z.discriminatedUnion('type', [
@@ -264,21 +297,25 @@ const updateType2Schema = z.object({
 });
 
 // TYPE3: variants & removeVariants opsional -> admin boleh hanya update beberapa size saja
-const updateType3Schema = z.object({
-  ...partialBaseFields,
-  category: categoryFieldFor('TYPE3').optional(),
-  flavor: z.string().trim().min(1, 'Flavor tidak boleh kosong').optional(),
-  variants: z.array(variantSchema).optional(),
-  removeVariants: z.array(removeVariantSchema).optional(),
-});
+const updateType3Schema = z
+  .object({
+    ...partialBaseFields,
+    category: categoryFieldFor('TYPE3').optional(),
+    flavor: z.string().trim().min(1, 'Flavor tidak boleh kosong').optional(),
+    variants: z.array(variantSchema).optional(),
+    removeVariants: z.array(removeVariantSchema).optional(),
+  })
+  .superRefine(refineVariantImages);
 
 // TYPE4: sama seperti TYPE3 tapi tanpa flavor
-const updateType4Schema = z.object({
-  ...partialBaseFields,
-  category: categoryFieldFor('TYPE4').optional(),
-  variants: z.array(variantSchema).optional(),
-  removeVariants: z.array(removeVariantSchema).optional(),
-});
+const updateType4Schema = z
+  .object({
+    ...partialBaseFields,
+    category: categoryFieldFor('TYPE4').optional(),
+    variants: z.array(variantSchema).optional(),
+    removeVariants: z.array(removeVariantSchema).optional(),
+  })
+  .superRefine(refineVariantImages);
 
 // TYPE5: semua opsional (partial update). Harga tunggal, tanpa shape/size.
 const updateType5Schema = z
@@ -327,6 +364,7 @@ const updateType6Schema = z
       return;
     }
     refineCupcakeBoxes(data, ctx);
+    refineVariantImages(data, ctx);
   });
 
 export const updateProductSchemaMap = {

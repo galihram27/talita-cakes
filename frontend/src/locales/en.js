@@ -761,6 +761,8 @@ export default {
       selectCategoryFirst: "Select a category first to see its box options.",
       boxPrices: "Price per box size",
       boxPriceHint: "Leave a box empty if it is not sold for this product.",
+      boxImageHint: "Pick a photo for this box size (optional) — click again to unset.",
+      shapeImageHint: "Photo for this shape (optional) — click again to unset.",
       name: "Product Name",
       namePlaceholder: "Product Name...",
       description: "Description",
