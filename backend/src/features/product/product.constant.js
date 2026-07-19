@@ -75,25 +75,15 @@ export const CUSTOM_FLAVORS = [
 ];
 
 // ===== TYPE6 (cupcakes) =====
-// Rasa cupcake berbeda per KATEGORI, bukan per tipe: Paper Topper memakai
-// "Vanilla Strawberry", sedangkan Simple Decor & Custom 3D memakai
-// "Strawberry Marshmallow". Karena itu TYPE6 tidak masuk FLAVORS_BY_TYPE.
-const CUPCAKE_FLAVORS_STANDARD = [
-   "Double Choco",
-   "Oreo Choco",
-   "Choco Blueberry",
-   "Vanilla Cheese",
-   "Strawberry Marshmallow",
-   "Vanilla Oreo",
-];
-
-const CUPCAKE_FLAVORS_PAPER_TOPPER = [
-   "Double Choco",
-   "Oreo Choco",
-   "Choco Blueberry",
-   "Vanilla Cheese",
-   "Vanilla Strawberry",
-   "Vanilla Oreo",
+// Rasa cupcake memakai nama tersendiri (berakhiran "Cupcakes") supaya tidak
+// tertukar dengan rasa cake yang namanya mirip. Seluruh kategori cupcake
+// berbagi daftar yang sama; yang berbeda antar kategori hanya pilihan isi box
+// dan apakah rasanya ditentukan admin (American Butter).
+const CUPCAKE_FLAVORS = [
+   "Double Choco Cupcakes",
+   "Choco Blueberry Cupcakes",
+   "Vanilla Cheese Cupcakes",
+   "Vanilla Strawberry Cupcakes",
 ];
 
 /**
@@ -112,17 +102,17 @@ export const TYPE6_CATEGORY_CONFIG = {
    },
    "Simple Decor Cupcakes": {
       fixedFlavor: false,
-      flavors: CUPCAKE_FLAVORS_STANDARD,
+      flavors: CUPCAKE_FLAVORS,
       boxes: [4, 6, 9, 12],
    },
    "Paper Topper Cupcakes": {
       fixedFlavor: false,
-      flavors: CUPCAKE_FLAVORS_PAPER_TOPPER,
+      flavors: CUPCAKE_FLAVORS,
       boxes: [6, 9, 12],
    },
    "Custom 3D Cupcakes": {
       fixedFlavor: false,
-      flavors: CUPCAKE_FLAVORS_STANDARD,
+      flavors: CUPCAKE_FLAVORS,
       boxes: [4, 6, 9, 12],
    },
 };
@@ -149,10 +139,5 @@ export const FLAVORS_BY_TYPE = {
 // Gabungan semua rasa — dipakai validasi bentuk payload di schema (enum),
 // validasi "rasa mana untuk tipe/kategori apa" tetap di service layer.
 export const ALL_FLAVORS = [
-   ...new Set([
-      ...TYPE2_FLAVORS,
-      ...CUSTOM_FLAVORS,
-      ...CUPCAKE_FLAVORS_STANDARD,
-      ...CUPCAKE_FLAVORS_PAPER_TOPPER,
-   ]),
+   ...new Set([...TYPE2_FLAVORS, ...CUSTOM_FLAVORS, ...CUPCAKE_FLAVORS]),
 ];

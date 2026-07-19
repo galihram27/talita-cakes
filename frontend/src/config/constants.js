@@ -44,8 +44,46 @@ export const CUSTOM_FLAVORS = [
   'Oreo Cheese',
 ]
 
-// Penjelasan rasa untuk popup di halaman detail produk (TYPE2 & TYPE4)
+// Penjelasan rasa untuk popup di halaman detail produk (TYPE2, TYPE4 & TYPE6).
+// Rasa tanpa entri di sini tetap bisa dipilih, hanya saja tidak muncul di
+// popup panduan rasa (lihat ProductFlavorPicker -> guideItems).
 export const FLAVOR_DESCRIPTIONS = {
+  'Double Choco': {
+    id: 'Cake coklat lembut dengan lapisan Homemade Chocolate Ganache yang kaya rasa dan lumer di setiap gigitan.',
+    en: 'Soft chocolate cake layered with Homemade Chocolate Ganache for a rich and indulgent chocolate flavor.',
+  },
+  'Choco Blueberry': {
+    id: 'Cake coklat lembut dengan lapisan Selai Blueberry yang menghadirkan perpaduan rasa cokelat dan manis segar buah blueberry.',
+    en: 'Soft chocolate cake layered with Blueberry Jam for a delightful balance of rich chocolate and fruity sweetness.',
+  },
+  'Vanilla Cheese': {
+    id: 'Cake vanilla lembut dengan lapisan Cheddar Cheese Cream yang creamy dengan sentuhan gurih yang lembut.',
+    en: 'Soft vanilla cake layered with Cheddar Cheese Cream for a smooth, creamy, and delicately cheesy flavor.',
+  },
+  'Vanilla Strawberry': {
+    id: 'Cake vanilla lembut dengan lapisan Strawberry Jam yang memberikan rasa manis dan segar di setiap lapisan.',
+    en: 'Soft vanilla cake layered with Strawberry Jam for a light, sweet, and fruity flavor.',
+  },
+
+  // Rasa TYPE6 (cupcakes). Namanya sengaja berbeda dari rasa cake di atas
+  // meski mirip, karena teksnya menyebut "cupcake" dan "isian", bukan "lapisan".
+  'Double Choco Cupcakes': {
+    id: 'Cupcake coklat lembut dengan isian Homemade Chocolate Ganache yang kaya rasa dan lumer di setiap gigitan.',
+    en: 'Soft chocolate cupcake filled with Homemade Chocolate Ganache for a rich and indulgent chocolate flavor.',
+  },
+  'Choco Blueberry Cupcakes': {
+    id: 'Cupcake coklat lembut dengan isian Selai Blueberry yang menghadirkan perpaduan rasa cokelat dan manis segar buah blueberry.',
+    en: 'Soft chocolate cupcake filled with Blueberry Jam for a delightful balance of rich chocolate and fruity sweetness.',
+  },
+  'Vanilla Cheese Cupcakes': {
+    id: 'Cupcake vanilla lembut dengan isian Cheddar Cheese Cream yang creamy dengan sentuhan gurih yang lembut.',
+    en: 'Soft vanilla cupcake filled with Cheddar Cheese Cream for a smooth, creamy, and delicately cheesy flavor.',
+  },
+  'Vanilla Strawberry Cupcakes': {
+    id: 'Cupcake vanilla lembut dengan isian Strawberry Jam yang memberikan rasa manis dan segar di setiap gigitan.',
+    en: 'Soft vanilla cupcake filled with Strawberry Jam for a light, sweet, and fruity flavor.',
+  },
+
   Blackforest: {
     id: 'Cake coklat lembut dengan lapisan Blueberry Jam dan Blueberry Cream yang manis, segar, dan seimbang.',
     en: 'Soft chocolate cake layered with Blueberry Jam and Blueberry Cream for a perfectly balanced sweet and fruity flavor.',

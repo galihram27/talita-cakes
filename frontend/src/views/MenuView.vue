@@ -127,6 +127,12 @@ const subcategoriesByType = (typeKey) => {
   return [...new Set(pool.map((p) => p.subcategory).filter(Boolean))]
 }
 
+// Sub-kategori disimpan KAPITAL SEMUA di database (mis. "CINROLLS VAN DEPOK").
+// Untuk chip filter ditampilkan Title Case supaya lebih enak dibaca. Hanya
+// tampilannya yang berubah — penyaringan tetap memakai nilai aslinya.
+const subcategoryLabel = (text) =>
+  text.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase())
+
 const getSectionSubcategory = (typeKey) => sectionSubcategory.value[typeKey] || 'ALL'
 const setSectionSubcategory = (typeKey, subcategory) => {
   sectionSubcategory.value = { ...sectionSubcategory.value, [typeKey]: subcategory }
@@ -423,7 +429,7 @@ const resetMenu = () => {
                   ? 'bg-cocoa-900 text-white border-cocoa-900'
                   : 'bg-white text-cocoa-500 border-[#E4D3C1] hover:border-cocoa-900 hover:text-cocoa-900'"
               >
-                {{ sc }}
+                {{ subcategoryLabel(sc) }}
               </button>
             </div>
           </div>
