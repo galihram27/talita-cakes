@@ -8,6 +8,7 @@ export const PRODUCT_TYPE_OPTIONS = [
   { value: 'TYPE3', label: 'Type 3 (Choose Your Size)' },
   { value: 'TYPE4', label: 'Type 4 (Fully Custom Cake)' },
   { value: 'TYPE5', label: 'Type 5 (Non-Cake)' },
+  { value: 'TYPE6', label: 'Type 6 (Cupcakes)' },
 ]
 
 // mirror dari backend product.constant.js -> PRODUCT_CATEGORIES
@@ -33,6 +34,13 @@ export const PRODUCT_CATEGORIES = {
   ],
   // TYPE5 (non-cake): kategori level-1; sub-kategori di TYPE5_SUBCATEGORIES
   TYPE5: ['Bread', 'Cheese Cake', 'Brownies'],
+  // TYPE6 (cupcakes): aturan rasa & isi box per kategori di TYPE6_CATEGORY_CONFIG
+  TYPE6: [
+    'American Butter Cupcakes',
+    'Simple Decor Cupcakes',
+    'Paper Topper Cupcakes',
+    'Custom 3D Cupcakes',
+  ],
 }
 
 // mirror dari backend product.constant.js -> TYPE5_SUBCATEGORIES
@@ -46,6 +54,55 @@ export const TYPE5_SUBCATEGORIES = {
     'SIGNATURE CUSTOM BROWNIES BOX',
   ],
 }
+
+// mirror dari backend product.constant.js -> TYPE6_CATEGORY_CONFIG
+// Rasa cupcake ditentukan per KATEGORI (Paper Topper pakai "Vanilla Strawberry",
+// dua lainnya "Strawberry Marshmallow"), begitu juga pilihan isi box-nya.
+const CUPCAKE_FLAVORS_STANDARD = [
+  'Double Choco',
+  'Oreo Choco',
+  'Choco Blueberry',
+  'Vanilla Cheese',
+  'Strawberry Marshmallow',
+  'Vanilla Oreo',
+]
+
+const CUPCAKE_FLAVORS_PAPER_TOPPER = [
+  'Double Choco',
+  'Oreo Choco',
+  'Choco Blueberry',
+  'Vanilla Cheese',
+  'Vanilla Strawberry',
+  'Vanilla Oreo',
+]
+
+export const TYPE6_CATEGORY_CONFIG = {
+  'American Butter Cupcakes': { fixedFlavor: true, flavors: [], boxes: [4, 6, 9, 12] },
+  'Simple Decor Cupcakes': {
+    fixedFlavor: false,
+    flavors: CUPCAKE_FLAVORS_STANDARD,
+    boxes: [4, 6, 9, 12],
+  },
+  'Paper Topper Cupcakes': {
+    fixedFlavor: false,
+    flavors: CUPCAKE_FLAVORS_PAPER_TOPPER,
+    boxes: [6, 9, 12],
+  },
+  'Custom 3D Cupcakes': {
+    fixedFlavor: false,
+    flavors: CUPCAKE_FLAVORS_STANDARD,
+    boxes: [4, 6, 9, 12],
+  },
+}
+
+export const cupcakeFlavorsForCategory = (category) =>
+  TYPE6_CATEGORY_CONFIG[category]?.flavors ?? []
+
+export const cupcakeBoxesForCategory = (category) =>
+  TYPE6_CATEGORY_CONFIG[category]?.boxes ?? []
+
+export const isFixedFlavorCupcake = (category) =>
+  TYPE6_CATEGORY_CONFIG[category]?.fixedFlavor === true
 
 export const SHAPE_OPTIONS = [
   { value: 'ROUND', label: 'Round' },

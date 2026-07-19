@@ -2,6 +2,16 @@ import { AppError } from '../../utils/appError.js';
 import * as productRepository from './product.repository.js';
 import { updateProductSchemaMap } from './product.validation.js';
 import { cached, cacheDeleteByPrefix } from '../../lib/cache.js';
+import { isFixedFlavorCupcake } from './product.constant.js';
+
+// Tipe yang menyimpan flavor fixed di level produk. TYPE2 & TYPE4 tidak termasuk
+// karena rasanya dipilih user saat order. TYPE6 tergantung kategori: hanya
+// kategori ber-fixedFlavor (American Butter) yang rasanya ditentukan admin.
+const storesFixedFlavor = (type, category) => {
+  if (type === 'TYPE1' || type === 'TYPE3' || type === 'TYPE5') return true;
+  if (type === 'TYPE6') return isFixedFlavorCupcake(category);
+  return false;
+};
 
 // Semua key cache produk diawali prefix ini, supaya sekali invalidasi
 // (cacheDeleteByPrefix) langsung membersihkan list, detail, dan count.
@@ -41,6 +51,13 @@ export const createProduct = async (payload) => {
   } else if (type === 'TYPE5') {
     // TYPE5 (non-cake): satu varian harga tunggal, tanpa shape/size
     variantsData = [{ shape: null, size: null, price: payload.price }];
+  } else if (type === 'TYPE6') {
+    // TYPE6 (cupcakes): satu varian per isi box; size dipakai sebagai jumlah pcs
+    variantsData = payload.variants.map((v) => ({
+      shape: null,
+      size: v.size,
+      price: v.price,
+    }));
   } else {
     // TYPE3 & TYPE4: varian berupa array yang di-mapping
     variantsData = payload.variants.map((v) => ({
@@ -62,9 +79,7 @@ export const createProduct = async (payload) => {
     category,
     // subcategory hanya relevan untuk TYPE5; tipe lain null
     subcategory: type === 'TYPE5' ? subcategory : null,
-    // TYPE1, TYPE3 & TYPE5 punya flavor fixed;
-    // TYPE2 & TYPE4 flavor dipilih user saat order
-    flavor: type === 'TYPE1' || type === 'TYPE3' || type === 'TYPE5' ? flavor : null,
+    flavor: storesFixedFlavor(type, category) ? flavor : null,
     discount,
     variants: {
       create: variantsData,
@@ -143,11 +158,16 @@ export const updateProduct = async (id, body) => {
 
   const payload = parsed.data;
 
-  // TYPE1/TYPE2/TYPE5 sama-sama punya 1 variant; TYPE3/TYPE4 pakai grid variant
-  const updated =
-    type === 'TYPE1' || type === 'TYPE2' || type === 'TYPE5'
-      ? await updateSingleVariantType(id, existing, payload)
-      : await updateVariantGridType(id, payload);
+  // TYPE1/TYPE2/TYPE5: 1 variant · TYPE6: varian box diganti utuh ·
+  // TYPE3/TYPE4: grid variant shape+size
+  let updated;
+  if (type === 'TYPE1' || type === 'TYPE2' || type === 'TYPE5') {
+    updated = await updateSingleVariantType(id, existing, payload);
+  } else if (type === 'TYPE6') {
+    updated = await updateCupcakeType(id, existing, payload);
+  } else {
+    updated = await updateVariantGridType(id, payload);
+  }
 
   invalidateProductCache();
   return updated;
@@ -177,6 +197,22 @@ const updateSingleVariantType = async (id, existing, payload) => {
     existingVariant.id,
     variantFields
   );
+};
+
+// TYPE6 (cupcakes): varian box diganti seluruhnya kalau admin mengirim variants.
+const updateCupcakeType = async (id, existing, payload) => {
+  const { variants, ...rest } = payload;
+  const productFields = withDerivedCover(pickDefined(rest));
+
+  // Kategori bisa berubah (mis. Simple Decor -> American Butter), sehingga
+  // status "rasa fixed" ikut berubah. Kalau kategori barunya TIDAK fixed,
+  // flavor lama harus dikosongkan supaya tidak tertinggal sebagai data hantu.
+  const category = payload.category ?? existing.category;
+  if (!storesFixedFlavor('TYPE6', category)) {
+    productFields.flavor = null;
+  }
+
+  return productRepository.replaceProductVariants(id, productFields, variants || []);
 };
 
 // TYPE3 & TYPE4: produk dengan grid variant (Round & Square wajib lengkap)

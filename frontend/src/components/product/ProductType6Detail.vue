@@ -1,0 +1,147 @@
+<script setup>
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import ProductImage from './ProductImage.vue'
+import ProductInfoHeader from './ProductInfoHeader.vue'
+import ProductPriceDisplay from './ProductPriceDisplay.vue'
+import ProductBoxPicker from './ProductBoxPicker.vue'
+import ProductFlavorPicker from './ProductFlavorPicker.vue'
+import DesignReferencePicker from './DesignReferencePicker.vue'
+import ProductOrderForm from './ProductOrderForm.vue'
+import { addItemToCart } from '@/services/cart.service'
+import { cupcakeFlavorsForCategory, isFixedFlavorCupcake } from '@/config/productOptions'
+
+const props = defineProps({
+  product: { type: Object, required: true },
+})
+
+const { t } = useI18n()
+
+const selectedVariantId = ref(null)
+const selectedFlavor = ref('')
+const designImage = ref(null)
+const textOnCake = ref('')
+const notes = ref('')
+const quantity = ref(1)
+const isSubmitting = ref(false)
+const submitError = ref('')
+const submitSuccess = ref(false)
+
+// American Butter: rasa & dekorasi sudah fix dari admin, user tidak memilih.
+// Kategori lain: user pilih rasa (daftarnya beda per kategori) + unggah dekorasi.
+const flavorIsFixed = computed(() => isFixedFlavorCupcake(props.product.category))
+const flavorOptions = computed(() => cupcakeFlavorsForCategory(props.product.category))
+
+// TYPE6: tiap variant = satu pilihan isi box
+const selectedVariant = computed(
+  () => props.product.variants?.find((v) => v.id === selectedVariantId.value) ?? null
+)
+
+const finalPrice = computed(() => {
+  if (!selectedVariant.value) return null
+  const price = Number(selectedVariant.value.price)
+  const discount = Number(props.product.discount ?? 0)
+  return Math.round((price - (price * discount) / 100) * 100) / 100
+})
+
+const handleSubmit = async () => {
+  submitError.value = ''
+  submitSuccess.value = false
+
+  if (!selectedVariantId.value) {
+    submitError.value = t('product.chooseBoxFirst')
+    return
+  }
+  if (!flavorIsFixed.value && !selectedFlavor.value) {
+    submitError.value = t('product.chooseFlavorFirst')
+    return
+  }
+  if (quantity.value < 1) {
+    submitError.value = t('product.qtyMin')
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    await addItemToCart({
+      productId: props.product.id,
+      variantId: selectedVariantId.value,
+      // kategori ber-rasa-fix tidak mengirim rasa/dekorasi pilihan user
+      flavor: flavorIsFixed.value ? undefined : selectedFlavor.value,
+      customImage: flavorIsFixed.value ? undefined : designImage.value?.url,
+      quantity: quantity.value,
+      textOnCake: textOnCake.value || undefined,
+      notes: notes.value || undefined,
+    })
+    submitSuccess.value = true
+  } catch (err) {
+    submitError.value = err.response?.data?.message || t('product.addToCartFailed')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="grid md:grid-cols-[minmax(0,384px)_minmax(0,448px)] justify-center gap-6 md:gap-8 items-start">
+    <ProductImage :image="product.image" :images="product.images" :alt="product.name" />
+
+    <div>
+      <ProductInfoHeader
+        :type="product.type"
+        :name="product.name"
+        :description="product.description"
+        :description-en="product.descriptionEn"
+        :category="product.category"
+      />
+
+      <ProductPriceDisplay
+        :price="finalPrice"
+        :original-price="Number(product.discount) > 0 ? Number(selectedVariant?.price) : null"
+        :placeholder="t('product.chooseBoxFirst')"
+      />
+
+      <!-- Rasa fixed (American Butter), read-only -->
+      <div
+        v-if="flavorIsFixed && product.flavor"
+        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
+      >
+        <span class="flex flex-col gap-0.5 min-w-0">
+          <span class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">
+            {{ t('product.flavor') }}
+          </span>
+          <span class="font-display text-[16.5px] text-cocoa-900 leading-tight">
+            {{ product.flavor }}
+          </span>
+        </span>
+      </div>
+
+      <ProductBoxPicker
+        v-model:variant-id="selectedVariantId"
+        :variants="product.variants"
+        :discount="product.discount"
+      />
+
+      <!-- Rasa & dekorasi pilihan user (selain American Butter) -->
+      <template v-if="!flavorIsFixed">
+        <ProductFlavorPicker
+          v-model="selectedFlavor"
+          :flavors="flavorOptions"
+          :step-label="t('product.chooseFlavor')"
+        />
+        <DesignReferencePicker v-model="designImage" />
+      </template>
+
+      <ProductOrderForm
+        v-model:text-on-cake="textOnCake"
+        v-model:notes="notes"
+        v-model:quantity="quantity"
+        use-stepper
+        :is-submitting="isSubmitting"
+        :submit-error="submitError"
+        :submit-success="submitSuccess"
+        @submit="handleSubmit"
+      />
+    </div>
+  </div>
+</template>

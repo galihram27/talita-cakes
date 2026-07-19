@@ -2,7 +2,11 @@
 import { AppError } from "../../utils/appError.js";
 import * as cartRepository from "./cart.repository.js";
 import * as productRepository from "../../features/product/product.repository.js";
-import { FLAVORS_BY_TYPE } from "../../features/product/product.constant.js";
+import {
+   FLAVORS_BY_TYPE,
+   cupcakeFlavorsForCategory,
+   isFixedFlavorCupcake,
+} from "../../features/product/product.constant.js";
 
 const PRODUCT_TYPE = {
    TYPE1: "TYPE1",
@@ -10,6 +14,7 @@ const PRODUCT_TYPE = {
    TYPE3: "TYPE3",
    TYPE4: "TYPE4",
    TYPE5: "TYPE5",
+   TYPE6: "TYPE6",
 };
 
 /**
@@ -100,6 +105,43 @@ const resolveItemDetails = async (product, payload) => {
       };
    }
 
+   // TYPE 6 (cupcakes): user WAJIB memilih isi box (variant). Rasa & dekorasi
+   // tergantung kategori — American Butter sudah fix dari admin, kategori lain
+   // user memilih rasa (daftarnya beda per kategori) + unggah referensi dekor.
+   if (type === PRODUCT_TYPE.TYPE6) {
+      if (!payload.variantId) {
+         throw new AppError("variantId (isi box) wajib dipilih", 422);
+      }
+
+      const variant = await productRepository.findVariantById(payload.variantId);
+      if (!variant || variant.productId !== product.id) {
+         throw new AppError("Isi box tidak ditemukan untuk produk ini", 404);
+      }
+
+      const fixedFlavor = isFixedFlavorCupcake(product.category);
+
+      if (!fixedFlavor) {
+         const allowed = cupcakeFlavorsForCategory(product.category);
+         if (!payload.flavor) {
+            throw new AppError("flavor wajib diisi untuk cupcake ini", 422);
+         }
+         if (!allowed.includes(payload.flavor)) {
+            throw new AppError(
+               `flavor tidak valid, pilih salah satu: ${allowed.join(", ")}`,
+               422
+            );
+         }
+      }
+
+      return {
+         variantId: variant.id,
+         // kategori ber-rasa-fix tidak menyimpan pilihan user; rasanya ada di produk
+         flavor: fixedFlavor ? null : payload.flavor,
+         customImage: fixedFlavor ? null : payload.customImage,
+         price: applyDiscount(variant.price, discount),
+      };
+   }
+
    throw new AppError("Tipe produk tidak dikenali", 422);
 };
 
@@ -176,6 +218,9 @@ export const getCartByUserId = async (userId) => {
          productId: item.productId,
          productName: item.product.name,
          productImage: item.product.image,
+         // dipakai frontend untuk melabeli varian: TYPE6 memakai `size` sebagai
+         // isi box (pcs), bukan diameter cake dalam cm.
+         productType: item.product.type,
          variantId: item.variantId,
          shape: item.variant?.shape ?? null,
          size: item.variant?.size ?? null,

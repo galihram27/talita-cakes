@@ -3,6 +3,8 @@ import {
   PRODUCT_CATEGORIES,
   TYPE5_SUBCATEGORIES,
   ALL_TYPE5_SUBCATEGORIES,
+  cupcakeBoxesForCategory,
+  isFixedFlavorCupcake,
 } from './product.constant.js';
 import {
   isValidSize,
@@ -168,12 +170,70 @@ const type5Schema = z.object({
   price: z.coerce.number().positive('Price harus lebih dari 0'),
 }).superRefine(refineType5Subcategory);
 
+// ===== TYPE 6 (cupcakes: harga per isi box, rasa tergantung kategori) =====
+// Varian cupcake memakai ProductVariant.size sebagai ISI BOX (tanpa shape).
+const boxVariantSchema = z.object({
+  size: z.coerce.number().int().positive(),
+  price: z.coerce.number().positive('Price harus lebih dari 0'),
+});
+
+// Box yang dikirim harus termasuk pilihan box milik kategori tsb, tanpa duplikat,
+// dan minimal satu box diisi.
+const refineCupcakeBoxes = (data, ctx) => {
+  const allowed = cupcakeBoxesForCategory(data.category);
+  const sizes = (data.variants ?? []).map((v) => v.size);
+
+  const invalid = sizes.filter((s) => !allowed.includes(s));
+  if (invalid.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Isi box tidak valid untuk ${data.category}. Pilihan: ${allowed.join(', ')}`,
+      path: ['variants'],
+    });
+  }
+
+  if (new Set(sizes).size !== sizes.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Terdapat isi box duplikat',
+      path: ['variants'],
+    });
+  }
+};
+
+// Rasa fixed hanya wajib untuk kategori ber-fixedFlavor (American Butter).
+const refineCupcakeFlavor = (data, ctx) => {
+  if (!isFixedFlavorCupcake(data.category)) return;
+  if (!data.flavor) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Flavor wajib diisi untuk ${data.category}`,
+      path: ['flavor'],
+    });
+  }
+};
+
+const type6Schema = z
+  .object({
+    type: z.literal('TYPE6'),
+    ...baseFields,
+    category: categoryFieldFor('TYPE6'),
+    // hanya dipakai kategori ber-fixedFlavor; kategori lain user pilih saat order
+    flavor: z.string().trim().min(1).optional(),
+    variants: z.array(boxVariantSchema).min(1, 'Minimal satu pilihan isi box wajib diisi'),
+  })
+  .superRefine((data, ctx) => {
+    refineCupcakeBoxes(data, ctx);
+    refineCupcakeFlavor(data, ctx);
+  });
+
 export const createProductSchema = z.discriminatedUnion('type', [
   type1Schema,
   type2Schema,
   type3Schema,
   type4Schema,
   type5Schema,
+  type6Schema,
 ]);
 
 // ===== UPDATE SCHEMAS (semua field opsional, partial update) =====
@@ -245,10 +305,35 @@ const updateType5Schema = z
     }
   });
 
+// TYPE6: variants dikirim UTUH (bukan tambal-sulam) karena jumlah box bisa
+// bertambah/berkurang; service akan mengganti seluruh varian sekaligus.
+// Kalau variants dikirim, category wajib ikut supaya isi box bisa divalidasi
+// terhadap kategori yang benar (kategori tidak bisa diambil dari body saja).
+const updateType6Schema = z
+  .object({
+    ...partialBaseFields,
+    category: categoryFieldFor('TYPE6').optional(),
+    flavor: z.string().trim().min(1, 'Flavor tidak boleh kosong').optional(),
+    variants: z.array(boxVariantSchema).min(1, 'Minimal satu pilihan isi box').optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.variants === undefined) return;
+    if (!data.category) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Category wajib dikirim bersama variants',
+        path: ['category'],
+      });
+      return;
+    }
+    refineCupcakeBoxes(data, ctx);
+  });
+
 export const updateProductSchemaMap = {
   TYPE1: updateType1Schema,
   TYPE2: updateType2Schema,
   TYPE3: updateType3Schema,
   TYPE4: updateType4Schema,
   TYPE5: updateType5Schema,
+  TYPE6: updateType6Schema,
 };

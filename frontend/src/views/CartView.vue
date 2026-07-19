@@ -229,8 +229,12 @@ onMounted(fetchCart)
                   <strong class="text-[#4A3A30] ml-1">{{ formatShape(item.shape) }}</strong>
                 </p>
                 <p v-if="item.size">
-                  <span class="text-cocoa-400">{{ t('cart.size') }}</span>
-                  <strong class="text-[#4A3A30] ml-1">{{ item.size }}</strong>
+                  <span class="text-cocoa-400">
+                    {{ item.productType === 'TYPE6' ? t('cart.box') : t('cart.size') }}
+                  </span>
+                  <strong class="text-[#4A3A30] ml-1">
+                    {{ item.productType === 'TYPE6' ? t('product.boxOf', { count: item.size }) : item.size }}
+                  </strong>
                 </p>
                 <p v-if="item.textOnCake" class="truncate">
                   <span class="text-cocoa-400">{{ t('cart.text') }}</span>

@@ -171,6 +171,39 @@ export const updatePartialProductWithVariants = async (id, productFields, varian
 };
 
 /**
+ * Update TYPE6 (cupcakes): ganti SELURUH varian box sekaligus.
+ *
+ * Sengaja hapus-lalu-buat, bukan upsert seperti TYPE3/TYPE4: varian cupcake
+ * punya shape NULL, sedangkan unique gabungan (productId, shape, size) tidak
+ * bisa mencocokkan baris ber-NULL di Postgres — upsert akan gagal mendeteksi
+ * baris lama dan justru membuat duplikat.
+ */
+export const replaceProductVariants = async (id, productFields, variants) => {
+  return prisma.$transaction(
+    async (tx) => {
+      if (Object.keys(productFields).length > 0) {
+        await tx.product.update({ where: { id }, data: productFields });
+      }
+
+      if (variants.length > 0) {
+        await tx.productVariant.deleteMany({ where: { productId: id } });
+        await tx.productVariant.createMany({
+          data: variants.map((v) => ({
+            productId: id,
+            shape: null,
+            size: v.size,
+            price: v.price,
+          })),
+        });
+      }
+
+      return tx.product.findUnique({ where: { id }, include: { variants: true } });
+    },
+    { maxWait: 15000, timeout: 30000 }
+  );
+};
+
+/**
  * Menghapus semua varian yang dimiliki oleh satu produk tertentu.
  */
 export const deleteProductVariants = async (productId) => {

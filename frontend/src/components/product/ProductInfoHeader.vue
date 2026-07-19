@@ -6,7 +6,7 @@ const { t, locale } = useI18n()
 
 // label tipe memakai kamus yang sama dengan kartu tipe di HomeView
 const typeLabel = (type) => {
-  const num = { TYPE1: 1, TYPE2: 2, TYPE3: 3, TYPE4: 4, TYPE5: 5 }[type]
+  const num = { TYPE1: 1, TYPE2: 2, TYPE3: 3, TYPE4: 4, TYPE5: 5, TYPE6: 6 }[type]
   return num ? t(`home.types.t${num}.tag`) : type
 }
 

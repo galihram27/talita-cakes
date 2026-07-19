@@ -61,7 +61,7 @@ onUnmounted(() => {
 // ===== CONFIG SECTION (label & hint sesuai desain) =====
 // label & hint memakai kamus yang sama dengan kartu tipe di HomeView
 const TYPE_SECTIONS = computed(() =>
-  [1, 2, 3, 4, 5].map((num) => ({
+  [1, 2, 3, 4, 5, 6].map((num) => ({
     key: `TYPE${num}`,
     num,
     label: t(`home.types.t${num}.tag`),
@@ -76,6 +76,7 @@ const FILTERS = computed(() => [
   { key: 'TYPE3', label: t('home.types.t3.tag') },
   { key: 'TYPE4', label: t('home.types.t4.tag') },
   { key: 'TYPE5', label: t('home.types.t5.tag') },
+  { key: 'TYPE6', label: t('home.types.t6.tag') },
 ])
 
 // Catatan sebelum memesan (dari desain)

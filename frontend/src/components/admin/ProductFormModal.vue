@@ -5,6 +5,8 @@ import { X, Upload, ChevronDown } from 'lucide-vue-next'
 import {
   PRODUCT_CATEGORIES,
   TYPE5_SUBCATEGORIES,
+  cupcakeBoxesForCategory,
+  isFixedFlavorCupcake,
   ROUND_MIN_OPTIONS,
   SQUARE_MIN_OPTIONS,
   generateSizeRange,
@@ -29,7 +31,7 @@ const isEdit = computed(() => !!props.product)
 
 // label tipe & bentuk mengikuti bahasa aktif (nilai tetap sinkron dengan backend)
 const PRODUCT_TYPE_OPTIONS = computed(() =>
-  [1, 2, 3, 4, 5].map((num) => ({
+  [1, 2, 3, 4, 5, 6].map((num) => ({
     value: `TYPE${num}`,
     label: `${t('admin.products.type', { num })} (${t(`home.types.t${num}.tag`)})`,
   }))
@@ -57,6 +59,9 @@ const type1 = reactive({ shape: 'ROUND', size: null, price: null })
 
 // TYPE5 (non-cake): harga tunggal, tanpa shape/size
 const nonCakePrice = ref(null)
+
+// TYPE6 (cupcakes): harga per isi box -> { [isiBox]: price }
+const boxPrices = reactive({})
 
 // TYPE3 / TYPE4: min size per shape + harga per size
 const roundMinSize = ref(null)
@@ -149,12 +154,37 @@ watch(
     if (form.subcategory && !subcategoryOptions.value.includes(form.subcategory)) {
       form.subcategory = ''
     }
+
+    // TYPE6: tiap kategori punya pilihan isi box berbeda (mis. Paper Topper
+    // tidak punya box 4). Buang harga box yang tidak lagi tersedia supaya
+    // tidak ikut terkirim sebagai varian yang ditolak server.
+    if (usesCupcake.value) {
+      const allowed = cupcakeBoxes.value
+      Object.keys(boxPrices).forEach((size) => {
+        if (!allowed.includes(Number(size))) delete boxPrices[size]
+      })
+    }
   }
 )
 
-// flavor fixed untuk TYPE1, TYPE3 & TYPE5 (TYPE2 & TYPE4: user pilih sendiri saat order)
+// TYPE6 (cupcakes): pilihan isi box tergantung kategori yang dipilih
+const usesCupcake = computed(() => form.type === 'TYPE6')
+const cupcakeBoxes = computed(() =>
+  usesCupcake.value ? cupcakeBoxesForCategory(form.category) : []
+)
+// American Butter rasanya ditentukan admin; kategori cupcake lain user yang pilih
+const cupcakeFlavorIsFixed = computed(
+  () => usesCupcake.value && isFixedFlavorCupcake(form.category)
+)
+
+// flavor fixed untuk TYPE1, TYPE3, TYPE5, dan kategori cupcake ber-rasa-fix
+// (TYPE2 & TYPE4: user pilih sendiri saat order)
 const showFlavor = computed(
-  () => form.type === 'TYPE1' || form.type === 'TYPE3' || form.type === 'TYPE5'
+  () =>
+    form.type === 'TYPE1' ||
+    form.type === 'TYPE3' ||
+    form.type === 'TYPE5' ||
+    cupcakeFlavorIsFixed.value
 )
 // TYPE1 & TYPE2: satu variant fixed; TYPE3 & TYPE4: grid variant per shape+size
 const usesSingleVariant = computed(() => form.type === 'TYPE1' || form.type === 'TYPE2')
@@ -180,6 +210,7 @@ const resetForm = () => {
   copyNotice.SQUARE = ''
   clearPriceMap(roundPrices)
   clearPriceMap(squarePrices)
+  clearPriceMap(boxPrices)
   roundMinSize.value = null
   squareMinSize.value = null
   nonCakePrice.value = null
@@ -231,6 +262,14 @@ const resetForm = () => {
   if (p.type === 'TYPE5') {
     // TYPE5 punya 1 variant harga tunggal (tanpa shape/size)
     nonCakePrice.value = variants[0] ? Number(variants[0].price) : null
+    return
+  }
+
+  if (p.type === 'TYPE6') {
+    // TYPE6: tiap variant = satu isi box; `size` menyimpan jumlah pcs
+    variants.forEach((v) => {
+      boxPrices[v.size] = Number(v.price)
+    })
     return
   }
 
@@ -305,6 +344,13 @@ const buildVariantList = () => {
   return variants
 }
 
+// TYPE6: hanya isi box yang diberi harga > 0 yang dijadikan varian.
+// Box yang dikosongkan admin dianggap tidak dijual untuk produk tsb.
+const buildBoxVariants = () =>
+  cupcakeBoxes.value
+    .filter((size) => Number(boxPrices[size]) > 0)
+    .map((size) => ({ size, price: Number(boxPrices[size]) }))
+
 const validate = () => {
   if (!form.name.trim()) return t('admin.productForm.nameRequired')
   if (!form.description.trim()) return t('admin.productForm.descriptionRequired')
@@ -324,6 +370,12 @@ const validate = () => {
 
   if (usesNonCake.value) {
     if (!(Number(nonCakePrice.value) > 0)) return t('admin.productForm.priceInvalid')
+    return null
+  }
+
+  if (usesCupcake.value) {
+    // minimal satu isi box diberi harga; box yang dikosongkan berarti tidak dijual
+    if (buildBoxVariants().length === 0) return t('admin.productForm.boxPriceRequired')
     return null
   }
 
@@ -369,6 +421,13 @@ const buildPayload = () => {
       flavor: form.flavor.trim(),
       price: Number(nonCakePrice.value),
     }
+  }
+
+  if (usesCupcake.value) {
+    const payload = { ...base, type: 'TYPE6', variants: buildBoxVariants() }
+    // rasa fixed hanya untuk American Butter; kategori lain user pilih saat order
+    if (cupcakeFlavorIsFixed.value) payload.flavor = form.flavor.trim()
+    return payload
   }
 
   const variants = buildVariantList()
@@ -671,6 +730,46 @@ const close = () => {
                 class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
               />
             </div>
+          </div>
+        </template>
+
+        <!-- ===== TYPE6 (cupcakes): harga per isi box + discount ===== -->
+        <template v-if="usesCupcake">
+          <div>
+            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
+              {{ t('admin.productForm.boxPrices') }}
+            </label>
+
+            <p v-if="!form.category" class="text-xs text-cocoa-400">
+              {{ t('admin.productForm.selectCategoryFirst') }}
+            </p>
+
+            <template v-else>
+              <p class="text-xs text-cocoa-400 mb-2">
+                {{ t('admin.productForm.boxPriceHint') }}
+              </p>
+              <div class="rounded-2xl border border-cream-300 p-4 space-y-3">
+                <div v-for="b in cupcakeBoxes" :key="`box-${b}`">
+                  <p class="text-sm mb-1">{{ t('product.boxOf', { count: b }) }}</p>
+                  <PriceInput
+                    v-model="boxPrices[b]"
+                    class="w-full rounded-full border border-cream-300 px-4 py-2 text-sm focus:outline-none"
+                  />
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.discount') }}</label>
+            <input
+              v-model.number="form.discount"
+              type="number"
+              min="0"
+              max="100"
+              :placeholder="t('admin.productForm.discountPlaceholder')"
+              class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
+            />
           </div>
         </template>
 

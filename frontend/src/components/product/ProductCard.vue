@@ -10,15 +10,17 @@ const { t } = useI18n()
 
 // Label tipe, sama dengan section di halaman Menu
 const typeLabel = (type) => {
-  const num = { TYPE1: 1, TYPE2: 2, TYPE3: 3, TYPE4: 4, TYPE5: 5 }[type]
+  const num = { TYPE1: 1, TYPE2: 2, TYPE3: 3, TYPE4: 4, TYPE5: 5, TYPE6: 6 }[type]
   return num ? t(`home.types.t${num}.tag`) : type
 }
 
 // type dengan 1 variant fixed (tidak ada pilihan shape & size)
 const isSingleVariantType = (type) => type === 'TYPE1' || type === 'TYPE2'
 
-// hanya TYPE3/TYPE4 yang harganya rentang ("mulai dari"); TYPE5 harga tunggal
-const showsPriceRange = (type) => type === 'TYPE3' || type === 'TYPE4'
+// TYPE3/TYPE4 (banyak ukuran) & TYPE6 (banyak isi box) harganya rentang
+// -> tampilkan "mulai dari". TYPE5 harga tunggal.
+const showsPriceRange = (type) =>
+  type === 'TYPE3' || type === 'TYPE4' || type === 'TYPE6'
 
 // Label di atas nama produk memakai kategori, bukan nama tipe:
 // TYPE5 (non-cake) pakai sub-kategori (mis. "CINROLLS VAN DEPOK"),
