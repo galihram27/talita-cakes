@@ -96,18 +96,19 @@ const pinError = ref('')
 // terisi kalau alamat di luar radius pengiriman (maks. 25 km)
 const deliveryError = ref('')
 
-// Batas minimal tanggal: H+4 dari hari ini (sinkron dengan validasi backend).
+// Batas minimal tanggal: H+3 dari hari ini (sinkron dengan
+// MIN_DAYS_BEFORE_CAKE_DATE di backend order.helper.js — ubah keduanya).
 // Format manual pakai tanggal lokal — toISOString() memakai UTC sehingga
 // sebelum jam 07:00 WIB batasnya mundur 1 hari dan ditolak backend.
 const minDate = computed(() => {
   const d = new Date()
-  d.setDate(d.getDate() + 4)
+  d.setDate(d.getDate() + 3)
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 })
 
 // Pesan error tanggal: tampil begitu user memilih tanggal lebih awal dari
-// batas minimal (H+4). Input date bisa saja diisi manual sehingga atribut
+// batas minimal (H+3). Input date bisa saja diisi manual sehingga atribut
 // `min` tidak selalu mencegahnya — validasi ini memberi tahu user langsung.
 const dateError = computed(() =>
   requestCakeDate.value && requestCakeDate.value < minDate.value

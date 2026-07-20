@@ -1,15 +1,15 @@
 // src/features/order/order.helper.js
 
-export const MIN_DAYS_BEFORE_CAKE_DATE = 4;
+export const MIN_DAYS_BEFORE_CAKE_DATE = 3;
 
 // Batas maksimal radius pengiriman. Di luar ini user diarahkan
 // menghubungi toko langsung untuk info biaya pengiriman.
 export const MAX_DELIVERY_DISTANCE_KM = 25;
 
 /**
- * Validasi requestCakeDate minimal H+4 dari hari ini.
+ * Validasi requestCakeDate minimal H+3 dari hari ini.
  * Dibandingkan per-tanggal (jam diabaikan), supaya user yang pesan
- * jam 23:59 H-4 tidak dirugikan dibanding yang pesan jam 00:01.
+ * jam 23:59 H-3 tidak dirugikan dibanding yang pesan jam 00:01.
  */
 export const isRequestCakeDateValid = (date) => {
   const today = new Date();
