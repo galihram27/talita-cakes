@@ -772,8 +772,11 @@ export default {
       images: "Images",
       uploading: "Uploading...",
       upload: "Upload Image",
-      coverHint: "The first photo is used as the cover. Click a photo to make it the cover.",
+      coverHint:
+        "The first photo is used as the cover. Drag a photo or use the left/right arrows to reorder, or click a photo to make it the cover.",
       setAsCover: "Set as cover",
+      moveImageLeft: "Move left",
+      moveImageRight: "Move right",
       cover: "Cover",
       removeImage: "Remove image",
       flavor: "Flavor",
@@ -879,6 +882,8 @@ export default {
     orders: {
       title: "Orders",
       searchPlaceholder: "Search orders...",
+      allStatuses: "All statuses",
+      filterStatus: "Filter order status",
       orderCount: "{count} orders",
       loading: "Loading orders...",
       loadFailed: "Failed to load order data",

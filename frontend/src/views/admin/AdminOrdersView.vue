@@ -13,11 +13,22 @@ const adminOrdersStore = useAdminOrdersStore()
 
 const errorMessage = ref('')
 const searchQuery = ref('')
+const selectedStatus = ref('ALL')
 const toastMessage = ref('')
 const statusError = ref('')
 
 // Harus sama persis dengan enum OrderStatus di prisma schema / updateOrderStatusSchema
 const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED']
+
+// Pilihan filter status; memakai kamus label yang sama dengan badge & dropdown
+// status di tiap kartu, supaya penamaannya tidak pernah berbeda.
+const STATUS_FILTER_OPTIONS = computed(() => [
+  { value: 'ALL', label: t('admin.orders.allStatuses') },
+  ...ORDER_STATUSES.map((status) => ({
+    value: status,
+    label: t(`admin.orders.status.${status}`),
+  })),
+])
 
 const STATUS_CLASSES = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -39,12 +50,18 @@ onMounted(async () => {
   }
 })
 
-// Filter client-side: nama pemesan, kontak, atau nama produk di dalam order
+// Filter client-side: status pesanan + pencarian nama pemesan, kontak,
+// atau nama produk di dalam order
 const filteredOrders = computed(() => {
   const keyword = searchQuery.value.trim().toLowerCase()
-  if (!keyword) return adminOrdersStore.orders
 
   return adminOrdersStore.orders.filter((order) => {
+    const matchesStatus =
+      selectedStatus.value === 'ALL' || order.status === selectedStatus.value
+    if (!matchesStatus) return false
+
+    if (!keyword) return true
+
     const matchesUser =
       order.user?.name?.toLowerCase().includes(keyword) ||
       order.user?.email?.toLowerCase().includes(keyword) ||
@@ -106,6 +123,22 @@ const formatDate = (dateString) =>
           class="w-full rounded-full border border-cream-300 bg-white pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-400"
         />
       </div>
+      <!-- FILTER STATUS -->
+      <div class="relative shrink-0">
+        <select
+          v-model="selectedStatus"
+          :aria-label="t('admin.orders.filterStatus')"
+          class="appearance-none w-full rounded-full border border-cream-300 bg-white pl-4 pr-10 py-2.5 text-sm font-semibold text-cocoa-500 focus:outline-none focus:border-brand-400 cursor-pointer"
+        >
+          <option v-for="opt in STATUS_FILTER_OPTIONS" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+        <ChevronDown
+          class="w-4 h-4 text-cocoa-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
+        />
+      </div>
+
       <p class="text-sm font-semibold text-cocoa-400 shrink-0">{{ t('admin.orders.orderCount', { count: filteredOrders.length }) }}</p>
     </div>
 
@@ -122,7 +155,11 @@ const formatDate = (dateString) =>
       v-else-if="filteredOrders.length === 0"
       class="text-center text-cocoa-400 py-24 bg-white rounded-2xl border border-dashed border-cream-300"
     >
-      {{ searchQuery ? t('admin.orders.noMatch') : t('admin.orders.empty') }}
+      {{
+        searchQuery || selectedStatus !== 'ALL'
+          ? t('admin.orders.noMatch')
+          : t('admin.orders.empty')
+      }}
     </div>
 
     <!-- ORDER LIST -->

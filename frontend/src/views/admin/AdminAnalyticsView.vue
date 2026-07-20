@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronDown, X } from 'lucide-vue-next'
+import { ChevronDown, X, CalendarRange } from 'lucide-vue-next'
 import { useAnalyticsStore } from '@/stores/analytics.store'
 
 const { t, locale } = useI18n()
@@ -159,49 +159,67 @@ const barHeight = (count, data) => {
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
       <h1 class="text-4xl">{{ t('admin.analytics.title') }}</h1>
 
-      <div class="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+      <!-- Filter periode: dropdown bulan ATAU rentang tanggal — keduanya saling
+           menggantikan, jadi dipisah dengan penanda "atau" dan bingkai sendiri.
+           Yang sedang aktif diberi border brand supaya jelas mana yang dipakai. -->
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
         <!-- Dropdown bulan -->
         <div class="relative shrink-0 w-full sm:w-auto">
           <select
             v-model="selectedMonth"
             @change="onMonthChange"
-            class="appearance-none w-full rounded-full border border-cream-300 bg-white pl-4 pr-10 py-2 text-sm font-semibold text-cocoa-500 focus:outline-none focus:border-brand-400 cursor-pointer"
+            class="appearance-none w-full rounded-full border bg-white pl-4 pr-10 py-2.5 text-sm font-semibold focus:outline-none cursor-pointer transition-colors"
+            :class="isCustomRange
+              ? 'border-cream-300 text-cocoa-400 hover:border-brand-400'
+              : 'border-brand-400 text-cocoa-900 ring-2 ring-brand-400/20'"
           >
             <option v-for="opt in monthOptions" :key="opt.value" :value="opt.value">
               {{ opt.label }}
             </option>
           </select>
           <ChevronDown
-            class="w-4 h-4 text-cocoa-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
+            class="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
+            :class="isCustomRange ? 'text-cocoa-400' : 'text-brand-500'"
           />
         </div>
 
-        <!-- Rentang tanggal custom -->
-        <div class="flex items-center gap-2 w-full sm:w-auto">
+        <!-- Rentang tanggal custom: satu kesatuan dalam satu bingkai -->
+        <div
+          class="flex items-center gap-1.5 w-full sm:w-auto rounded-full border bg-white pl-3.5 pr-1.5 py-1 transition-colors"
+          :class="isCustomRange
+            ? 'border-brand-400 ring-2 ring-brand-400/20'
+            : 'border-cream-300 hover:border-brand-400'"
+        >
+          <CalendarRange
+            class="w-4 h-4 shrink-0"
+            :class="isCustomRange ? 'text-brand-500' : 'text-cocoa-400'"
+          />
           <input
             v-model="dateFrom"
             type="date"
             :max="dateTo || undefined"
             :aria-label="t('admin.analytics.fromDate')"
-            class="flex-1 sm:flex-none rounded-full border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-cocoa-500 focus:outline-none focus:border-brand-400 cursor-pointer"
+            class="flex-1 sm:flex-none sm:w-[118px] bg-transparent border-0 px-0 py-1.5 text-sm font-semibold text-cocoa-500 focus:outline-none cursor-pointer"
           />
-          <span class="text-cocoa-400 shrink-0">–</span>
+          <span class="text-cream-500 shrink-0">–</span>
           <input
             v-model="dateTo"
             type="date"
             :min="dateFrom || undefined"
             :aria-label="t('admin.analytics.toDate')"
-            class="flex-1 sm:flex-none rounded-full border border-cream-300 bg-white px-4 py-2 text-sm font-semibold text-cocoa-500 focus:outline-none focus:border-brand-400 cursor-pointer"
+            class="flex-1 sm:flex-none sm:w-[118px] bg-transparent border-0 px-0 py-1.5 text-sm font-semibold text-cocoa-500 focus:outline-none cursor-pointer"
           />
           <button
             v-if="isCustomRange"
             type="button"
             @click="clearRange"
             :aria-label="t('admin.analytics.clearRange')"
-            class="shrink-0 p-1.5 rounded-full text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+            class="shrink-0 p-1 rounded-full text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
           >
-            <X class="w-4 h-4" />
+            <X class="w-3.5 h-3.5" />
           </button>
+          <!-- penjaga lebar supaya bingkai tidak "meloncat" saat tombol X muncul -->
+          <span v-else class="shrink-0 w-[26px]" aria-hidden="true" />
         </div>
       </div>
     </div>

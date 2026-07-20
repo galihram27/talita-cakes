@@ -773,8 +773,11 @@ export default {
       images: "Gambar",
       uploading: "Mengunggah...",
       upload: "Unggah Gambar",
-      coverHint: "Foto pertama dipakai sebagai cover. Klik foto untuk menjadikannya cover.",
+      coverHint:
+        "Foto pertama dipakai sebagai cover. Geser foto atau pakai panah kiri/kanan untuk mengubah urutan, klik foto untuk langsung menjadikannya cover.",
       setAsCover: "Jadikan cover",
+      moveImageLeft: "Geser ke kiri",
+      moveImageRight: "Geser ke kanan",
       cover: "Cover",
       removeImage: "Hapus gambar",
       flavor: "Rasa",
@@ -880,6 +883,8 @@ export default {
     orders: {
       title: "Pesanan",
       searchPlaceholder: "Cari pesanan...",
+      allStatuses: "Semua status",
+      filterStatus: "Filter status pesanan",
       orderCount: "{count} pesanan",
       loading: "Memuat pesanan...",
       loadFailed: "Gagal memuat data pesanan",

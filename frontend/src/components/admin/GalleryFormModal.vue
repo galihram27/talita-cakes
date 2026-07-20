@@ -131,9 +131,16 @@ const close = () => {
 </script>
 
 <template>
-  <div
-    v-if="open"
-    class="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 py-8 overflow-y-auto"
+  <!-- Dipindah ke <body>: modal ini berada di dalam <main> yang punya
+       pembungkus beranimasi (.tc-page), dan ancestor beranimasi/ber-transform
+       mengurung `position: fixed` di dalamnya — akibatnya overlay hanya
+       menggelapkan area konten, sidebar tidak ikut. Di body, overlay benar-benar
+       menutupi seluruh layar.
+       z-[55]: di atas tombol WhatsApp (z-50), di bawah ConfirmDialog (z-[60]). -->
+  <Teleport to="body">
+    <div
+      v-if="open"
+      class="fixed inset-0 z-[55] flex items-start justify-center bg-black/40 px-4 py-8 overflow-y-auto"
   >
     <div class="bg-white rounded-2xl w-full max-w-md shadow-[0_10px_40px_-12px_rgba(51,38,31,0.35)]">
       <!-- HEADER -->
@@ -245,5 +252,6 @@ const close = () => {
         </div>
       </form>
     </div>
-  </div>
+    </div>
+  </Teleport>
 </template>

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { X, Upload, ChevronDown } from 'lucide-vue-next'
+import { X, Upload, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import {
   PRODUCT_CATEGORIES,
   TYPE5_SUBCATEGORIES,
@@ -356,6 +356,26 @@ const makeCover = (index) => {
   form.images.unshift(img)
 }
 
+// ===== URUTKAN ULANG FOTO =====
+// Urutan foto menentukan cover (foto pertama) sekaligus urutan tampil di
+// galeri halaman detail. Penetapan foto per box/bentuk menyimpan URL, bukan
+// nomor urut, jadi menggeser foto tidak merusak penetapan itu.
+const dragIndex = ref(null)
+
+const moveImage = (from, to) => {
+  if (to < 0 || to >= form.images.length || from === to) return
+  const [img] = form.images.splice(from, 1)
+  form.images.splice(to, 0, img)
+}
+
+const onDragStart = (index) => {
+  dragIndex.value = index
+}
+const onDropImage = (index) => {
+  if (dragIndex.value !== null) moveImage(dragIndex.value, index)
+  dragIndex.value = null
+}
+
 // ===== SUBMIT =====
 const buildVariantList = () => {
   const variants = []
@@ -530,10 +550,18 @@ const close = () => {
 </script>
 
 <template>
-  <div
-    v-if="open"
-    class="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 py-8 overflow-y-auto"
-  >
+  <!-- Dipindah ke <body>: modal ini berada di dalam <main> yang punya
+       pembungkus beranimasi (.tc-page), dan ancestor beranimasi/ber-transform
+       mengurung `position: fixed` di dalamnya — akibatnya overlay hanya
+       menggelapkan area konten, sidebar tidak ikut. Di body, overlay benar-benar
+       menutupi seluruh layar.
+       z-[55]: di atas tombol WhatsApp (z-50), di bawah ConfirmDialog (z-[60])
+       supaya dialog konfirmasi hapus tetap tampil di atas modal ini. -->
+  <Teleport to="body">
+    <div
+      v-if="open"
+      class="fixed inset-0 z-[55] flex items-start justify-center bg-black/40 px-4 py-8 overflow-y-auto"
+    >
     <div class="bg-white rounded-2xl w-full max-w-md shadow-[0_10px_40px_-12px_rgba(51,38,31,0.35)]">
       <!-- HEADER -->
       <div class="flex items-center justify-between px-6 py-5 border-b border-cream-200">
@@ -665,16 +693,51 @@ const close = () => {
             <div
               v-for="(img, index) in form.images"
               :key="index"
-              class="relative aspect-square rounded-lg border overflow-hidden bg-cream-100 group"
-              :class="index === 0 ? 'border-brand-500 ring-1 ring-brand-500' : 'border-cream-300'"
+              draggable="true"
+              @dragstart="onDragStart(index)"
+              @dragover.prevent
+              @drop="onDropImage(index)"
+              @dragend="dragIndex = null"
+              class="relative aspect-square rounded-lg border overflow-hidden bg-cream-100 group cursor-grab active:cursor-grabbing"
+              :class="[
+                index === 0 ? 'border-brand-500 ring-1 ring-brand-500' : 'border-cream-300',
+                dragIndex === index ? 'opacity-40' : '',
+              ]"
             >
               <button type="button" @click="makeCover(index)" class="w-full h-full" :title="t('admin.productForm.setAsCover')">
-                <img :src="img" alt="Preview" class="w-full h-full object-cover" />
+                <img :src="img" alt="Preview" class="w-full h-full object-cover" draggable="false" />
+              </button>
+
+              <!-- nomor posisi, supaya urutan mudah dibaca saat menggeser -->
+              <span
+                class="absolute top-1 left-1 w-5 h-5 rounded-full bg-cocoa-900/70 text-white text-[10px] font-bold flex items-center justify-center pointer-events-none"
+              >
+                {{ index + 1 }}
+              </span>
+
+              <!-- geser satu langkah; alternatif drag untuk layar sentuh -->
+              <button
+                v-if="index > 0"
+                type="button"
+                @click.stop="moveImage(index, index - 1)"
+                class="absolute left-0.5 top-1/2 -translate-y-1/2 w-5 h-7 rounded bg-white/90 border border-cream-300 text-cocoa-500 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:text-brand-600 transition"
+                :aria-label="t('admin.productForm.moveImageLeft')"
+              >
+                <ChevronLeft class="w-3.5 h-3.5" />
+              </button>
+              <button
+                v-if="index < form.images.length - 1"
+                type="button"
+                @click.stop="moveImage(index, index + 1)"
+                class="absolute right-0.5 top-1/2 -translate-y-1/2 w-5 h-7 rounded bg-white/90 border border-cream-300 text-cocoa-500 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:text-brand-600 transition"
+                :aria-label="t('admin.productForm.moveImageRight')"
+              >
+                <ChevronRight class="w-3.5 h-3.5" />
               </button>
 
               <span
                 v-if="index === 0"
-                class="absolute bottom-0 inset-x-0 bg-brand-500 text-white text-[10px] font-semibold text-center py-0.5"
+                class="absolute bottom-0 inset-x-0 bg-brand-500 text-white text-[10px] font-semibold text-center py-0.5 pointer-events-none"
               >
                 {{ t('admin.productForm.cover') }}
               </span>
@@ -1033,5 +1096,6 @@ const close = () => {
         </div>
       </form>
     </div>
-  </div>
+    </div>
+  </Teleport>
 </template>
