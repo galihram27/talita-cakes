@@ -377,6 +377,13 @@ export default {
     emptyDesc: "Coba kata kunci lain atau ganti kategori.",
     reset: "Reset pencarian",
     emptyCategory: "Tidak ada produk untuk kategori ini.",
+    page: {
+      prev: "Halaman sebelumnya",
+      next: "Halaman berikutnya",
+    },
+    filter: {
+      label: "Filter",
+    },
     sort: {
       label: "Urutkan",
       default: "Default",

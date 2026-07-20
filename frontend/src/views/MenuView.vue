@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useProductStore } from '@/stores/product.store'
@@ -63,21 +63,20 @@ onUnmounted(() => {
 const TYPE_SECTIONS = computed(() =>
   [1, 2, 3, 4, 5, 6].map((num) => ({
     key: `TYPE${num}`,
-    num,
     label: t(`home.types.t${num}.tag`),
     hint: t(`home.types.t${num}.desc`),
   }))
 )
 
-const FILTERS = computed(() => [
-  { key: 'ALL', label: t('common.all') },
-  { key: 'TYPE1', label: t('home.types.t1.tag') },
-  { key: 'TYPE2', label: t('home.types.t2.tag') },
-  { key: 'TYPE3', label: t('home.types.t3.tag') },
-  { key: 'TYPE4', label: t('home.types.t4.tag') },
-  { key: 'TYPE5', label: t('home.types.t5.tag') },
-  { key: 'TYPE6', label: t('home.types.t6.tag') },
-])
+// Type mana yang dropdown kategorinya sedang terbuka di sidebar (satu per satu)
+const expandedType = ref(null)
+
+// Sidebar filter bisa disembunyikan supaya grid produk memakai lebar penuh.
+// Default tertutup di layar kecil karena di sana sidebar menumpuk di atas grid.
+const isFilterOpen = ref(window.innerWidth >= 768)
+const toggleFilter = () => {
+  isFilterOpen.value = !isFilterOpen.value
+}
 
 // Catatan sebelum memesan (dari desain)
 const MENU_NOTES = computed(() =>
@@ -136,6 +135,23 @@ const subcategoryLabel = (text) =>
 const getSectionSubcategory = (typeKey) => sectionSubcategory.value[typeKey] || 'ALL'
 const setSectionSubcategory = (typeKey, subcategory) => {
   sectionSubcategory.value = { ...sectionSubcategory.value, [typeKey]: subcategory }
+}
+
+// ===== SIDEBAR FILTER =====
+// Klik "All": kembali ke semua type & tutup dropdown yang terbuka.
+const selectAll = () => {
+  activeFilter.value = 'ALL'
+  expandedType.value = null
+}
+// Klik nama type: langsung menyaring ke type itu sekaligus buka/tutup dropdown kategorinya.
+const toggleType = (typeKey) => {
+  activeFilter.value = typeKey
+  expandedType.value = expandedType.value === typeKey ? null : typeKey
+}
+// Klik kategori di dalam dropdown: pastikan type-nya ikut aktif.
+const selectCategory = (typeKey, category) => {
+  activeFilter.value = typeKey
+  setSectionCategory(typeKey, category)
 }
 
 // shape hanya relevan untuk TYPE1/TYPE2 (fixed oleh admin);
@@ -199,6 +215,69 @@ const productsByType = (typeKey) => {
 }
 
 
+// Urutan tampil type: TYPE1 -> TYPE6, mengikuti urutan di sidebar.
+const TYPE_ORDER = ['TYPE1', 'TYPE2', 'TYPE3', 'TYPE4', 'TYPE5', 'TYPE6']
+const typeRank = (product) => {
+  const index = TYPE_ORDER.indexOf(product.type)
+  return index === -1 ? TYPE_ORDER.length : index
+}
+
+// Mode "All": semua produk digabung jadi satu grid, tidak dipisah per type.
+// Pada urutan "Default", produk dikelompokkan berurutan dari tipe 1 sampai
+// tipe terakhir. Kalau user memilih urutan lain (A-Z / harga), pilihan itu
+// yang menang — mengurutkan harga termurah tapi tetap dikunci per tipe justru
+// menyesatkan.
+const mergedProducts = computed(() => {
+  if (activeSort.value !== 'default') return sortProducts(filteredProducts.value)
+  return [...filteredProducts.value].sort((a, b) => typeRank(a) - typeRank(b))
+})
+
+// ===== PAGINATION =====
+// Selalu 5 baris per halaman. Jumlah kolom desktop ikut keadaan sidebar:
+// filter ditampilkan 4 kolom (20 produk), disembunyikan 5 kolom (25 produk).
+const ROWS_PER_PAGE = 5
+const columns = computed(() => (isFilterOpen.value ? 4 : 5))
+const pageSize = computed(() => ROWS_PER_PAGE * columns.value)
+
+const currentPage = ref(1)
+
+// Daftar yang sedang ditampilkan: gabungan (mode All) atau satu type.
+const currentList = computed(() =>
+  activeFilter.value === 'ALL' ? mergedProducts.value : productsByType(activeFilter.value),
+)
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(currentList.value.length / pageSize.value)),
+)
+
+const pagedProducts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return currentList.value.slice(start, start + pageSize.value)
+})
+
+const goToPage = (page) => {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// Ganti filter/kategori/pencarian/urutan -> balik ke halaman 1 supaya tidak
+// nyangkut di halaman kosong.
+watch(
+  [activeFilter, search, activeSort, sectionCategory, sectionSubcategory],
+  () => {
+    currentPage.value = 1
+  },
+  { deep: true },
+)
+
+// Daftar bisa menyusut (hasil pencarian menyempit) atau isi tiap halaman
+// membesar saat filter disembunyikan. Jaga agar halaman aktif tidak melewati
+// jumlah halaman yang tersisa.
+watch(totalPages, (max) => {
+  if (currentPage.value > max) currentPage.value = max
+})
+
 const sectionHasProducts = (typeKey) =>
   filteredProducts.value.some((p) => p.type === typeKey)
 
@@ -208,11 +287,12 @@ const resetMenu = () => {
   activeSort.value = 'default'
   sectionCategory.value = {}
   sectionSubcategory.value = {}
+  expandedType.value = null
 }
 </script>
 
 <template>
-  <div class="tc-page max-w-[1160px] mx-auto px-5 md:px-8 pt-12 pb-[72px]">
+  <div class="tc-page max-w-[1440px] mx-auto px-5 md:px-8 lg:px-12 pt-12 pb-[72px]">
     <!-- HEADLINE -->
     <div class="mb-6">
       <h1 class="font-display text-[clamp(38px,5vw,52px)] leading-[1.05]">
@@ -249,8 +329,22 @@ const resetMenu = () => {
       </div>
     </div>
 
-    <!-- SEARCH + SORT -->
+    <!-- FILTER + SEARCH + SORT -->
     <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+      <!-- TOGGLE SIDEBAR FILTER -->
+      <button
+        type="button"
+        @click="toggleFilter"
+        :aria-expanded="isFilterOpen"
+        class="shrink-0 inline-flex items-center justify-center gap-2 border-[1.5px] rounded-full px-4 py-3 text-[14px] font-bold transition-colors"
+        :class="isFilterOpen
+          ? 'bg-brand-500 text-white border-brand-500'
+          : 'bg-white text-cocoa-900 border-[#E4D3C1] hover:border-brand-500'"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+        {{ t('menu.filter.label') }}
+      </button>
+
       <!-- SEARCH -->
       <div class="relative w-full sm:w-[420px]">
         <span
@@ -322,21 +416,107 @@ const resetMenu = () => {
       </div>
     </div>
 
-    <!-- FILTER TIPE -->
-    <div class="flex gap-2 flex-wrap mb-8">
-      <button
-        v-for="f in FILTERS"
-        :key="f.key"
-        @click="activeFilter = f.key"
-        class="rounded-full border px-[18px] py-2 text-[13.5px] font-bold transition-colors"
-        :class="activeFilter === f.key
-          ? 'bg-brand-500 text-white border-brand-500'
-          : 'bg-white text-cocoa-900 border-[#E4D3C1] hover:bg-brand-500 hover:text-white hover:border-brand-500'"
-      >
-        {{ f.label }}
-      </button>
-    </div>
+    <div class="flex flex-col md:flex-row gap-6 md:gap-8">
+      <!-- SIDEBAR FILTER -->
+      <aside v-if="isFilterOpen" class="md:w-[248px] md:shrink-0">
+        <nav
+          class="md:sticky md:top-24 bg-white border border-[#EFE0D2] rounded-2xl p-2 shadow-[0_6px_22px_rgba(51,38,31,0.05)]"
+        >
+          <!-- ALL -->
+          <button
+            type="button"
+            @click="selectAll"
+            class="w-full text-left rounded-xl px-3.5 py-2.5 text-[13.5px] font-bold transition-colors"
+            :class="activeFilter === 'ALL'
+              ? 'bg-brand-500 text-white'
+              : 'text-cocoa-900 hover:bg-[#F7EEE6]'"
+          >
+            {{ t('common.all') }}
+          </button>
 
+          <!-- TYPE 1–6 (masing-masing punya dropdown kategori) -->
+          <div v-for="section in TYPE_SECTIONS" :key="section.key">
+            <button
+              type="button"
+              @click="toggleType(section.key)"
+              :aria-expanded="expandedType === section.key"
+              class="w-full flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-[13.5px] font-bold text-left transition-colors"
+              :class="activeFilter === section.key
+                ? 'bg-brand-500 text-white'
+                : 'text-cocoa-900 hover:bg-[#F7EEE6]'"
+            >
+              <span class="flex-1 min-w-0">{{ section.label }}</span>
+              <svg
+                v-if="categoriesByType(section.key).length"
+                width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"
+                class="shrink-0 transition-transform"
+                :class="expandedType === section.key ? 'rotate-180' : ''"
+              ><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+
+            <!-- DROPDOWN KATEGORI -->
+            <div
+              v-if="expandedType === section.key && categoriesByType(section.key).length"
+              class="mt-1 mb-1.5 ml-3.5 pl-3 border-l border-[#EFE0D2] flex flex-col gap-0.5"
+            >
+              <button
+                type="button"
+                @click="selectCategory(section.key, 'ALL')"
+                class="text-left rounded-lg px-3 py-1.5 text-[12.5px] font-bold transition-colors"
+                :class="getSectionCategory(section.key) === 'ALL'
+                  ? 'bg-brand-50 text-brand-500'
+                  : 'text-cocoa-500 hover:bg-[#F7EEE6] hover:text-cocoa-900'"
+              >
+                {{ t('common.all') }}
+              </button>
+              <button
+                v-for="c in categoriesByType(section.key)"
+                :key="c"
+                type="button"
+                @click="selectCategory(section.key, c)"
+                class="text-left rounded-lg px-3 py-1.5 text-[12.5px] font-bold transition-colors"
+                :class="getSectionCategory(section.key) === c
+                  ? 'bg-brand-50 text-brand-500'
+                  : 'text-cocoa-500 hover:bg-[#F7EEE6] hover:text-cocoa-900'"
+              >
+                {{ c }}
+              </button>
+
+              <!-- SUB-KATEGORI (level-2, mis. TYPE5) -->
+              <div
+                v-if="subcategoriesByType(section.key).length"
+                class="mt-1 ml-3 pl-3 border-l border-[#EFE0D2] flex flex-col gap-0.5"
+              >
+                <button
+                  type="button"
+                  @click="setSectionSubcategory(section.key, 'ALL')"
+                  class="text-left rounded-lg px-3 py-1 text-[11.5px] font-bold transition-colors"
+                  :class="getSectionSubcategory(section.key) === 'ALL'
+                    ? 'text-cocoa-900'
+                    : 'text-cocoa-400 hover:text-cocoa-900'"
+                >
+                  {{ t('common.all') }}
+                </button>
+                <button
+                  v-for="sc in subcategoriesByType(section.key)"
+                  :key="sc"
+                  type="button"
+                  @click="setSectionSubcategory(section.key, sc)"
+                  class="text-left rounded-lg px-3 py-1 text-[11.5px] font-bold transition-colors"
+                  :class="getSectionSubcategory(section.key) === sc
+                    ? 'text-cocoa-900'
+                    : 'text-cocoa-400 hover:text-cocoa-900'"
+                >
+                  {{ subcategoryLabel(sc) }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- HASIL -->
+      <div class="flex-1 min-w-0">
     <!-- ERROR -->
     <p v-if="errorMessage" class="text-brand-600 text-sm mb-6">{{ errorMessage }}</p>
 
@@ -361,77 +541,28 @@ const resetMenu = () => {
       </button>
     </div>
 
-    <!-- SECTIONS -->
+    <!-- ALL: satu grid gabungan tanpa pemisahan type -->
+    <div
+      v-else-if="activeFilter === 'ALL'"
+      class="grid grid-cols-2 gap-5"
+      :class="isFilterOpen ? 'md:grid-cols-4' : 'md:grid-cols-5'"
+    >
+      <ProductCard
+        v-for="product in pagedProducts"
+        :key="product.id"
+        :product="product"
+      />
+    </div>
+
+    <!-- SECTIONS (saat satu type dipilih) -->
     <div v-else class="flex flex-col gap-11">
       <section v-for="section in sectionsToShow" :key="section.key">
         <template v-if="sectionHasProducts(section.key)">
           <!-- SECTION HEADER -->
           <div class="border-b border-cream-300 pb-3 mb-4">
-            <div class="flex items-baseline gap-3 flex-wrap">
-              <span
-                class="w-[26px] h-[26px] rounded-full bg-brand-500 text-white flex items-center justify-center font-extrabold text-[13px] shrink-0"
-              >
-                {{ section.num }}
-              </span>
-              <h2 class="font-display text-[25px]">{{ section.label }}</h2>
-            </div>
-            <span class="block text-[13px] text-cocoa-400 font-bold mt-1.5 pl-[38px]">
+            <span class="block text-[13px] text-cocoa-400 font-bold">
               {{ section.hint }}
             </span>
-
-            <!-- FILTER KATEGORI PER TYPE -->
-            <div
-              v-if="categoriesByType(section.key).length"
-              class="flex flex-wrap items-center gap-2 mt-3.5"
-            >
-              <button
-                @click="setSectionCategory(section.key, 'ALL')"
-                class="rounded-full border px-[15px] py-1.5 text-[12.5px] font-bold transition-colors"
-                :class="getSectionCategory(section.key) === 'ALL'
-                  ? 'bg-brand-500 text-white border-brand-500'
-                  : 'bg-white text-cocoa-900 border-[#E4D3C1] hover:border-brand-500 hover:bg-[#FBEFEC] hover:text-brand-500'"
-              >
-                {{ t('common.all') }}
-              </button>
-              <button
-                v-for="c in categoriesByType(section.key)"
-                :key="c"
-                @click="setSectionCategory(section.key, c)"
-                class="rounded-full border px-[15px] py-1.5 text-[12.5px] font-bold transition-colors"
-                :class="getSectionCategory(section.key) === c
-                  ? 'bg-brand-500 text-white border-brand-500'
-                  : 'bg-white text-cocoa-900 border-[#E4D3C1] hover:border-brand-500 hover:bg-[#FBEFEC] hover:text-brand-500'"
-              >
-                {{ c }}
-              </button>
-            </div>
-
-            <!-- FILTER SUB-KATEGORI (level-2, muncul saat kategori dipilih; mis. TYPE5) -->
-            <div
-              v-if="subcategoriesByType(section.key).length"
-              class="flex flex-wrap items-center gap-2 mt-2.5 pl-[38px]"
-            >
-              <button
-                @click="setSectionSubcategory(section.key, 'ALL')"
-                class="rounded-full border px-[13px] py-1 text-[11.5px] font-bold transition-colors"
-                :class="getSectionSubcategory(section.key) === 'ALL'
-                  ? 'bg-cocoa-900 text-white border-cocoa-900'
-                  : 'bg-white text-cocoa-500 border-[#E4D3C1] hover:border-cocoa-900 hover:text-cocoa-900'"
-              >
-                {{ t('common.all') }}
-              </button>
-              <button
-                v-for="sc in subcategoriesByType(section.key)"
-                :key="sc"
-                @click="setSectionSubcategory(section.key, sc)"
-                class="rounded-full border px-[13px] py-1 text-[11.5px] font-bold transition-colors"
-                :class="getSectionSubcategory(section.key) === sc
-                  ? 'bg-cocoa-900 text-white border-cocoa-900'
-                  : 'bg-white text-cocoa-500 border-[#E4D3C1] hover:border-cocoa-900 hover:text-cocoa-900'"
-              >
-                {{ subcategoryLabel(sc) }}
-              </button>
-            </div>
           </div>
 
           <!-- EMPTY (karena filter kategori) -->
@@ -443,15 +574,60 @@ const resetMenu = () => {
           </p>
 
           <!-- GRID -->
-          <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-5">
+          <div
+            v-else
+            class="grid grid-cols-2 gap-5"
+            :class="isFilterOpen ? 'md:grid-cols-4' : 'md:grid-cols-5'"
+          >
             <ProductCard
-              v-for="product in productsByType(section.key)"
+              v-for="product in pagedProducts"
               :key="product.id"
               :product="product"
             />
           </div>
         </template>
       </section>
+        </div>
+
+        <!-- PAGINATION -->
+        <div
+          v-if="!isLoading && totalPages > 1"
+          class="flex items-center justify-center gap-1.5 mt-9"
+        >
+          <button
+            type="button"
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage === 1"
+            :aria-label="t('menu.page.prev')"
+            class="w-9 h-9 rounded-full border border-[#E4D3C1] bg-white text-cocoa-900 flex items-center justify-center transition-colors hover:border-brand-500 hover:text-brand-500 disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+
+          <button
+            v-for="page in totalPages"
+            :key="page"
+            type="button"
+            @click="goToPage(page)"
+            class="min-w-9 h-9 px-3 rounded-full border text-[13px] font-bold transition-colors"
+            :class="currentPage === page
+              ? 'bg-brand-500 text-white border-brand-500'
+              : 'bg-white text-cocoa-900 border-[#E4D3C1] hover:border-brand-500 hover:text-brand-500'"
+          >
+            {{ page }}
+          </button>
+
+          <button
+            type="button"
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            :aria-label="t('menu.page.next')"
+            class="w-9 h-9 rounded-full border border-[#E4D3C1] bg-white text-cocoa-900 flex items-center justify-center transition-colors hover:border-brand-500 hover:text-brand-500 disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

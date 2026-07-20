@@ -376,6 +376,13 @@ export default {
     emptyDesc: "Try another keyword or change the category.",
     reset: "Reset search",
     emptyCategory: "No products for this category.",
+    page: {
+      prev: "Previous page",
+      next: "Next page",
+    },
+    filter: {
+      label: "Filter",
+    },
     sort: {
       label: "Sort",
       default: "Default",

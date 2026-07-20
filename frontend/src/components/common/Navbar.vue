@@ -59,7 +59,7 @@ const navLinks = computed(() => [
     class="sticky top-0 z-50 bg-[#FDF2F7]/90 backdrop-blur-md border-b border-[#F5DCE8]"
   >
     <div
-      class="max-w-[1160px] mx-auto flex items-center gap-3 md:gap-7 px-5 md:px-8 h-[72px]"
+      class="max-w-[1440px] mx-auto flex items-center gap-3 md:gap-7 px-5 md:px-8 lg:px-12 h-[72px]"
     >
       <!-- Logo -->
       <RouterLink
