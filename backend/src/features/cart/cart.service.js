@@ -6,6 +6,10 @@ import {
    FLAVORS_BY_TYPE,
    cupcakeFlavorsForCategory,
    isFixedFlavorCupcake,
+   isGoodiebagCupcake,
+   goodiebagMinQty,
+   isMultiFlavorCupcake,
+   cupcakeFlavorLimit,
 } from "../../features/product/product.constant.js";
 
 const PRODUCT_TYPE = {
@@ -118,6 +122,39 @@ const resolveItemDetails = async (product, payload) => {
          throw new AppError("Isi box tidak ditemukan untuk produk ini", 404);
       }
 
+      // Goodiebag: user memilih beberapa rasa (1-4). Disimpan tergabung di
+      // kolom flavor. Dekorasi ditentukan admin (tidak menyimpan custom image).
+      if (isMultiFlavorCupcake(product.category)) {
+         const allowed = cupcakeFlavorsForCategory(product.category);
+         const { min, max } = cupcakeFlavorLimit(product.category);
+         const flavors = Array.isArray(payload.flavors) ? payload.flavors : [];
+         const unique = [...new Set(flavors)];
+
+         if (unique.length !== flavors.length) {
+            throw new AppError("Terdapat rasa yang terpilih ganda", 422);
+         }
+         if (flavors.length < min || flavors.length > max) {
+            throw new AppError(
+               `Pilih ${min} sampai ${max} rasa untuk goodiebag`,
+               422
+            );
+         }
+         const invalid = flavors.filter((f) => !allowed.includes(f));
+         if (invalid.length > 0) {
+            throw new AppError(
+               `Rasa tidak valid: ${invalid.join(", ")}`,
+               422
+            );
+         }
+
+         return {
+            variantId: variant.id,
+            flavor: flavors.join(", "),
+            customImage: null,
+            price: applyDiscount(variant.price, discount),
+         };
+      }
+
       const fixedFlavor = isFixedFlavorCupcake(product.category);
 
       if (!fixedFlavor) {
@@ -159,6 +196,14 @@ export const addItemToCart = async (userId, payload) => {
    const product = await productRepository.findProductById(productId);
    if (!product) {
       throw new AppError("Produk tidak ditemukan", 404);
+   }
+
+   // Goodiebag (TYPE6): pembelian minimal sejumlah box tertentu.
+   if (isGoodiebagCupcake(product.category)) {
+      const minQty = goodiebagMinQty(product.category);
+      if (quantity < minQty) {
+         throw new AppError(`Minimal pembelian ${minQty} box`, 422);
+      }
    }
 
    const { variantId, flavor, customImage, price } = await resolveItemDetails(
@@ -221,6 +266,7 @@ export const getCartByUserId = async (userId) => {
          // dipakai frontend untuk melabeli varian: TYPE6 memakai `size` sebagai
          // isi box (pcs), bukan diameter cake dalam cm.
          productType: item.product.type,
+         productCategory: item.product.category,
          variantId: item.variantId,
          shape: item.variant?.shape ?? null,
          size: item.variant?.size ?? null,
@@ -250,6 +296,14 @@ export const updateItemQuantity = async (userId, itemId, quantity) => {
    if (quantity === 0) {
       await cartRepository.deleteCartItem(itemId);
       return null; // item sudah dihapus, tidak ada data untuk dikembalikan
+   }
+
+   // Goodiebag: tidak boleh turun di bawah minimal box (kecuali 0 = hapus).
+   if (isGoodiebagCupcake(item.product?.category)) {
+      const minQty = goodiebagMinQty(item.product.category);
+      if (quantity < minQty) {
+         throw new AppError(`Minimal pembelian ${minQty} box`, 422);
+      }
    }
 
    return cartRepository.updateCartItemQuantity(itemId, quantity);

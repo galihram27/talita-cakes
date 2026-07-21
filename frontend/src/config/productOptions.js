@@ -40,6 +40,7 @@ export const PRODUCT_CATEGORIES = {
     'Simple Decor Cupcakes',
     'Paper Topper Cupcakes',
     'Custom 3D Cupcakes',
+    'Goodiebag Cupcakes',
   ],
 }
 
@@ -67,8 +68,23 @@ export const CUPCAKE_FLAVORS = [
   'Vanilla Strawberry Cupcakes',
 ]
 
+// Rasa American Butter Cupcakes — dipakai sebagai pilihan rasa Goodiebag
+// (user memilih beberapa rasa). Mirror dari backend product.constant.js.
+export const AMERICAN_BUTTER_FLAVORS = [
+  'Chocolate',
+  'Cheese',
+  'Choco Blueberry',
+  'Vanilla Blueberry',
+  'Oreo Chocolate',
+  'Vanilla Oreo',
+  'Choco Nutella',
+  'Strawberry',
+  'Lotus Biscoff',
+  'Greentea',
+]
+
 export const TYPE6_CATEGORY_CONFIG = {
-  'American Butter Cupcakes': { fixedFlavor: true, flavors: [], boxes: [4, 6, 9, 12] },
+  'American Butter Cupcakes': { fixedFlavor: true, flavors: [], boxes: [2, 4, 6, 9, 12] },
   'Simple Decor Cupcakes': {
     fixedFlavor: false,
     flavors: CUPCAKE_FLAVORS,
@@ -84,6 +100,18 @@ export const TYPE6_CATEGORY_CONFIG = {
     flavors: CUPCAKE_FLAVORS,
     boxes: [4, 6, 9, 12],
   },
+  // Goodiebag: harga tunggal per box (tanpa pilihan isi box). User memilih 1-4
+  // rasa dari daftar rasa American Butter. Minimal beli 10 box.
+  'Goodiebag Cupcakes': {
+    fixedFlavor: false,
+    flavors: AMERICAN_BUTTER_FLAVORS,
+    boxes: [],
+    goodiebag: true,
+    minQty: 10,
+    multiFlavor: true,
+    minFlavors: 1,
+    maxFlavors: 4,
+  },
 }
 
 export const cupcakeFlavorsForCategory = (category) =>
@@ -94,6 +122,24 @@ export const cupcakeBoxesForCategory = (category) =>
 
 export const isFixedFlavorCupcake = (category) =>
   TYPE6_CATEGORY_CONFIG[category]?.fixedFlavor === true
+
+// Kategori goodiebag: harga tunggal per box, tanpa pilihan isi box.
+export const isGoodiebagCupcake = (category) =>
+  TYPE6_CATEGORY_CONFIG[category]?.goodiebag === true
+
+// Jumlah box minimum (default 1 untuk kategori non-goodiebag).
+export const goodiebagMinQty = (category) =>
+  TYPE6_CATEGORY_CONFIG[category]?.minQty ?? 1
+
+// Kategori dengan pilihan rasa jamak (mis. goodiebag: 1-4 rasa).
+export const isMultiFlavorCupcake = (category) =>
+  TYPE6_CATEGORY_CONFIG[category]?.multiFlavor === true
+
+// Batas jumlah rasa yang boleh dipilih untuk kategori rasa-jamak.
+export const cupcakeFlavorLimit = (category) => ({
+  min: TYPE6_CATEGORY_CONFIG[category]?.minFlavors ?? 1,
+  max: TYPE6_CATEGORY_CONFIG[category]?.maxFlavors ?? 1,
+})
 
 export const SHAPE_OPTIONS = [
   { value: 'ROUND', label: 'Round' },

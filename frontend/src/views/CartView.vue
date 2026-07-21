@@ -8,6 +8,11 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { formatRupiah } from '@/utils/formatCurrency'
+import { isGoodiebagCupcake, goodiebagMinQty } from '@/config/productOptions'
+
+// Batas bawah stepper untuk item goodiebag (min beli 10 box); 1 untuk item lain.
+const minQtyForItem = (item) =>
+  isGoodiebagCupcake(item.productCategory) ? goodiebagMinQty(item.productCategory) : 1
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -73,6 +78,11 @@ const fetchCart = async () => {
 // ===== UPDATE QUANTITY =====
 const changeQuantity = async (item, delta) => {
   const newQuantity = item.quantity + delta
+  const minQty = minQtyForItem(item)
+
+  // Goodiebag: jangan turun di bawah minimal box lewat stepper. Untuk menghapus,
+  // pakai tombol hapus (Trash) — bukan mengurangi terus sampai 0.
+  if (minQty > 1 && newQuantity < minQty) return
 
   // Jumlah 1 dikurangi lagi = item langsung dihapus dari keranjang
   // (tanpa dialog konfirmasi — mengurangi sampai 0 sudah aksi yang disengaja).
@@ -247,7 +257,7 @@ onMounted(fetchCart)
                 <div class="flex items-center border-[1.5px] border-[#E4D3C1] rounded-full bg-white">
                   <button
                     type="button"
-                    :disabled="updatingItemId === item.id"
+                    :disabled="updatingItemId === item.id || (minQtyForItem(item) > 1 && item.quantity <= minQtyForItem(item))"
                     @click="changeQuantity(item, -1)"
                     class="w-[34px] h-[34px] text-[15px] text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
                     :aria-label="t('product.orderForm.decreaseQty')"

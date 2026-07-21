@@ -3,15 +3,40 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FLAVOR_DESCRIPTIONS } from '@/config/constants'
 
-// Grid pilihan flavor (TYPE2 & TYPE4) — gaya tombol radio dari desain
+// Grid pilihan flavor (TYPE2 & TYPE4) — gaya tombol radio dari desain.
+// Mode multiple (mis. goodiebag): modelValue berupa array, user memilih beberapa
+// rasa sampai `max`.
 const props = defineProps({
-  modelValue: { type: String, default: '' },
+  // string untuk mode tunggal; array untuk mode multiple
+  modelValue: { type: [String, Array], default: '' },
   flavors: { type: Array, required: true },
   stepLabel: { type: String, default: '' },
+  multiple: { type: Boolean, default: false },
+  max: { type: Number, default: 0 }, // batas jumlah pilihan (0 = tanpa batas)
+  hint: { type: String, default: '' }, // teks kecil di samping label, mis. "pilih 1-4"
 })
 
-defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue'])
 const { t, locale } = useI18n()
+
+const isSelected = (f) =>
+  props.multiple ? (props.modelValue ?? []).includes(f) : props.modelValue === f
+
+const toggle = (f) => {
+  if (!props.multiple) {
+    emit('update:modelValue', f)
+    return
+  }
+  const current = [...(props.modelValue ?? [])]
+  const idx = current.indexOf(f)
+  if (idx !== -1) {
+    current.splice(idx, 1)
+  } else {
+    if (props.max && current.length >= props.max) return // sudah mencapai batas
+    current.push(f)
+  }
+  emit('update:modelValue', current)
+}
 
 // Popup penjelasan rasa
 const showGuide = ref(false)
@@ -31,6 +56,7 @@ const guideItems = computed(() =>
     <div class="flex items-center justify-between gap-2 mb-2.5">
       <p class="text-[15px] font-extrabold">
         {{ stepLabel || t('product.chooseFlavor') }} <span class="text-brand-500">*</span>
+        <span v-if="hint" class="ml-1 text-[13px] font-semibold text-[#B7A18E]">{{ hint }}</span>
       </p>
       <button
         v-if="guideItems.length"
@@ -51,17 +77,18 @@ const guideItems = computed(() =>
         v-for="f in flavors"
         :key="f"
         type="button"
-        @click="$emit('update:modelValue', f)"
+        @click="toggle(f)"
         class="rounded-[10px] border-2 px-3.5 py-3 text-left font-bold text-sm text-cocoa-900 flex items-center gap-2 transition-colors"
-        :class="modelValue === f
+        :class="isSelected(f)
           ? 'border-brand-500 bg-[#F4D6D1]'
           : 'border-[#EBDCCC] bg-white hover:border-brand-500 hover:bg-[#F4D6D1]'"
       >
         <span
-          class="w-4 h-4 rounded-full border-2 shrink-0"
-          :class="modelValue === f
-            ? 'border-brand-500 bg-brand-500'
-            : 'border-[#D9C4AE] bg-white'"
+          class="w-4 h-4 border-2 shrink-0"
+          :class="[
+            multiple ? 'rounded-[5px]' : 'rounded-full',
+            isSelected(f) ? 'border-brand-500 bg-brand-500' : 'border-[#D9C4AE] bg-white',
+          ]"
         />
         {{ f }}
       </button>

@@ -6,6 +6,8 @@ const baseAddItemSchema = z.object({
   productId: z.string().uuid({ message: 'productId tidak valid' }),
   variantId: z.string().uuid({ message: 'variantId tidak valid' }).optional(),
    flavor: z.enum(ALL_FLAVORS, { message: `flavor harus salah satu dari: ${ALL_FLAVORS.join(', ')}` }).optional(),
+  // rasa jamak (mis. goodiebag: 1-4 rasa). Isi & jumlahnya divalidasi di service.
+  flavors: z.array(z.enum(ALL_FLAVORS)).optional(),
   customImage: z.string().min(1).optional(),
   textOnCake: z.string().optional(),
   notes: z.string().optional(),

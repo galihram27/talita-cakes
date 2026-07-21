@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useProductStore } from '@/stores/product.store'
+import { PRODUCT_CATEGORIES } from '@/config/productOptions'
 import ProductCard from '@/components/product/ProductCard.vue'
 
 const { t } = useI18n()
@@ -103,10 +104,18 @@ const fetchProducts = async () => {
 onMounted(fetchProducts)
 
 // ===== FILTER + SEARCH (client-side, sederhana) =====
-// pilihan kategori per type, diambil dari produk yang ada di type tersebut
+// pilihan kategori per type, diambil dari produk yang ada di type tersebut.
+// Urutannya mengikuti daftar kategori resmi (PRODUCT_CATEGORIES); kategori yang
+// tidak terdaftar di-append di belakang sesuai kemunculannya di produk.
 const categoriesByType = (typeKey) => {
   const pool = products.value.filter((p) => p.type === typeKey)
-  return [...new Set(pool.map((p) => p.category).filter(Boolean))]
+  const present = [...new Set(pool.map((p) => p.category).filter(Boolean))]
+  const order = PRODUCT_CATEGORIES[typeKey] ?? []
+  return present.sort((a, b) => {
+    const ia = order.indexOf(a)
+    const ib = order.indexOf(b)
+    return (ia === -1 ? Infinity : ia) - (ib === -1 ? Infinity : ib)
+  })
 }
 
 const getSectionCategory = (typeKey) => sectionCategory.value[typeKey] || 'ALL'
@@ -277,6 +286,50 @@ watch(
 watch(totalPages, (max) => {
   if (currentPage.value > max) currentPage.value = max
 })
+
+// ===== TINGGI AREA GRID KONSTAN =====
+// Halaman selalu setinggi satu halaman penuh (maks 5 baris kartu) walau kartu
+// yang muncul lebih sedikit — supaya tinggi halaman tidak berubah-ubah saat
+// pindah kategori/halaman. Tinggi diukur dari kartu yang benar-benar dirender
+// agar tetap benar di tiap breakpoint (kolom desktop vs mobile berbeda).
+const gridArea = ref(null)
+const gridMinHeight = ref('')
+
+const recalcGridHeight = () => {
+  const area = gridArea.value
+  if (!area) return
+  const grid = area.querySelector('.grid')
+  const cards = area.querySelectorAll('[data-product-card]')
+  if (!grid || cards.length === 0) {
+    gridMinHeight.value = ''
+    return
+  }
+  let rowHeight = 0
+  cards.forEach((card) => {
+    rowHeight = Math.max(rowHeight, card.offsetHeight)
+  })
+  const styles = getComputedStyle(grid)
+  const template = styles.gridTemplateColumns
+  if (!template || template === 'none') return // grid belum ter-layout, jangan ubah
+  const cols = template.split(' ').filter(Boolean).length || 1
+  const gap = parseFloat(styles.rowGap) || 20
+  const rows = Math.max(1, Math.ceil(pageSize.value / cols))
+  gridMinHeight.value = `${rows * rowHeight + (rows - 1) * gap}px`
+}
+
+const scheduleRecalc = () => nextTick(recalcGridHeight)
+
+onMounted(() => {
+  scheduleRecalc()
+  window.addEventListener('resize', scheduleRecalc)
+})
+onUnmounted(() => window.removeEventListener('resize', scheduleRecalc))
+
+// Ukur ulang saat isi/tata letak halaman berubah.
+watch(
+  [pagedProducts, isFilterOpen, activeFilter, currentPage, isLoading],
+  scheduleRecalc,
+)
 
 const sectionHasProducts = (typeKey) =>
   filteredProducts.value.some((p) => p.type === typeKey)
@@ -541,53 +594,57 @@ const resetMenu = () => {
       </button>
     </div>
 
-    <!-- ALL: satu grid gabungan tanpa pemisahan type -->
-    <div
-      v-else-if="activeFilter === 'ALL'"
-      class="grid grid-cols-2 gap-5"
-      :class="isFilterOpen ? 'md:grid-cols-4' : 'md:grid-cols-5'"
-    >
-      <ProductCard
-        v-for="product in pagedProducts"
-        :key="product.id"
-        :product="product"
-      />
+    <!-- AREA GRID: tingginya dikunci ke satu halaman penuh (maks 5 baris) supaya
+         halaman tidak melonjak-lonjak saat jumlah kartu per halaman berbeda. -->
+    <div v-else ref="gridArea" :style="{ minHeight: gridMinHeight }">
+      <!-- ALL: satu grid gabungan tanpa pemisahan type -->
+      <div
+        v-if="activeFilter === 'ALL'"
+        class="grid grid-cols-2 gap-5"
+        :class="isFilterOpen ? 'md:grid-cols-4' : 'md:grid-cols-5'"
+      >
+        <ProductCard
+          v-for="product in pagedProducts"
+          :key="product.id"
+          :product="product"
+        />
+      </div>
+
+      <!-- SECTIONS (saat satu type dipilih) -->
+      <div v-else class="flex flex-col gap-11">
+        <section v-for="section in sectionsToShow" :key="section.key">
+          <template v-if="sectionHasProducts(section.key)">
+            <!-- SECTION HEADER -->
+            <div class="border-b border-cream-300 pb-3 mb-4">
+              <span class="block text-[13px] text-cocoa-400 font-bold">
+                {{ section.hint }}
+              </span>
+            </div>
+
+            <!-- EMPTY (karena filter kategori) -->
+            <p
+              v-if="productsByType(section.key).length === 0"
+              class="text-sm text-cocoa-400"
+            >
+              {{ t('menu.emptyCategory') }}
+            </p>
+
+            <!-- GRID -->
+            <div
+              v-else
+              class="grid grid-cols-2 gap-5"
+              :class="isFilterOpen ? 'md:grid-cols-4' : 'md:grid-cols-5'"
+            >
+              <ProductCard
+                v-for="product in pagedProducts"
+                :key="product.id"
+                :product="product"
+              />
+            </div>
+          </template>
+        </section>
+      </div>
     </div>
-
-    <!-- SECTIONS (saat satu type dipilih) -->
-    <div v-else class="flex flex-col gap-11">
-      <section v-for="section in sectionsToShow" :key="section.key">
-        <template v-if="sectionHasProducts(section.key)">
-          <!-- SECTION HEADER -->
-          <div class="border-b border-cream-300 pb-3 mb-4">
-            <span class="block text-[13px] text-cocoa-400 font-bold">
-              {{ section.hint }}
-            </span>
-          </div>
-
-          <!-- EMPTY (karena filter kategori) -->
-          <p
-            v-if="productsByType(section.key).length === 0"
-            class="text-sm text-cocoa-400"
-          >
-            {{ t('menu.emptyCategory') }}
-          </p>
-
-          <!-- GRID -->
-          <div
-            v-else
-            class="grid grid-cols-2 gap-5"
-            :class="isFilterOpen ? 'md:grid-cols-4' : 'md:grid-cols-5'"
-          >
-            <ProductCard
-              v-for="product in pagedProducts"
-              :key="product.id"
-              :product="product"
-            />
-          </div>
-        </template>
-      </section>
-        </div>
 
         <!-- PAGINATION -->
         <div

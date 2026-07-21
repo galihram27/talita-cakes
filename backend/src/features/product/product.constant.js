@@ -35,6 +35,7 @@ export const PRODUCT_CATEGORIES = {
       "Simple Decor Cupcakes",
       "Paper Topper Cupcakes",
       "Custom 3D Cupcakes",
+      "Goodiebag Cupcakes",
    ],
 };
 
@@ -86,19 +87,40 @@ const CUPCAKE_FLAVORS = [
    "Vanilla Strawberry Cupcakes",
 ];
 
+// Rasa American Butter Cupcakes. Dipakai sebagai pilihan rasa untuk Goodiebag
+// (user memilih beberapa rasa). Daftar ini mirror nilai Product.flavor dari
+// produk kategori "American Butter Cupcakes".
+// (mirror ke frontend/src/config/productOptions.js -> AMERICAN_BUTTER_FLAVORS)
+const AMERICAN_BUTTER_FLAVORS = [
+   "Chocolate",
+   "Cheese",
+   "Choco Blueberry",
+   "Vanilla Blueberry",
+   "Oreo Chocolate",
+   "Vanilla Oreo",
+   "Choco Nutella",
+   "Strawberry",
+   "Lotus Biscoff",
+   "Greentea",
+];
+
 /**
  * Aturan per kategori TYPE6.
  * - fixedFlavor: true  -> rasa & dekorasi ditentukan admin (user tidak memilih)
  * - fixedFlavor: false -> user memilih rasa + mengunggah referensi dekorasi
  *                         (pola yang sama dengan TYPE2)
  * - boxes: pilihan isi box yang tersedia (disimpan di ProductVariant.size)
+ * - goodiebag: true -> tidak ada pilihan isi box. Harga tunggal per box, user
+ *                      membeli sejumlah box (minimal `minQty`). Total = harga x qty.
+ * - multiFlavor: true -> user memilih beberapa rasa sekaligus (minFlavors..maxFlavors),
+ *                        bukan satu rasa. Rasa yang dipilih disimpan tergabung.
  * (mirror ke frontend/src/config/productOptions.js -> TYPE6_CATEGORY_CONFIG)
  */
 export const TYPE6_CATEGORY_CONFIG = {
    "American Butter Cupcakes": {
       fixedFlavor: true,
       flavors: [],
-      boxes: [4, 6, 9, 12],
+      boxes: [2, 4, 6, 9, 12],
    },
    "Simple Decor Cupcakes": {
       fixedFlavor: false,
@@ -115,6 +137,18 @@ export const TYPE6_CATEGORY_CONFIG = {
       flavors: CUPCAKE_FLAVORS,
       boxes: [4, 6, 9, 12],
    },
+   // Goodiebag: harga tunggal per box, tanpa pilihan isi box. User memilih
+   // 1-4 rasa dari daftar rasa American Butter. Minimal beli 10 box.
+   "Goodiebag Cupcakes": {
+      fixedFlavor: false,
+      flavors: AMERICAN_BUTTER_FLAVORS,
+      boxes: [],
+      goodiebag: true,
+      minQty: 10,
+      multiFlavor: true,
+      minFlavors: 1,
+      maxFlavors: 4,
+   },
 };
 
 // Rasa yang boleh dipilih user untuk satu kategori TYPE6.
@@ -129,6 +163,24 @@ export const cupcakeBoxesForCategory = (category) =>
 export const isFixedFlavorCupcake = (category) =>
    TYPE6_CATEGORY_CONFIG[category]?.fixedFlavor === true;
 
+// Apakah kategori TYPE6 ini model goodiebag (harga tunggal per box, min qty)?
+export const isGoodiebagCupcake = (category) =>
+   TYPE6_CATEGORY_CONFIG[category]?.goodiebag === true;
+
+// Jumlah box minimum untuk kategori goodiebag (default 1 untuk kategori lain).
+export const goodiebagMinQty = (category) =>
+   TYPE6_CATEGORY_CONFIG[category]?.minQty ?? 1;
+
+// Apakah kategori TYPE6 ini memakai pilihan rasa jamak (mis. goodiebag)?
+export const isMultiFlavorCupcake = (category) =>
+   TYPE6_CATEGORY_CONFIG[category]?.multiFlavor === true;
+
+// Batas jumlah rasa yang boleh dipilih untuk kategori rasa-jamak.
+export const cupcakeFlavorLimit = (category) => ({
+   min: TYPE6_CATEGORY_CONFIG[category]?.minFlavors ?? 1,
+   max: TYPE6_CATEGORY_CONFIG[category]?.maxFlavors ?? 1,
+});
+
 // Map rasa per tipe produk — dipakai validasi service layer sesuai Product.type.
 // TYPE6 sengaja tidak di sini karena rasanya ditentukan per kategori.
 export const FLAVORS_BY_TYPE = {
@@ -139,5 +191,10 @@ export const FLAVORS_BY_TYPE = {
 // Gabungan semua rasa — dipakai validasi bentuk payload di schema (enum),
 // validasi "rasa mana untuk tipe/kategori apa" tetap di service layer.
 export const ALL_FLAVORS = [
-   ...new Set([...TYPE2_FLAVORS, ...CUSTOM_FLAVORS, ...CUPCAKE_FLAVORS]),
+   ...new Set([
+      ...TYPE2_FLAVORS,
+      ...CUSTOM_FLAVORS,
+      ...CUPCAKE_FLAVORS,
+      ...AMERICAN_BUTTER_FLAVORS,
+   ]),
 ];

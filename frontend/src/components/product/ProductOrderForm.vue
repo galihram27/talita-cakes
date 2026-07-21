@@ -7,7 +7,10 @@ defineProps({
   textOnCake: { type: String, default: '' },
   notes: { type: String, default: '' },
   quantity: { type: Number, default: 1 },
+  minQuantity: { type: Number, default: 1 }, // batas bawah stepper (goodiebag = 10)
+  quantitySuffix: { type: String, default: '' }, // label satuan di sebelah angka, mis. "box"
   useStepper: { type: Boolean, default: false }, // TYPE3 pakai stepper "Amount", TYPE1/2 pakai input angka
+  hideQuantity: { type: Boolean, default: false }, // goodiebag: jumlah diketik di atas, stepper disembunyikan
   showTextOnCake: { type: Boolean, default: true }, // TYPE5 (non-cake) menyembunyikan tulisan di atas cake
   isSubmitting: { type: Boolean, default: false },
   submitError: { type: String, default: '' },
@@ -18,7 +21,7 @@ const emit = defineEmits(['update:textOnCake', 'update:notes', 'update:quantity'
 
 const increaseQuantity = (current) => emit('update:quantity', current + 1)
 const decreaseQuantity = (current) => {
-  if (current > 1) emit('update:quantity', current - 1)
+  if (current > props.minQuantity) emit('update:quantity', current - 1)
 }
 </script>
 
@@ -69,7 +72,7 @@ const decreaseQuantity = (current) => {
     <!-- qty + add to cart -->
     <div class="flex flex-col sm:flex-row sm:items-center gap-3.5 border-t border-cream-300 pt-5">
       <div
-        v-if="useStepper"
+        v-if="!hideQuantity && useStepper"
         class="flex items-center self-start border-[1.5px] border-[#E4D3C1] rounded-full bg-white"
       >
         <button
@@ -80,7 +83,9 @@ const decreaseQuantity = (current) => {
         >
           −
         </button>
-        <span class="min-w-[34px] text-center font-extrabold text-base">{{ quantity }}</span>
+        <span class="min-w-[34px] text-center font-extrabold text-base">
+          {{ quantity }}<span v-if="quantitySuffix" class="ml-0.5 text-xs font-semibold text-[#B7A18E]">{{ quantitySuffix }}</span>
+        </span>
         <button
           type="button"
           @click="increaseQuantity(quantity)"
@@ -90,7 +95,7 @@ const decreaseQuantity = (current) => {
           +
         </button>
       </div>
-      <div v-else class="flex items-center gap-3">
+      <div v-else-if="!hideQuantity" class="flex items-center gap-3">
         <div class="flex items-center self-start border-[1.5px] border-[#E4D3C1] rounded-full bg-white">
           <button
             type="button"

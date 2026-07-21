@@ -52,10 +52,11 @@ export const createProduct = async (payload) => {
     // TYPE5 (non-cake): satu varian harga tunggal, tanpa shape/size
     variantsData = [{ shape: null, size: null, price: payload.price }];
   } else if (type === 'TYPE6') {
-    // TYPE6 (cupcakes): satu varian per isi box; size dipakai sebagai jumlah pcs
+    // TYPE6 (cupcakes): satu varian per isi box; size dipakai sebagai jumlah pcs.
+    // Goodiebag tidak punya isi box -> size null (harga tunggal per box).
     variantsData = payload.variants.map((v) => ({
       shape: null,
-      size: v.size,
+      size: v.size ?? null,
       price: v.price,
       image: v.image ?? null,
     }));

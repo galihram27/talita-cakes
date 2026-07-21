@@ -5,6 +5,7 @@ import {
   ALL_TYPE5_SUBCATEGORIES,
   cupcakeBoxesForCategory,
   isFixedFlavorCupcake,
+  isGoodiebagCupcake,
 } from './product.constant.js';
 import {
   isValidSize,
@@ -202,19 +203,43 @@ const type5Schema = z.object({
 // ===== TYPE 6 (cupcakes: harga per isi box, rasa tergantung kategori) =====
 // Varian cupcake memakai ProductVariant.size sebagai ISI BOX (tanpa shape).
 const boxVariantSchema = z.object({
-  size: z.coerce.number().int().positive(),
+  // isi box (pcs). Opsional karena kategori goodiebag tidak punya pilihan isi box
+  // (harga tunggal per box); size divalidasi per-kategori di refineCupcakeBoxes.
+  size: z.coerce.number().int().positive().optional(),
   price: z.coerce.number().positive('Price harus lebih dari 0'),
   // foto yang mewakili isi box ini; harus salah satu foto produk (lihat refine di bawah)
   image: z.string().trim().min(1).optional(),
 });
 
 // Box yang dikirim harus termasuk pilihan box milik kategori tsb, tanpa duplikat,
-// dan minimal satu box diisi.
+// dan minimal satu box diisi. Kategori goodiebag berbeda: tepat satu varian
+// (harga tunggal per box), tanpa isi box.
 const refineCupcakeBoxes = (data, ctx) => {
-  const allowed = cupcakeBoxesForCategory(data.category);
-  const sizes = (data.variants ?? []).map((v) => v.size);
+  const variants = data.variants ?? [];
 
-  const invalid = sizes.filter((s) => !allowed.includes(s));
+  if (isGoodiebagCupcake(data.category)) {
+    if (variants.length !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${data.category} hanya boleh punya satu harga box`,
+        path: ['variants'],
+      });
+    }
+    return;
+  }
+
+  const allowed = cupcakeBoxesForCategory(data.category);
+  const sizes = variants.map((v) => v.size);
+
+  if (sizes.some((s) => s === undefined)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Isi box wajib diisi untuk ${data.category}`,
+      path: ['variants'],
+    });
+  }
+
+  const invalid = sizes.filter((s) => s !== undefined && !allowed.includes(s));
   if (invalid.length > 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

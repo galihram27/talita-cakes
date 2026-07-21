@@ -199,7 +199,7 @@ export const replaceProductVariants = async (id, productFields, variants) => {
           data: variants.map((v) => ({
             productId: id,
             shape: null,
-            size: v.size,
+            size: v.size ?? null,
             price: v.price,
             image: v.image ?? null,
           })),

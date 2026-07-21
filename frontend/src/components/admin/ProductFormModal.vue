@@ -7,6 +7,8 @@ import {
   TYPE5_SUBCATEGORIES,
   cupcakeBoxesForCategory,
   isFixedFlavorCupcake,
+  isGoodiebagCupcake,
+  goodiebagMinQty,
   ROUND_MIN_OPTIONS,
   SQUARE_MIN_OPTIONS,
   generateSizeRange,
@@ -62,6 +64,8 @@ const nonCakePrice = ref(null)
 
 // TYPE6 (cupcakes): harga per isi box -> { [isiBox]: price }
 const boxPrices = reactive({})
+// TYPE6 goodiebag: harga tunggal per box (tanpa pilihan isi box)
+const goodiebagPrice = ref(null)
 // TYPE6: foto yang mewakili tiap isi box -> { [isiBox]: url }.
 // Diambil dari foto yang sudah diunggah (form.images), bukan unggahan terpisah.
 const boxImages = reactive({})
@@ -185,6 +189,11 @@ const cupcakeBoxes = computed(() =>
 const cupcakeFlavorIsFixed = computed(
   () => usesCupcake.value && isFixedFlavorCupcake(form.category)
 )
+// Goodiebag: harga tunggal per box, tanpa grid isi box
+const usesGoodiebag = computed(
+  () => usesCupcake.value && isGoodiebagCupcake(form.category)
+)
+const goodiebagMin = computed(() => goodiebagMinQty(form.category))
 
 // flavor fixed untuk TYPE1, TYPE3, TYPE5, dan kategori cupcake ber-rasa-fix
 // (TYPE2 & TYPE4: user pilih sendiri saat order)
@@ -226,6 +235,7 @@ const resetForm = () => {
   roundMinSize.value = null
   squareMinSize.value = null
   nonCakePrice.value = null
+  goodiebagPrice.value = null
 
   if (!props.product) {
     Object.assign(form, {
@@ -278,6 +288,11 @@ const resetForm = () => {
   }
 
   if (p.type === 'TYPE6') {
+    // Goodiebag: satu varian harga tunggal (size null), tanpa isi box
+    if (isGoodiebagCupcake(p.category)) {
+      goodiebagPrice.value = variants[0] ? Number(variants[0].price) : null
+      return
+    }
     // TYPE6: tiap variant = satu isi box; `size` menyimpan jumlah pcs
     variants.forEach((v) => {
       boxPrices[v.size] = Number(v.price)
@@ -439,6 +454,11 @@ const validate = () => {
     return null
   }
 
+  if (usesGoodiebag.value) {
+    if (!(Number(goodiebagPrice.value) > 0)) return t('admin.productForm.priceInvalid')
+    return null
+  }
+
   if (usesCupcake.value) {
     // minimal satu isi box diberi harga; box yang dikosongkan berarti tidak dijual
     if (buildBoxVariants().length === 0) return t('admin.productForm.boxPriceRequired')
@@ -490,8 +510,12 @@ const buildPayload = () => {
   }
 
   if (usesCupcake.value) {
-    const payload = { ...base, type: 'TYPE6', variants: buildBoxVariants() }
-    // rasa fixed hanya untuk American Butter; kategori lain user pilih saat order
+    // goodiebag = satu varian harga tunggal (tanpa size); lainnya = varian per isi box
+    const variants = usesGoodiebag.value
+      ? [{ price: Number(goodiebagPrice.value) }]
+      : buildBoxVariants()
+    const payload = { ...base, type: 'TYPE6', variants }
+    // rasa fixed hanya untuk American Butter & goodiebag; kategori lain user pilih saat order
     if (cupcakeFlavorIsFixed.value) payload.flavor = form.flavor.trim()
     return payload
   }
@@ -842,8 +866,37 @@ const close = () => {
           </div>
         </template>
 
+        <!-- ===== TYPE6 goodiebag: harga tunggal per box + discount ===== -->
+        <template v-if="usesGoodiebag">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
+                {{ t('admin.productForm.pricePerBox') }}
+              </label>
+              <PriceInput
+                v-model="goodiebagPrice"
+                class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
+              />
+              <p class="text-xs text-cocoa-400 mt-1.5">
+                {{ t('admin.productForm.goodiebagHint', { count: goodiebagMin }) }}
+              </p>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.discount') }}</label>
+              <input
+                v-model.number="form.discount"
+                type="number"
+                min="0"
+                max="100"
+                :placeholder="t('admin.productForm.discountPlaceholder')"
+                class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
+              />
+            </div>
+          </div>
+        </template>
+
         <!-- ===== TYPE6 (cupcakes): harga per isi box + discount ===== -->
-        <template v-if="usesCupcake">
+        <template v-else-if="usesCupcake">
           <div>
             <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
               {{ t('admin.productForm.boxPrices') }}
