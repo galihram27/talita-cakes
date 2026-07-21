@@ -55,6 +55,27 @@ export const TYPE5_SUBCATEGORIES = {
 // yang mungkin mengirim subcategory tanpa category.
 export const ALL_TYPE5_SUBCATEGORIES = Object.values(TYPE5_SUBCATEGORIES).flat();
 
+// Sub-kategori TYPE5 yang size-nya DIPILIH USER (harga per size), bukan size
+// tunggal input admin. Tiap size punya harga sendiri; user memilih size saat
+// order (mirip TYPE3). Bentuk tetap (mis. ROUND).
+// (mirror ke frontend/src/config/productOptions.js -> TYPE5_SIZE_SUBCATEGORIES)
+export const TYPE5_SIZE_SUBCATEGORIES = {
+   "BASQUE BURNT CHEESE CAKE": { shape: "ROUND", sizes: [14, 16, 18, 20] },
+};
+
+// Config size-pilihan untuk satu sub-kategori TYPE5 (null kalau bukan).
+export const type5SizeConfig = (subcategory) =>
+   TYPE5_SIZE_SUBCATEGORIES[subcategory] ?? null;
+
+// Apakah sub-kategori TYPE5 ini memakai pilihan size oleh user?
+export const isType5SizeSubcategory = (subcategory) =>
+   Object.prototype.hasOwnProperty.call(TYPE5_SIZE_SUBCATEGORIES, subcategory);
+
+// Apakah kategori TYPE5 ini punya sub-kategori? Kategori tanpa entri di
+// TYPE5_SUBCATEGORIES (mis. "Mozzarella Sausage Rolls") tidak memakai subcategory.
+export const type5HasSubcategories = (category) =>
+   (TYPE5_SUBCATEGORIES[category]?.length ?? 0) > 0;
+
 // Rasa yang bisa dipilih user untuk TYPE2 (petite cake custom decor).
 // (mirror ke frontend/src/config/constants.js -> TYPE2_FLAVORS)
 export const TYPE2_FLAVORS = [
@@ -87,22 +108,38 @@ const CUPCAKE_FLAVORS = [
    "Vanilla Strawberry Cupcakes",
 ];
 
-// Rasa American Butter Cupcakes. Dipakai sebagai pilihan rasa untuk Goodiebag
-// (user memilih beberapa rasa). Daftar ini mirror nilai Product.flavor dari
-// produk kategori "American Butter Cupcakes".
-// (mirror ke frontend/src/config/productOptions.js -> AMERICAN_BUTTER_FLAVORS)
-const AMERICAN_BUTTER_FLAVORS = [
-   "Chocolate",
-   "Cheese",
-   "Choco Blueberry",
-   "Vanilla Blueberry",
-   "Oreo Chocolate",
+// Rasa Goodiebag sub-kategori "Original Goodiebag" (user memilih 1-4 rasa).
+const ORIGINAL_GOODIEBAG_FLAVORS = [
+   "Strawberry Marshmallow",
+   "Double Cheese",
    "Vanilla Oreo",
-   "Choco Nutella",
-   "Strawberry",
-   "Lotus Biscoff",
-   "Greentea",
+   "Happy Blueberry",
+   "Vanilla Biscoff",
+   "Vanilla Greentea",
+   "Double Choco",
+   "Choco Oreo",
+   "Nutella",
+   "Choco Blueberry",
 ];
+
+// Goodiebag Cupcakes punya dua sub-kategori; tiap sub-kategori punya daftar rasa
+// sendiri DAN batas jumlah rasa yang boleh dipilih pembeli:
+// - Original: pilih 1-4 rasa (jamak).
+// - Custom: pilih tepat 1 rasa.
+// Admin membuat produk goodiebag per sub-kategori (dengan harga per box sendiri).
+// (mirror ke frontend/src/config/productOptions.js -> GOODIEBAG_SUBCATEGORIES)
+export const GOODIEBAG_SUBCATEGORIES = {
+   "Original Goodiebag": {
+      flavors: ORIGINAL_GOODIEBAG_FLAVORS,
+      minFlavors: 1,
+      maxFlavors: 4,
+   },
+   "Custom Goodiebag": {
+      flavors: CUPCAKE_FLAVORS,
+      minFlavors: 1,
+      maxFlavors: 1,
+   },
+};
 
 /**
  * Aturan per kategori TYPE6.
@@ -137,11 +174,12 @@ export const TYPE6_CATEGORY_CONFIG = {
       flavors: CUPCAKE_FLAVORS,
       boxes: [4, 6, 9, 12],
    },
-   // Goodiebag: harga tunggal per box, tanpa pilihan isi box. User memilih
-   // 1-4 rasa dari daftar rasa American Butter. Minimal beli 10 box.
+   // Goodiebag: harga tunggal per box, tanpa pilihan isi box. Punya sub-kategori
+   // (lihat GOODIEBAG_SUBCATEGORIES); pilihan rasa mengikuti sub-kategori produk.
+   // User memilih 1-4 rasa, minimal beli 10 box.
    "Goodiebag Cupcakes": {
       fixedFlavor: false,
-      flavors: AMERICAN_BUTTER_FLAVORS,
+      flavors: [], // rasa ditentukan per sub-kategori, bukan per kategori
       boxes: [],
       goodiebag: true,
       minQty: 10,
@@ -171,6 +209,23 @@ export const isGoodiebagCupcake = (category) =>
 export const goodiebagMinQty = (category) =>
    TYPE6_CATEGORY_CONFIG[category]?.minQty ?? 1;
 
+// Daftar sub-kategori goodiebag (level-2).
+export const goodiebagSubcategories = () => Object.keys(GOODIEBAG_SUBCATEGORIES);
+
+// Rasa yang tersedia untuk satu sub-kategori goodiebag.
+export const goodiebagFlavorsForSubcategory = (subcategory) =>
+   GOODIEBAG_SUBCATEGORIES[subcategory]?.flavors ?? [];
+
+// Batas jumlah rasa yang boleh dipilih untuk satu sub-kategori goodiebag.
+export const goodiebagFlavorLimit = (subcategory) => ({
+   min: GOODIEBAG_SUBCATEGORIES[subcategory]?.minFlavors ?? 1,
+   max: GOODIEBAG_SUBCATEGORIES[subcategory]?.maxFlavors ?? 1,
+});
+
+// Apakah string ini sub-kategori goodiebag yang sah?
+export const isGoodiebagSubcategory = (subcategory) =>
+   Object.prototype.hasOwnProperty.call(GOODIEBAG_SUBCATEGORIES, subcategory);
+
 // Apakah kategori TYPE6 ini memakai pilihan rasa jamak (mis. goodiebag)?
 export const isMultiFlavorCupcake = (category) =>
    TYPE6_CATEGORY_CONFIG[category]?.multiFlavor === true;
@@ -195,6 +250,6 @@ export const ALL_FLAVORS = [
       ...TYPE2_FLAVORS,
       ...CUSTOM_FLAVORS,
       ...CUPCAKE_FLAVORS,
-      ...AMERICAN_BUTTER_FLAVORS,
+      ...ORIGINAL_GOODIEBAG_FLAVORS,
    ]),
 ];

@@ -15,8 +15,8 @@ import {
   isFixedFlavorCupcake,
   isGoodiebagCupcake,
   goodiebagMinQty,
-  isMultiFlavorCupcake,
-  cupcakeFlavorLimit,
+  goodiebagFlavorsForSubcategory,
+  goodiebagFlavorLimit,
 } from '@/config/productOptions'
 
 const props = defineProps({
@@ -30,9 +30,11 @@ const { t } = useI18n()
 const isGoodiebag = computed(() => isGoodiebagCupcake(props.product.category))
 const minQty = computed(() => goodiebagMinQty(props.product.category))
 
-// Goodiebag memakai pilihan rasa jamak (1-4 rasa dari daftar American Butter).
-const isMultiFlavor = computed(() => isMultiFlavorCupcake(props.product.category))
-const flavorLimit = computed(() => cupcakeFlavorLimit(props.product.category))
+// Goodiebag: batas jumlah rasa mengikuti sub-kategori produk.
+// Original = pilih 1-4 rasa (jamak); Custom = pilih tepat 1 rasa (tunggal).
+const flavorLimit = computed(() => goodiebagFlavorLimit(props.product.subcategory))
+const isSingleFlavor = computed(() => isGoodiebag.value && flavorLimit.value.max === 1)
+const isMultiFlavor = computed(() => isGoodiebag.value && flavorLimit.value.max > 1)
 
 const selectedVariantId = ref(isGoodiebag.value ? props.product.variants?.[0]?.id ?? null : null)
 const selectedFlavor = ref('')
@@ -48,7 +50,21 @@ const submitSuccess = ref(false)
 // American Butter: rasa & dekorasi sudah fix dari admin, user tidak memilih.
 // Kategori lain: user pilih rasa (daftarnya beda per kategori) + unggah dekorasi.
 const flavorIsFixed = computed(() => isFixedFlavorCupcake(props.product.category))
-const flavorOptions = computed(() => cupcakeFlavorsForCategory(props.product.category))
+// Goodiebag: rasa mengikuti sub-kategori produk; kategori lain: rasa per kategori.
+const flavorOptions = computed(() =>
+  isGoodiebag.value
+    ? goodiebagFlavorsForSubcategory(props.product.subcategory)
+    : cupcakeFlavorsForCategory(props.product.category)
+)
+
+// Rasa goodiebag terpilih sebagai array (tunggal -> [rasa], jamak -> daftar).
+const goodiebagSelectedFlavors = computed(() =>
+  isSingleFlavor.value
+    ? selectedFlavor.value
+      ? [selectedFlavor.value]
+      : []
+    : selectedFlavors.value
+)
 
 // TYPE6: tiap variant = satu pilihan isi box (goodiebag = varian tunggal)
 const selectedVariant = computed(
@@ -92,13 +108,15 @@ const handleSubmit = async () => {
     submitError.value = t('product.chooseBoxFirst')
     return
   }
-  if (isMultiFlavor.value) {
-    const n = selectedFlavors.value.length
+  if (isGoodiebag.value) {
+    const n = goodiebagSelectedFlavors.value.length
     if (n < flavorLimit.value.min || n > flavorLimit.value.max) {
-      submitError.value = t('product.chooseFlavorRange', {
-        min: flavorLimit.value.min,
-        max: flavorLimit.value.max,
-      })
+      submitError.value = isSingleFlavor.value
+        ? t('product.chooseFlavorFirst')
+        : t('product.chooseFlavorRange', {
+            min: flavorLimit.value.min,
+            max: flavorLimit.value.max,
+          })
       return
     }
   } else if (!flavorIsFixed.value && !selectedFlavor.value) {
@@ -122,11 +140,11 @@ const handleSubmit = async () => {
     await addItemToCart({
       productId: props.product.id,
       variantId: selectedVariantId.value,
-      // multi-rasa (goodiebag) kirim `flavors`; rasa-fix tidak kirim rasa/dekorasi
-      flavors: isMultiFlavor.value ? selectedFlavors.value : undefined,
-      flavor: isMultiFlavor.value || flavorIsFixed.value ? undefined : selectedFlavor.value,
+      // goodiebag kirim `flavors` (bisa 1 atau beberapa); rasa-fix tidak kirim apa pun
+      flavors: isGoodiebag.value ? goodiebagSelectedFlavors.value : undefined,
+      flavor: isGoodiebag.value || flavorIsFixed.value ? undefined : selectedFlavor.value,
       customImage:
-        isMultiFlavor.value || flavorIsFixed.value ? undefined : designImage.value?.url,
+        isGoodiebag.value || flavorIsFixed.value ? undefined : designImage.value?.url,
       quantity: quantity.value,
       textOnCake: textOnCake.value || undefined,
       notes: notes.value || undefined,
@@ -157,6 +175,7 @@ const handleSubmit = async () => {
         :description="product.description"
         :description-en="product.descriptionEn"
         :category="product.category"
+        :subcategory="isGoodiebag ? product.subcategory : ''"
       />
 
       <ProductPriceDisplay
@@ -208,7 +227,7 @@ const handleSubmit = async () => {
         :discount="product.discount"
       />
 
-      <!-- Goodiebag: pilih beberapa rasa (1-4), dekorasi ditentukan admin -->
+      <!-- Goodiebag Original: pilih beberapa rasa (1-4), dekorasi dari admin -->
       <ProductFlavorPicker
         v-if="isMultiFlavor"
         v-model="selectedFlavors"
@@ -219,7 +238,15 @@ const handleSubmit = async () => {
         :hint="t('product.flavorRangeHint', { min: flavorLimit.min, max: flavorLimit.max })"
       />
 
-      <!-- Rasa & dekorasi pilihan user (Simple Decor / Custom 3D) -->
+      <!-- Goodiebag Custom: pilih tepat 1 rasa, dekorasi dari admin -->
+      <ProductFlavorPicker
+        v-else-if="isSingleFlavor"
+        v-model="selectedFlavor"
+        :flavors="flavorOptions"
+        :step-label="t('product.chooseFlavor')"
+      />
+
+      <!-- Rasa & dekorasi pilihan user (Simple Decor / Custom 3D standalone) -->
       <template v-else-if="!flavorIsFixed">
         <ProductFlavorPicker
           v-model="selectedFlavor"

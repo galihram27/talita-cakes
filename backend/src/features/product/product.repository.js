@@ -198,8 +198,10 @@ export const replaceProductVariants = async (id, productFields, variants) => {
         await tx.productVariant.createMany({
           data: variants.map((v) => ({
             productId: id,
-            shape: null,
+            // TYPE6 (box) tidak mengirim shape -> null; TYPE5 size-pilihan kirim ROUND
+            shape: v.shape ?? null,
             size: v.size ?? null,
+            sizeB: v.sizeB ?? null,
             price: v.price,
             image: v.image ?? null,
           })),

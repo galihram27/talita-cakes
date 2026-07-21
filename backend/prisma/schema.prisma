@@ -102,9 +102,12 @@ model ProductVariant {
   id         String      @id @default(uuid())
   productId  String
   product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  // shape & size null untuk produk non-cake (TYPE5) yang hanya punya harga tunggal
+  // shape & size null untuk produk lama; TYPE5 (non-cake) kini pakai shape+size.
   shape      Shape?
   size       Int?
+  // dimensi kedua untuk shape SQUARE (mis. 20x10 -> size=20, sizeB=10).
+  // null untuk ROUND & untuk cake (square cake tetap NxN memakai size saja).
+  sizeB      Int?
   price      Decimal     @db.Decimal(12, 2)
   // foto yang mewakili varian ini, dipilih dari Product.images.
   // Dipakai TYPE6: memilih isi box menggeser galeri ke foto box tsb.

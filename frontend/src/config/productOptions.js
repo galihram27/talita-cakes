@@ -54,7 +54,24 @@ export const TYPE5_SUBCATEGORIES = {
     'SIGNATURE ASSORTED BROWNIES BOX',
     'SIGNATURE CUSTOM BROWNIES BOX',
   ],
+  // "Mozzarella Sausage Rolls" sengaja tidak didaftar -> tanpa sub-kategori
 }
+
+// Apakah kategori TYPE5 ini punya sub-kategori? Kategori tanpa entri di
+// TYPE5_SUBCATEGORIES tidak memakai subcategory.
+export const type5HasSubcategories = (category) =>
+  (TYPE5_SUBCATEGORIES[category]?.length ?? 0) > 0
+
+// Sub-kategori TYPE5 yang size-nya dipilih user (harga per size). Mirror backend.
+export const TYPE5_SIZE_SUBCATEGORIES = {
+  'BASQUE BURNT CHEESE CAKE': { shape: 'ROUND', sizes: [14, 16, 18, 20] },
+}
+
+export const type5SizeConfig = (subcategory) =>
+  TYPE5_SIZE_SUBCATEGORIES[subcategory] ?? null
+
+export const isType5SizeSubcategory = (subcategory) =>
+  Object.prototype.hasOwnProperty.call(TYPE5_SIZE_SUBCATEGORIES, subcategory)
 
 // mirror dari backend product.constant.js -> TYPE6_CATEGORY_CONFIG
 // Rasa cupcake memakai nama tersendiri (berakhiran "Cupcakes") supaya tidak
@@ -68,20 +85,41 @@ export const CUPCAKE_FLAVORS = [
   'Vanilla Strawberry Cupcakes',
 ]
 
-// Rasa American Butter Cupcakes — dipakai sebagai pilihan rasa Goodiebag
-// (user memilih beberapa rasa). Mirror dari backend product.constant.js.
-export const AMERICAN_BUTTER_FLAVORS = [
-  'Chocolate',
-  'Cheese',
-  'Choco Blueberry',
-  'Vanilla Blueberry',
-  'Oreo Chocolate',
+// Rasa Goodiebag sub-kategori "Original Goodiebag". Mirror dari backend.
+export const ORIGINAL_GOODIEBAG_FLAVORS = [
+  'Strawberry Marshmallow',
+  'Double Cheese',
   'Vanilla Oreo',
-  'Choco Nutella',
-  'Strawberry',
-  'Lotus Biscoff',
-  'Greentea',
+  'Happy Blueberry',
+  'Vanilla Biscoff',
+  'Vanilla Greentea',
+  'Double Choco',
+  'Choco Oreo',
+  'Nutella',
+  'Choco Blueberry',
 ]
+
+// Dua sub-kategori Goodiebag Cupcakes: daftar rasa + batas jumlah rasa yang boleh
+// dipilih pembeli (Original: 1-4 rasa; Custom: tepat 1 rasa). Admin membuat produk
+// goodiebag per sub-kategori. Mirror dari backend product.constant.js.
+export const GOODIEBAG_SUBCATEGORIES = {
+  'Original Goodiebag': { flavors: ORIGINAL_GOODIEBAG_FLAVORS, minFlavors: 1, maxFlavors: 4 },
+  'Custom Goodiebag': { flavors: CUPCAKE_FLAVORS, minFlavors: 1, maxFlavors: 1 },
+}
+
+export const goodiebagSubcategories = () => Object.keys(GOODIEBAG_SUBCATEGORIES)
+
+export const goodiebagFlavorsForSubcategory = (subcategory) =>
+  GOODIEBAG_SUBCATEGORIES[subcategory]?.flavors ?? []
+
+// Batas jumlah rasa yang boleh dipilih untuk satu sub-kategori goodiebag.
+export const goodiebagFlavorLimit = (subcategory) => ({
+  min: GOODIEBAG_SUBCATEGORIES[subcategory]?.minFlavors ?? 1,
+  max: GOODIEBAG_SUBCATEGORIES[subcategory]?.maxFlavors ?? 1,
+})
+
+export const isGoodiebagSubcategory = (subcategory) =>
+  Object.prototype.hasOwnProperty.call(GOODIEBAG_SUBCATEGORIES, subcategory)
 
 export const TYPE6_CATEGORY_CONFIG = {
   'American Butter Cupcakes': { fixedFlavor: true, flavors: [], boxes: [2, 4, 6, 9, 12] },
@@ -100,11 +138,12 @@ export const TYPE6_CATEGORY_CONFIG = {
     flavors: CUPCAKE_FLAVORS,
     boxes: [4, 6, 9, 12],
   },
-  // Goodiebag: harga tunggal per box (tanpa pilihan isi box). User memilih 1-4
-  // rasa dari daftar rasa American Butter. Minimal beli 10 box.
+  // Goodiebag: harga tunggal per box (tanpa pilihan isi box). Punya sub-kategori
+  // (lihat GOODIEBAG_SUBCATEGORIES); pilihan rasa mengikuti sub-kategori produk.
+  // User memilih 1-4 rasa, minimal beli 10 box.
   'Goodiebag Cupcakes': {
     fixedFlavor: false,
-    flavors: AMERICAN_BUTTER_FLAVORS,
+    flavors: [], // rasa ditentukan per sub-kategori
     boxes: [],
     goodiebag: true,
     minQty: 10,
@@ -164,3 +203,11 @@ export const TYPE1_SIZE_OPTIONS = generateSizeRange(16)
 // label size sesuai shape: ROUND -> "16 cm", SQUARE -> "16×16 cm"
 export const sizeLabel = (shape, size) =>
   shape === 'SQUARE' ? `${size}×${size} cm` : `${size} cm`
+
+// label size varian yang mendukung dimensi kedua (sizeB) untuk SQUARE non-cake:
+// ROUND -> "20 cm", SQUARE -> "20×10 cm" (pakai sizeB kalau ada, jika tidak NxN)
+export const variantSizeLabel = (shape, size, sizeB = null) => {
+  if (size == null) return ''
+  if (shape === 'SQUARE') return `${size}×${sizeB ?? size} cm`
+  return `${size} cm`
+}

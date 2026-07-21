@@ -9,6 +9,8 @@ import {
   isFixedFlavorCupcake,
   isGoodiebagCupcake,
   goodiebagMinQty,
+  goodiebagSubcategories,
+  type5SizeConfig,
   ROUND_MIN_OPTIONS,
   SQUARE_MIN_OPTIONS,
   generateSizeRange,
@@ -59,8 +61,12 @@ const form = reactive({
 // TYPE1 & TYPE2: satu variant manual fixed (size diisi manual oleh admin)
 const type1 = reactive({ shape: 'ROUND', size: null, price: null })
 
-// TYPE5 (non-cake): harga tunggal, tanpa shape/size
+// TYPE5 (non-cake): harga tunggal + shape & size (admin input).
+// ROUND -> pakai size; SQUARE -> pakai size (dimensi 1) & sizeB (dimensi 2).
 const nonCakePrice = ref(null)
+const nonCake = reactive({ shape: 'ROUND', size: null, sizeB: null })
+// TYPE5 sub-kategori size-pilihan (Basque): harga per size -> { [size]: price }
+const nonCakeSizePrices = reactive({})
 
 // TYPE6 (cupcakes): harga per isi box -> { [isiBox]: price }
 const boxPrices = reactive({})
@@ -142,10 +148,23 @@ const applyCopiedPrices = (shape) => {
 // pilihan kategori mengikuti type yang sedang dipilih
 const categoryOptions = computed(() => PRODUCT_CATEGORIES[form.type] ?? [])
 
-// TYPE5: pilihan sub-kategori mengikuti kategori (level-1) yang dipilih
-const subcategoryOptions = computed(() =>
-  form.type === 'TYPE5' ? TYPE5_SUBCATEGORIES[form.category] ?? [] : []
+// Pilihan sub-kategori: TYPE5 (non-cake) per kategori, atau Goodiebag (TYPE6).
+const subcategoryOptions = computed(() => {
+  if (form.type === 'TYPE5') return TYPE5_SUBCATEGORIES[form.category] ?? []
+  if (form.type === 'TYPE6' && isGoodiebagCupcake(form.category)) return goodiebagSubcategories()
+  return []
+})
+
+// Apakah kategori terpilih memakai sub-kategori? (TYPE5 tertentu / Goodiebag)
+const hasSubcategory = computed(() => subcategoryOptions.value.length > 0)
+
+// TYPE5 sub-kategori dengan pilihan size (Basque): admin isi harga per size,
+// bukan shape+size tunggal.
+const nonCakeSizeConfig = computed(() =>
+  form.type === 'TYPE5' ? type5SizeConfig(form.subcategory) : null
 )
+const usesNonCakeSize = computed(() => usesNonCake.value && !!nonCakeSizeConfig.value)
+const nonCakeSizes = computed(() => nonCakeSizeConfig.value?.sizes ?? [])
 
 // reset category kalau type diganti dan category lama tidak valid untuk type baru
 watch(
@@ -236,6 +255,8 @@ const resetForm = () => {
   squareMinSize.value = null
   nonCakePrice.value = null
   goodiebagPrice.value = null
+  Object.assign(nonCake, { shape: 'ROUND', size: null, sizeB: null })
+  clearPriceMap(nonCakeSizePrices)
 
   if (!props.product) {
     Object.assign(form, {
@@ -282,8 +303,21 @@ const resetForm = () => {
   }
 
   if (p.type === 'TYPE5') {
-    // TYPE5 punya 1 variant harga tunggal (tanpa shape/size)
-    nonCakePrice.value = variants[0] ? Number(variants[0].price) : null
+    // Sub-kategori size-pilihan (Basque): harga per size
+    if (type5SizeConfig(p.subcategory)) {
+      variants.forEach((v) => {
+        nonCakeSizePrices[v.size] = Number(v.price)
+      })
+      return
+    }
+    // TYPE5 biasa: 1 variant harga tunggal + shape & size
+    const v = variants[0]
+    nonCakePrice.value = v ? Number(v.price) : null
+    Object.assign(nonCake, {
+      shape: v?.shape ?? 'ROUND',
+      size: v?.size ?? null,
+      sizeB: v?.sizeB ?? null,
+    })
     return
   }
 
@@ -392,6 +426,12 @@ const onDropImage = (index) => {
 }
 
 // ===== SUBMIT =====
+// TYPE5 size-pilihan (Basque): hanya size yang diberi harga > 0 dijadikan varian.
+const buildNonCakeSizeVariants = () =>
+  nonCakeSizes.value
+    .filter((size) => Number(nonCakeSizePrices[size]) > 0)
+    .map((size) => ({ size, price: Number(nonCakeSizePrices[size]) }))
+
 const buildVariantList = () => {
   const variants = []
   // foto bentuk dilekatkan ke setiap ukuran milik bentuk tsb, supaya halaman
@@ -438,18 +478,33 @@ const validate = () => {
   if (!form.descriptionEn.trim()) return t('admin.productForm.descriptionEnRequired')
   if (!form.images.length) return t('admin.productForm.imageRequired')
   if (!form.category) return t('admin.productForm.categoryRequired')
-  if (usesNonCake.value && !form.subcategory) return t('admin.productForm.subcategoryRequired')
+  if (hasSubcategory.value && !form.subcategory) return t('admin.productForm.subcategoryRequired')
   if (showFlavor.value && !form.flavor.trim()) return t('admin.productForm.flavorRequired')
 
   if (usesSingleVariant.value) {
     const size = Number(type1.size)
-    if (!Number.isInteger(size) || size <= 0 || size > 100)
+    if (!Number.isInteger(size) || size <= 0)
       return t('admin.productForm.sizeInvalid')
     if (!(Number(type1.price) > 0)) return t('admin.productForm.priceInvalid')
     return null
   }
 
+  if (usesNonCakeSize.value) {
+    // minimal satu size diberi harga
+    if (buildNonCakeSizeVariants().length === 0)
+      return t('admin.productForm.sizePriceRequired')
+    return null
+  }
+
   if (usesNonCake.value) {
+    const size = Number(nonCake.size)
+    if (!Number.isInteger(size) || size <= 0)
+      return t('admin.productForm.sizeInvalid')
+    if (nonCake.shape === 'SQUARE') {
+      const sizeB = Number(nonCake.sizeB)
+      if (!Number.isInteger(sizeB) || sizeB <= 0)
+        return t('admin.productForm.sizeInvalid')
+    }
     if (!(Number(nonCakePrice.value) > 0)) return t('admin.productForm.priceInvalid')
     return null
   }
@@ -499,12 +554,28 @@ const buildPayload = () => {
     return payload
   }
 
-  if (usesNonCake.value) {
+  if (usesNonCakeSize.value) {
+    // sub-kategori size-pilihan (Basque): kirim variants per size
     return {
       ...base,
       type: 'TYPE5',
       subcategory: form.subcategory,
       flavor: form.flavor.trim(),
+      variants: buildNonCakeSizeVariants(),
+    }
+  }
+
+  if (usesNonCake.value) {
+    return {
+      ...base,
+      type: 'TYPE5',
+      // kategori tanpa sub-kategori tidak mengirim field subcategory
+      subcategory: hasSubcategory.value ? form.subcategory : undefined,
+      flavor: form.flavor.trim(),
+      shape: nonCake.shape,
+      size: Number(nonCake.size),
+      // dimensi kedua hanya untuk SQUARE
+      sizeB: nonCake.shape === 'SQUARE' ? Number(nonCake.sizeB) : undefined,
       price: Number(nonCakePrice.value),
     }
   }
@@ -515,7 +586,9 @@ const buildPayload = () => {
       ? [{ price: Number(goodiebagPrice.value) }]
       : buildBoxVariants()
     const payload = { ...base, type: 'TYPE6', variants }
-    // rasa fixed hanya untuk American Butter & goodiebag; kategori lain user pilih saat order
+    // goodiebag membawa sub-kategori (menentukan pilihan rasa pembeli)
+    if (usesGoodiebag.value) payload.subcategory = form.subcategory
+    // rasa fixed hanya untuk American Butter; kategori lain user pilih saat order
     if (cupcakeFlavorIsFixed.value) payload.flavor = form.flavor.trim()
     return payload
   }
@@ -637,8 +710,8 @@ const close = () => {
           </div>
         </div>
 
-        <!-- SUBCATEGORY (TYPE5 non-cake; pilihan mengikuti category) -->
-        <div v-if="usesNonCake">
+        <!-- SUBCATEGORY (TYPE5 non-cake & Goodiebag; hanya kategori ber-sub-kategori) -->
+        <div v-if="hasSubcategory">
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.subcategory') }}</label>
           <div class="relative">
             <select
@@ -842,8 +915,86 @@ const close = () => {
           </div>
         </template>
 
-        <!-- ===== TYPE5 (non-cake): harga tunggal + discount (tanpa shape/size) ===== -->
+        <!-- ===== TYPE5 (non-cake): shape+size tunggal ATAU harga per size (Basque) ===== -->
         <template v-if="usesNonCake">
+          <!-- Sub-kategori size-pilihan (Basque): admin isi harga per ukuran -->
+          <template v-if="usesNonCakeSize">
+            <div>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
+                {{ t('admin.productForm.sizePrices') }}
+              </label>
+              <p class="text-xs text-cocoa-400 mb-2">
+                {{ t('admin.productForm.sizePriceHint') }}
+              </p>
+              <div class="rounded-2xl border border-cream-300 p-4 space-y-4">
+                <div v-for="s in nonCakeSizes" :key="`sz-${s}`">
+                  <p class="text-sm mb-1">{{ s }} cm</p>
+                  <PriceInput
+                    v-model="nonCakeSizePrices[s]"
+                    class="w-full rounded-full border border-cream-300 px-4 py-2 text-sm focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.discount') }}</label>
+              <input
+                v-model.number="form.discount"
+                type="number"
+                min="0"
+                max="100"
+                :placeholder="t('admin.productForm.discountPlaceholder')"
+                class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
+              />
+            </div>
+          </template>
+
+          <!-- Sub-kategori biasa: shape + size tunggal + harga -->
+          <template v-else>
+          <!-- SHAPE -->
+          <div>
+            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.shape') }}</label>
+            <div class="relative">
+              <select
+                v-model="nonCake.shape"
+                class="appearance-none w-full rounded-full border border-cream-300 pl-4 pr-10 py-2.5 text-sm bg-white focus:outline-none cursor-pointer"
+              >
+                <option v-for="opt in SHAPE_OPTIONS" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+              <ChevronDown
+                class="w-4 h-4 text-cocoa-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
+              />
+            </div>
+          </div>
+
+          <!-- SIZE: ROUND satu angka, SQUARE dua angka (mis. 20 x 10) -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
+                {{ nonCake.shape === 'SQUARE' ? t('admin.productForm.size1') : t('admin.productForm.size') }}
+              </label>
+              <input
+                v-model.number="nonCake.size"
+                type="number"
+                min="1"
+                :placeholder="t('admin.productForm.sizePlaceholder')"
+                class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
+              />
+            </div>
+            <div v-if="nonCake.shape === 'SQUARE'">
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.size2') }}</label>
+              <input
+                v-model.number="nonCake.sizeB"
+                type="number"
+                min="1"
+                :placeholder="t('admin.productForm.sizePlaceholder')"
+                class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
+              />
+            </div>
+          </div>
+
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.price') }}</label>
@@ -864,6 +1015,7 @@ const close = () => {
               />
             </div>
           </div>
+          </template>
         </template>
 
         <!-- ===== TYPE6 goodiebag: harga tunggal per box + discount ===== -->

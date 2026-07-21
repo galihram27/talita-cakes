@@ -60,31 +60,35 @@ watch(
 
 <template>
   <div class="mb-6">
-    <p class="text-[15px] font-extrabold mb-2.5">
-      {{ t('product.chooseShape') }} <span class="text-brand-500">*</span>
-    </p>
-    <div class="flex gap-2.5">
-      <button
-        v-for="shape in availableShapes"
-        :key="shape"
-        type="button"
-        @click="selectShape(shape)"
-        class="flex-1 rounded-xl border-2 p-3.5 flex flex-col items-center gap-1.5 transition-colors"
-        :class="selectedShape === shape
-          ? 'border-brand-500 bg-[#F4D6D1]'
-          : 'border-[#EBDCCC] bg-white hover:border-brand-500 hover:bg-[#F4D6D1]'"
-      >
-        <span
-          class="w-[22px] h-[22px] border-2 border-cocoa-900"
-          :class="shape === 'ROUND' ? 'rounded-full' : 'rounded-[4px]'"
-        />
-        <span class="font-extrabold text-[14.5px] text-cocoa-900">
-          {{ shape === 'ROUND' ? t('product.round') : t('product.square') }}
-        </span>
-      </button>
-    </div>
+    <!-- Bentuk hanya ditampilkan kalau ada lebih dari satu pilihan. Produk
+         bentuk-tunggal (mis. Basque, ROUND saja) langsung ke pilihan size. -->
+    <template v-if="availableShapes.length > 1">
+      <p class="text-[15px] font-extrabold mb-2.5">
+        {{ t('product.chooseShape') }} <span class="text-brand-500">*</span>
+      </p>
+      <div class="flex gap-2.5">
+        <button
+          v-for="shape in availableShapes"
+          :key="shape"
+          type="button"
+          @click="selectShape(shape)"
+          class="flex-1 rounded-xl border-2 p-3.5 flex flex-col items-center gap-1.5 transition-colors"
+          :class="selectedShape === shape
+            ? 'border-brand-500 bg-[#F4D6D1]'
+            : 'border-[#EBDCCC] bg-white hover:border-brand-500 hover:bg-[#F4D6D1]'"
+        >
+          <span
+            class="w-[22px] h-[22px] border-2 border-cocoa-900"
+            :class="shape === 'ROUND' ? 'rounded-full' : 'rounded-[4px]'"
+          />
+          <span class="font-extrabold text-[14.5px] text-cocoa-900">
+            {{ shape === 'ROUND' ? t('product.round') : t('product.square') }}
+          </span>
+        </button>
+      </div>
+    </template>
 
-    <p class="text-[15px] font-extrabold mt-5 mb-2.5">
+    <p class="text-[15px] font-extrabold mb-2.5" :class="availableShapes.length > 1 ? 'mt-5' : ''">
       {{ t('product.chooseSize') }} <span class="text-brand-500">*</span>
     </p>
     <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">

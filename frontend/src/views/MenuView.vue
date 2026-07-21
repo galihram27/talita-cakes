@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useProductStore } from '@/stores/product.store'
+import { useMenuFilterStore } from '@/stores/menuFilter.store'
 import { PRODUCT_CATEGORIES } from '@/config/productOptions'
 import ProductCard from '@/components/product/ProductCard.vue'
 
@@ -14,13 +15,18 @@ const { products } = storeToRefs(productStore)
 const isLoading = ref(!productStore.hasLoaded)
 const errorMessage = ref('')
 
-const search = ref('')
-const activeFilter = ref('ALL') // ALL | TYPE1 | TYPE2 | TYPE3 | TYPE4 | TYPE5
-const activeSort = ref('default') // default | az | priceAsc | priceDesc
+// State filter di-seed dari store supaya tetap sama saat kembali dari halaman
+// detail produk (bukan selalu balik ke "All"). Disimpan lagi saat meninggalkan
+// halaman (lihat persistFilters di onUnmounted).
+const filterStore = useMenuFilterStore()
+
+const search = ref(filterStore.search)
+const activeFilter = ref(filterStore.activeFilter) // ALL | TYPE1 | TYPE2 | TYPE3 | TYPE4 | TYPE5
+const activeSort = ref(filterStore.activeSort) // default | az | priceAsc | priceDesc
 // kategori aktif per type, misal { TYPE1: 'Birthday' } — default 'ALL'
-const sectionCategory = ref({})
+const sectionCategory = ref({ ...filterStore.sectionCategory })
 // sub-kategori aktif per type (level-2, dipakai TYPE5) — default 'ALL'
-const sectionSubcategory = ref({})
+const sectionSubcategory = ref({ ...filterStore.sectionSubcategory })
 
 // Opsi pengurutan untuk dropdown di sebelah kotak pencarian
 const SORT_OPTIONS = computed(() => [
@@ -70,7 +76,7 @@ const TYPE_SECTIONS = computed(() =>
 )
 
 // Type mana yang dropdown kategorinya sedang terbuka di sidebar (satu per satu)
-const expandedType = ref(null)
+const expandedType = ref(filterStore.expandedType)
 
 // Sidebar filter bisa disembunyikan supaya grid produk memakai lebar penuh.
 // Default tertutup di layar kecil karena di sana sidebar menumpuk di atas grid.
@@ -248,7 +254,7 @@ const ROWS_PER_PAGE = 5
 const columns = computed(() => (isFilterOpen.value ? 4 : 5))
 const pageSize = computed(() => ROWS_PER_PAGE * columns.value)
 
-const currentPage = ref(1)
+const currentPage = ref(filterStore.currentPage)
 
 // Daftar yang sedang ditampilkan: gabungan (mode All) atau satu type.
 const currentList = computed(() =>
@@ -277,6 +283,20 @@ watch(
   () => {
     currentPage.value = 1
   },
+  { deep: true },
+)
+
+// Setiap kali user memilih filter sidebar (tipe / kategori / sub-kategori),
+// scroll kembali ke deretan toolbar supaya posisinya selalu konsisten
+// (toolbar tepat di bawah navbar, produk mulai dari atas). Pencarian & sort
+// sengaja tidak ikut supaya tidak mengganggu saat mengetik.
+const toolbarRef = ref(null)
+const scrollToFilters = () => {
+  toolbarRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+watch(
+  [activeFilter, sectionCategory, sectionSubcategory],
+  () => nextTick(scrollToFilters),
   { deep: true },
 )
 
@@ -323,7 +343,25 @@ onMounted(() => {
   scheduleRecalc()
   window.addEventListener('resize', scheduleRecalc)
 })
-onUnmounted(() => window.removeEventListener('resize', scheduleRecalc))
+
+// Simpan snapshot filter saat meninggalkan halaman (mis. buka detail produk),
+// supaya saat kembali ke Menu filternya sama, bukan reset ke "All".
+const persistFilters = () => {
+  // Assign langsung (bukan $patch) supaya objek kategori/sub-kategori diganti utuh
+  // — $patch akan deep-merge sehingga key lama tidak terhapus saat filter direset.
+  filterStore.activeFilter = activeFilter.value
+  filterStore.search = search.value
+  filterStore.activeSort = activeSort.value
+  filterStore.sectionCategory = { ...sectionCategory.value }
+  filterStore.sectionSubcategory = { ...sectionSubcategory.value }
+  filterStore.expandedType = expandedType.value
+  filterStore.currentPage = currentPage.value
+}
+
+onUnmounted(() => {
+  window.removeEventListener('resize', scheduleRecalc)
+  persistFilters()
+})
 
 // Ukur ulang saat isi/tata letak halaman berubah.
 watch(
@@ -383,7 +421,9 @@ const resetMenu = () => {
     </div>
 
     <!-- FILTER + SEARCH + SORT -->
-    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+    <!-- scroll-mt-24 = offset navbar sticky (samakan dgn md:top-24 sidebar) supaya
+         saat di-scroll ke sini toolbar berhenti pas di bawah navbar. -->
+    <div ref="toolbarRef" class="flex flex-col sm:flex-row sm:items-center gap-3 mb-5 scroll-mt-24">
       <!-- TOGGLE SIDEBAR FILTER -->
       <button
         type="button"
@@ -473,7 +513,7 @@ const resetMenu = () => {
       <!-- SIDEBAR FILTER -->
       <aside v-if="isFilterOpen" class="md:w-[248px] md:shrink-0">
         <nav
-          class="md:sticky md:top-24 bg-white border border-[#EFE0D2] rounded-2xl p-2 shadow-[0_6px_22px_rgba(51,38,31,0.05)]"
+          class="bg-white border border-[#EFE0D2] rounded-2xl p-2 shadow-[0_6px_22px_rgba(51,38,31,0.05)]"
         >
           <!-- ALL -->
           <button

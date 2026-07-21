@@ -2,7 +2,16 @@ import { AppError } from '../../utils/appError.js';
 import * as productRepository from './product.repository.js';
 import { updateProductSchemaMap } from './product.validation.js';
 import { cached, cacheDeleteByPrefix } from '../../lib/cache.js';
-import { isFixedFlavorCupcake } from './product.constant.js';
+import {
+  isFixedFlavorCupcake,
+  isGoodiebagCupcake,
+  type5HasSubcategories,
+  type5SizeConfig,
+} from './product.constant.js';
+
+// Tipe/kategori yang menyimpan subcategory: TYPE5 (non-cake) & TYPE6 goodiebag.
+const storesSubcategory = (type, category) =>
+  type === 'TYPE5' || (type === 'TYPE6' && isGoodiebagCupcake(category));
 
 // Tipe yang menyimpan flavor fixed di level produk. TYPE2 & TYPE4 tidak termasuk
 // karena rasanya dipilih user saat order. TYPE6 tergantung kategori: hanya
@@ -49,8 +58,27 @@ export const createProduct = async (payload) => {
       { shape: payload.shape, size: payload.size, price: payload.price },
     ];
   } else if (type === 'TYPE5') {
-    // TYPE5 (non-cake): satu varian harga tunggal, tanpa shape/size
-    variantsData = [{ shape: null, size: null, price: payload.price }];
+    const sizeCfg = type5SizeConfig(payload.subcategory);
+    if (sizeCfg) {
+      // Sub-kategori size-pilihan (Basque): satu varian per size, bentuk tetap.
+      variantsData = payload.variants.map((v) => ({
+        shape: sizeCfg.shape,
+        size: v.size,
+        sizeB: null,
+        price: v.price,
+      }));
+    } else {
+      // TYPE5 biasa: satu varian harga tunggal + shape & size dari admin.
+      // ROUND -> size saja; SQUARE -> size x sizeB (dua dimensi).
+      variantsData = [
+        {
+          shape: payload.shape,
+          size: payload.size,
+          sizeB: payload.shape === 'SQUARE' ? payload.sizeB : null,
+          price: payload.price,
+        },
+      ];
+    }
   } else if (type === 'TYPE6') {
     // TYPE6 (cupcakes): satu varian per isi box; size dipakai sebagai jumlah pcs.
     // Goodiebag tidak punya isi box -> size null (harga tunggal per box).
@@ -80,8 +108,8 @@ export const createProduct = async (payload) => {
     image: images[0],
     images,
     category,
-    // subcategory hanya relevan untuk TYPE5; tipe lain null
-    subcategory: type === 'TYPE5' ? subcategory : null,
+    // subcategory: TYPE5 (kategori ber-subkategori) & TYPE6 goodiebag; lainnya null
+    subcategory: storesSubcategory(type, category) ? subcategory ?? null : null,
     flavor: storesFixedFlavor(type, category) ? flavor : null,
     discount,
     variants: {
@@ -164,7 +192,10 @@ export const updateProduct = async (id, body) => {
   // TYPE1/TYPE2/TYPE5: 1 variant · TYPE6: varian box diganti utuh ·
   // TYPE3/TYPE4: grid variant shape+size
   let updated;
-  if (type === 'TYPE1' || type === 'TYPE2' || type === 'TYPE5') {
+  if (type === 'TYPE5' && payload.variants !== undefined) {
+    // TYPE5 size-pilihan (Basque): varian per-size diganti utuh
+    updated = await updateType5SizeType(id, existing, payload);
+  } else if (type === 'TYPE1' || type === 'TYPE2' || type === 'TYPE5') {
     updated = await updateSingleVariantType(id, existing, payload);
   } else if (type === 'TYPE6') {
     updated = await updateCupcakeType(id, existing, payload);
@@ -178,20 +209,41 @@ export const updateProduct = async (id, body) => {
 
 // TYPE1 & TYPE2: produk dengan 1 variant fixed
 const updateSingleVariantType = async (id, existing, payload) => {
-  const { shape, size, price, ...rest } = payload;
+  const { shape, size, sizeB, price, ...rest } = payload;
   // kalau images dikirim, cover (image) ikut di-update dari images[0]
   const productFields = withDerivedCover(pickDefined(rest));
 
+  // TYPE5: kalau kategori efektifnya tidak punya sub-kategori (mis. Mozzarella
+  // Sausage Rolls), pastikan subcategory dikosongkan supaya tidak menyisakan
+  // nilai lama dari kategori sebelumnya.
+  if (existing.type === 'TYPE5') {
+    const category = productFields.category ?? existing.category;
+    if (!type5HasSubcategories(category)) productFields.subcategory = null;
+  }
+
   const existingVariant = existing.variants[0];
 
-  // hanya bikin object update variant kalau ada salah satu dari shape/size/price dikirim
+  // hanya bikin object update variant kalau ada salah satu field varian dikirim
   let variantFields = null;
-  if (shape !== undefined || size !== undefined || price !== undefined) {
+  if (
+    shape !== undefined ||
+    size !== undefined ||
+    sizeB !== undefined ||
+    price !== undefined
+  ) {
+    const nextShape = shape ?? existingVariant.shape;
     variantFields = {
-      shape: shape ?? existingVariant.shape,
+      shape: nextShape,
       size: size ?? existingVariant.size,
       price: price ?? existingVariant.price,
     };
+    // sizeB hanya bermakna untuk SQUARE; ROUND selalu null. Kalau shape dikirim,
+    // ikut set sizeB dari payload (SQUARE) atau kosongkan (ROUND).
+    if (shape !== undefined) {
+      variantFields.sizeB = nextShape === 'SQUARE' ? sizeB ?? null : null;
+    } else if (sizeB !== undefined) {
+      variantFields.sizeB = sizeB;
+    }
   }
 
   return productRepository.updateType1ProductPartial(
@@ -200,6 +252,22 @@ const updateSingleVariantType = async (id, existing, payload) => {
     existingVariant.id,
     variantFields
   );
+};
+
+// TYPE5 size-pilihan (Basque): varian per-size diganti seluruhnya.
+const updateType5SizeType = async (id, existing, payload) => {
+  const { variants, ...rest } = payload;
+  const productFields = withDerivedCover(pickDefined(rest));
+
+  const subcategory = payload.subcategory ?? existing.subcategory;
+  const sizeCfg = type5SizeConfig(subcategory);
+  const variantsData = (variants || []).map((v) => ({
+    shape: sizeCfg?.shape ?? 'ROUND',
+    size: v.size,
+    price: v.price,
+  }));
+
+  return productRepository.replaceProductVariants(id, productFields, variantsData);
 };
 
 // TYPE6 (cupcakes): varian box diganti seluruhnya kalau admin mengirim variants.
@@ -213,6 +281,11 @@ const updateCupcakeType = async (id, existing, payload) => {
   const category = payload.category ?? existing.category;
   if (!storesFixedFlavor('TYPE6', category)) {
     productFields.flavor = null;
+  }
+  // subcategory hanya untuk goodiebag; kategori TYPE6 lain harus dikosongkan
+  // supaya tidak menyisakan nilai dari kategori sebelumnya.
+  if (!isGoodiebagCupcake(category)) {
+    productFields.subcategory = null;
   }
 
   return productRepository.replaceProductVariants(id, productFields, variants || []);

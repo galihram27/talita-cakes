@@ -3,9 +3,12 @@ import {
   PRODUCT_CATEGORIES,
   TYPE5_SUBCATEGORIES,
   ALL_TYPE5_SUBCATEGORIES,
+  type5SizeConfig,
   cupcakeBoxesForCategory,
   isFixedFlavorCupcake,
   isGoodiebagCupcake,
+  goodiebagSubcategories,
+  isGoodiebagSubcategory,
 } from './product.constant.js';
 import {
   isValidSize,
@@ -177,10 +180,28 @@ const type4Schema = z.object({
   refineVariantImages(data, ctx);
 });
 
-// refine subcategory TYPE5: harus salah satu sub-kategori milik category-nya.
+// refine subcategory TYPE5: kategori yang punya sub-kategori wajib mengisi salah
+// satu dari daftarnya; kategori tanpa sub-kategori (mis. Mozzarella Sausage Rolls)
+// justru tidak boleh mengirim subcategory.
 const refineType5Subcategory = (data, ctx) => {
   const allowed = TYPE5_SUBCATEGORIES[data.category] ?? [];
-  if (!allowed.includes(data.subcategory)) {
+  if (allowed.length === 0) {
+    if (data.subcategory) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Kategori ${data.category} tidak memiliki subcategory`,
+        path: ['subcategory'],
+      });
+    }
+    return;
+  }
+  if (!data.subcategory) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Subcategory wajib diisi',
+      path: ['subcategory'],
+    });
+  } else if (!allowed.includes(data.subcategory)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: `Subcategory tidak valid untuk kategori ${data.category}`,
@@ -189,16 +210,105 @@ const refineType5Subcategory = (data, ctx) => {
   }
 };
 
-// ===== TYPE 5 (non-cake: flavor fixed, tanpa shape/size, harga tunggal) =====
-// User hanya mengisi note & quantity saat order.
+// TYPE5 (non-cake) memakai shape + size yang diinput admin:
+// - ROUND: satu ukuran (size), mis. 20 -> "20 cm".
+// - SQUARE: dua ukuran (size x sizeB), mis. 20x10.
+const refineType5Size = (data, ctx) => {
+  if (data.size !== undefined && !isValidManualSize(data.size)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Size harus berupa angka bulat positif',
+      path: ['size'],
+    });
+  }
+  if (data.shape === 'SQUARE') {
+    if (!isValidManualSize(data.sizeB)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Untuk Square, isi kedua ukuran (mis. 20 x 10)',
+        path: ['sizeB'],
+      });
+    }
+  } else if (data.shape === 'ROUND' && data.sizeB !== undefined && data.sizeB !== null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Round hanya memakai satu ukuran',
+      path: ['sizeB'],
+    });
+  }
+};
+
+// Varian per-size untuk sub-kategori TYPE5 yang size-nya dipilih user (Basque).
+const type5SizeVariantSchema = z.object({
+  size: z.coerce.number().int().positive(),
+  price: z.coerce.number().positive('Price harus lebih dari 0'),
+});
+
+// Cabang sizing TYPE5: sub-kategori size-pilihan pakai `variants` (harga per
+// size); sub-kategori lain pakai shape+size tunggal input admin.
+const refineType5Sizing = (data, ctx) => {
+  const cfg = type5SizeConfig(data.subcategory);
+  if (cfg) {
+    const variants = data.variants ?? [];
+    if (variants.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Isi harga minimal satu ukuran',
+        path: ['variants'],
+      });
+      return;
+    }
+    const sizes = variants.map((v) => v.size);
+    if (sizes.some((s) => !cfg.sizes.includes(s))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Ukuran tidak valid untuk ${data.subcategory}. Pilihan: ${cfg.sizes.join(', ')}`,
+        path: ['variants'],
+      });
+    }
+    if (new Set(sizes).size !== sizes.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Terdapat ukuran duplikat',
+        path: ['variants'],
+      });
+    }
+    return;
+  }
+  // sub-kategori biasa: shape + size tunggal wajib
+  if (!data.shape) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Shape wajib diisi', path: ['shape'] });
+  }
+  if (data.size === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Size wajib diisi', path: ['size'] });
+  }
+  if (!(data.price > 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Price harus lebih dari 0', path: ['price'] });
+  }
+  refineType5Size(data, ctx);
+};
+
+// ===== TYPE 5 (non-cake: flavor fixed, harga tunggal) =====
+// Sebagian besar sub-kategori: shape+size tunggal input admin. Sub-kategori
+// tertentu (Basque): user memilih size, harga per size (pakai `variants`).
 const type5Schema = z.object({
   type: z.literal('TYPE5'),
   ...baseFields,
   category: categoryFieldFor('TYPE5'),
-  subcategory: z.string().trim().min(1, 'Subcategory wajib diisi'),
+  // opsional di skema; wajib/tidaknya ditentukan per-kategori di refine di atas
+  subcategory: z.string().trim().min(1, 'Subcategory tidak boleh kosong').optional(),
   flavor: z.string().trim().min(1, 'Flavor wajib diisi'),
-  price: z.coerce.number().positive('Price harus lebih dari 0'),
-}).superRefine(refineType5Subcategory);
+  // single-variant (sub-kategori biasa) — opsional, diwajibkan di refineType5Sizing
+  shape: z.enum(['ROUND', 'SQUARE']).optional(),
+  size: z.coerce.number().int().optional(),
+  sizeB: z.coerce.number().int().optional(),
+  price: z.coerce.number().positive('Price harus lebih dari 0').optional(),
+  // per-size (sub-kategori size-pilihan)
+  variants: z.array(type5SizeVariantSchema).optional(),
+}).superRefine((data, ctx) => {
+  refineType5Subcategory(data, ctx);
+  refineType5Sizing(data, ctx);
+});
 
 // ===== TYPE 6 (cupcakes: harga per isi box, rasa tergantung kategori) =====
 // Varian cupcake memakai ProductVariant.size sebagai ISI BOX (tanpa shape).
@@ -270,6 +380,34 @@ const refineCupcakeFlavor = (data, ctx) => {
   }
 };
 
+// Sub-kategori hanya untuk kategori goodiebag; wajib & harus salah satu sub-kat
+// goodiebag yang sah. Kategori TYPE6 lain tidak boleh mengirim subcategory.
+const refineCupcakeSubcategory = (data, ctx) => {
+  if (isGoodiebagCupcake(data.category)) {
+    if (!data.subcategory) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Subcategory wajib diisi untuk Goodiebag Cupcakes',
+        path: ['subcategory'],
+      });
+    } else if (!isGoodiebagSubcategory(data.subcategory)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Subcategory tidak valid. Pilihan: ${goodiebagSubcategories().join(', ')}`,
+        path: ['subcategory'],
+      });
+    }
+    return;
+  }
+  if (data.subcategory) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Kategori ${data.category} tidak memiliki subcategory`,
+      path: ['subcategory'],
+    });
+  }
+};
+
 const type6Schema = z
   .object({
     type: z.literal('TYPE6'),
@@ -277,11 +415,14 @@ const type6Schema = z
     category: categoryFieldFor('TYPE6'),
     // hanya dipakai kategori ber-fixedFlavor; kategori lain user pilih saat order
     flavor: z.string().trim().min(1).optional(),
+    // hanya dipakai kategori goodiebag (lihat refineCupcakeSubcategory)
+    subcategory: z.string().trim().min(1).optional(),
     variants: z.array(boxVariantSchema).min(1, 'Minimal satu pilihan isi box wajib diisi'),
   })
   .superRefine((data, ctx) => {
     refineCupcakeBoxes(data, ctx);
     refineCupcakeFlavor(data, ctx);
+    refineCupcakeSubcategory(data, ctx);
     refineVariantImages(data, ctx);
   });
 
@@ -342,16 +483,51 @@ const updateType4Schema = z
   })
   .superRefine(refineVariantImages);
 
-// TYPE5: semua opsional (partial update). Harga tunggal, tanpa shape/size.
+// TYPE5: semua opsional (partial update). Harga tunggal + shape/size.
 const updateType5Schema = z
   .object({
     ...partialBaseFields,
     category: categoryFieldFor('TYPE5').optional(),
     subcategory: z.string().trim().min(1, 'Subcategory tidak boleh kosong').optional(),
     flavor: z.string().trim().min(1, 'Flavor tidak boleh kosong').optional(),
+    shape: z.enum(['ROUND', 'SQUARE']).optional(),
+    size: z.coerce.number().int().optional(),
+    sizeB: z.coerce.number().int().nullable().optional(),
     price: z.coerce.number().positive('Price harus lebih dari 0').optional(),
+    variants: z.array(type5SizeVariantSchema).optional(),
   })
   .superRefine((data, ctx) => {
+    // Basque dsb.: kalau variants dikirim, validasi ukuran terhadap config.
+    if (data.variants !== undefined) {
+      const cfg = type5SizeConfig(data.subcategory);
+      if (!cfg) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'variants hanya untuk sub-kategori dengan pilihan ukuran',
+          path: ['variants'],
+        });
+      } else {
+        const sizes = data.variants.map((v) => v.size);
+        if (data.variants.length === 0 || sizes.some((s) => !cfg.sizes.includes(s))) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Ukuran tidak valid. Pilihan: ${cfg.sizes.join(', ')}`,
+            path: ['variants'],
+          });
+        }
+        if (new Set(sizes).size !== sizes.length) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Terdapat ukuran duplikat',
+            path: ['variants'],
+          });
+        }
+      }
+    }
+    // hanya validasi ukuran tunggal kalau shape/size ikut dikirim (partial update)
+    if (data.shape !== undefined || data.size !== undefined) {
+      refineType5Size(data, ctx);
+    }
     if (data.subcategory === undefined) return;
     // kalau category ikut dikirim, subcategory harus cocok dengan category itu;
     // kalau tidak, cukup pastikan subcategory adalah sub-kategori TYPE5 yang sah.
@@ -376,9 +552,22 @@ const updateType6Schema = z
     ...partialBaseFields,
     category: categoryFieldFor('TYPE6').optional(),
     flavor: z.string().trim().min(1, 'Flavor tidak boleh kosong').optional(),
+    subcategory: z.string().trim().min(1, 'Subcategory tidak boleh kosong').optional(),
     variants: z.array(boxVariantSchema).min(1, 'Minimal satu pilihan isi box').optional(),
   })
   .superRefine((data, ctx) => {
+    // subcategory hanya divalidasi kalau dikirim; butuh category sbg konteks.
+    if (data.subcategory !== undefined) {
+      if (!data.category) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Category wajib dikirim bersama subcategory',
+          path: ['category'],
+        });
+      } else {
+        refineCupcakeSubcategory(data, ctx);
+      }
+    }
     if (data.variants === undefined) return;
     if (!data.category) {
       ctx.addIssue({

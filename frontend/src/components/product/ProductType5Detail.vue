@@ -4,8 +4,10 @@ import { useI18n } from 'vue-i18n'
 import ProductImage from './ProductImage.vue'
 import ProductInfoHeader from './ProductInfoHeader.vue'
 import ProductPriceDisplay from './ProductPriceDisplay.vue'
+import ProductVariantPicker from './ProductVariantPicker.vue'
 import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
+import { variantSizeLabel, isType5SizeSubcategory } from '@/config/productOptions'
 
 const props = defineProps({
   product: { type: Object, required: true },
@@ -19,20 +21,40 @@ const isSubmitting = ref(false)
 const submitError = ref('')
 const submitSuccess = ref(false)
 
-// TYPE5 (non-cake) punya 1 variant harga tunggal (tanpa shape/size)
-const variant = computed(() => props.product.variants?.[0] ?? null)
+// Sub-kategori size-pilihan (mis. Basque): user memilih size (variant).
+// Sub-kategori lain: 1 varian tetap dengan shape+size dari admin.
+const isSizeSubcat = computed(() => isType5SizeSubcategory(props.product.subcategory))
+const selectedVariantId = ref(null)
+
+const activeVariant = computed(() =>
+  isSizeSubcat.value
+    ? props.product.variants?.find((v) => v.id === selectedVariantId.value) ?? null
+    : props.product.variants?.[0] ?? null
+)
 
 const finalPrice = computed(() => {
-  if (!variant.value) return null
-  const price = Number(variant.value.price)
+  if (!activeVariant.value) return null
+  const price = Number(activeVariant.value.price)
   const discount = Number(props.product.discount ?? 0)
   return Math.round((price - (price * discount) / 100) * 100) / 100
+})
+
+// label ukuran untuk sub-kategori 1-varian (read-only)
+const sizeText = computed(() => {
+  const v = props.product.variants?.[0]
+  if (isSizeSubcat.value || !v || v.size == null) return ''
+  const shapeWord = v.shape === 'ROUND' ? t('product.round') : t('product.square')
+  return `${shapeWord} · ${variantSizeLabel(v.shape, v.size, v.sizeB)}`
 })
 
 const handleSubmit = async () => {
   submitError.value = ''
   submitSuccess.value = false
 
+  if (isSizeSubcat.value && !selectedVariantId.value) {
+    submitError.value = t('product.chooseSizeFirst')
+    return
+  }
   if (quantity.value < 1) {
     submitError.value = t('product.qtyMin')
     return
@@ -40,9 +62,10 @@ const handleSubmit = async () => {
 
   isSubmitting.value = true
   try {
-    // TYPE5: user hanya mengirim note & quantity (tanpa flavor/shape/size)
+    // TYPE5: user mengirim note & quantity (+ variantId untuk sub-kategori size-pilihan)
     await addItemToCart({
       productId: props.product.id,
+      variantId: isSizeSubcat.value ? selectedVariantId.value : undefined,
       quantity: quantity.value,
       notes: notes.value || undefined,
     })
@@ -71,7 +94,8 @@ const handleSubmit = async () => {
 
       <ProductPriceDisplay
         :price="finalPrice"
-        :original-price="Number(product.discount) > 0 ? Number(variant?.price) : null"
+        :original-price="Number(product.discount) > 0 ? Number(activeVariant?.price) : null"
+        :placeholder="isSizeSubcat ? t('product.chooseSizeFirst') : ''"
       />
 
       <!-- Flavor fixed untuk TYPE5, read-only -->
@@ -85,6 +109,29 @@ const handleSubmit = async () => {
           </span>
           <span class="font-display text-[16.5px] text-cocoa-900 leading-tight">
             {{ product.flavor }}
+          </span>
+        </span>
+      </div>
+
+      <!-- Size-pilihan (Basque): user memilih ukuran -->
+      <ProductVariantPicker
+        v-if="isSizeSubcat"
+        v-model:variant-id="selectedVariantId"
+        :variants="product.variants"
+        :discount="product.discount"
+      />
+
+      <!-- Size tetap (sub-kategori lain): read-only -->
+      <div
+        v-else-if="sizeText"
+        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
+      >
+        <span class="flex flex-col gap-0.5 min-w-0">
+          <span class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">
+            {{ t('product.size') }}
+          </span>
+          <span class="font-display text-[16.5px] text-cocoa-900 leading-tight">
+            {{ sizeText }}
           </span>
         </span>
       </div>

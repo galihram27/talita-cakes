@@ -12,9 +12,9 @@ export const generateSizeRange = (minSize) => {
   return sizes;
 };
 
-// validasi size untuk TYPE1 (input manual, bebas asal angka positif & wajar)
+// validasi size untuk TYPE1 (input manual, bebas asal angka bulat positif)
 export const isValidManualSize = (size) => {
-  return Number.isInteger(size) && size > 0 && size <= 100; // batas atas opsional, sesuaikan kebutuhan
+  return Number.isInteger(size) && size > 0;
 };
 
 // validasi size individual tetap dipakai untuk pengecekan dasar (genap & dalam rentang)

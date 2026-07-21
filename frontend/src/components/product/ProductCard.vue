@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { isType5SizeSubcategory } from '@/config/productOptions'
 
 const props = defineProps({
   product: { type: Object, required: true },
@@ -17,10 +18,13 @@ const typeLabel = (type) => {
 // type dengan 1 variant fixed (tidak ada pilihan shape & size)
 const isSingleVariantType = (type) => type === 'TYPE1' || type === 'TYPE2'
 
-// TYPE3/TYPE4 (banyak ukuran) & TYPE6 (banyak isi box) harganya rentang
-// -> tampilkan "mulai dari". TYPE5 harga tunggal.
+// TYPE3/TYPE4 (banyak ukuran), TYPE6 (banyak isi box), & TYPE5 sub-kategori
+// size-pilihan (Basque) harganya rentang -> tampilkan "mulai dari".
 const showsPriceRange = (type) =>
-  type === 'TYPE3' || type === 'TYPE4' || type === 'TYPE6'
+  type === 'TYPE3' ||
+  type === 'TYPE4' ||
+  type === 'TYPE6' ||
+  (type === 'TYPE5' && isType5SizeSubcategory(props.product.subcategory))
 
 // Label di atas nama produk memakai kategori, bukan nama tipe:
 // TYPE5 (non-cake) pakai sub-kategori (mis. "CINROLLS VAN DEPOK"),
@@ -56,11 +60,21 @@ const getDiscountedPrice = () => {
 }
 
 const getDisplaySize = () => {
-  if (isSingleVariantType(props.product.type) && props.product.variants?.[0]) {
-    const v = props.product.variants[0]
-    return `${v.shape === 'ROUND' ? t('product.round') : t('product.square')} ${v.size} cm`
-  }
-  return null
+  // TYPE5 size-pilihan (Basque) punya banyak ukuran -> tidak menampilkan satu ukuran
+  if (
+    props.product.type === 'TYPE5' &&
+    isType5SizeSubcategory(props.product.subcategory)
+  )
+    return null
+  // TYPE1/TYPE2 (cake fixed) & TYPE5 biasa punya 1 varian dengan shape+size
+  const singleVariant =
+    isSingleVariantType(props.product.type) || props.product.type === 'TYPE5'
+  const v = props.product.variants?.[0]
+  if (!singleVariant || !v || v.size == null) return null
+  const shapeWord = v.shape === 'ROUND' ? t('product.round') : t('product.square')
+  // SQUARE non-cake bisa punya dua dimensi (mis. 20×10); lainnya satu angka
+  const dims = v.shape === 'SQUARE' && v.sizeB != null ? `${v.size}×${v.sizeB}` : `${v.size}`
+  return `${shapeWord} ${dims} cm`
 }
 </script>
 

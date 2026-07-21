@@ -9,7 +9,9 @@ import {
    isGoodiebagCupcake,
    goodiebagMinQty,
    isMultiFlavorCupcake,
-   cupcakeFlavorLimit,
+   goodiebagFlavorsForSubcategory,
+   goodiebagFlavorLimit,
+   isType5SizeSubcategory,
 } from "../../features/product/product.constant.js";
 
 const PRODUCT_TYPE = {
@@ -55,6 +57,26 @@ const resolveItemDetails = async (product, payload) => {
          );
       }
    };
+
+   // TYPE 5 sub-kategori size-pilihan (Basque): user memilih size (variant).
+   if (
+      type === PRODUCT_TYPE.TYPE5 &&
+      isType5SizeSubcategory(product.subcategory)
+   ) {
+      if (!payload.variantId) {
+         throw new AppError("variantId (ukuran) wajib dipilih", 422);
+      }
+      const variant = await productRepository.findVariantById(payload.variantId);
+      if (!variant || variant.productId !== product.id) {
+         throw new AppError("Ukuran tidak ditemukan untuk produk ini", 404);
+      }
+      return {
+         variantId: variant.id,
+         flavor: null,
+         customImage: null,
+         price: applyDiscount(variant.price, discount),
+      };
+   }
 
    // TYPE 1, TYPE 2 & TYPE 5: variant fixed (1 row), tidak disimpan di cart item.
    // TYPE5 (non-cake) tidak ada shape/size/flavor pilihan user — cukup note & qty.
@@ -122,11 +144,12 @@ const resolveItemDetails = async (product, payload) => {
          throw new AppError("Isi box tidak ditemukan untuk produk ini", 404);
       }
 
-      // Goodiebag: user memilih beberapa rasa (1-4). Disimpan tergabung di
-      // kolom flavor. Dekorasi ditentukan admin (tidak menyimpan custom image).
+      // Goodiebag: user memilih beberapa rasa (1-4) dari daftar rasa milik
+      // sub-kategori produk. Disimpan tergabung di kolom flavor. Dekorasi
+      // ditentukan admin (tidak menyimpan custom image).
       if (isMultiFlavorCupcake(product.category)) {
-         const allowed = cupcakeFlavorsForCategory(product.category);
-         const { min, max } = cupcakeFlavorLimit(product.category);
+         const allowed = goodiebagFlavorsForSubcategory(product.subcategory);
+         const { min, max } = goodiebagFlavorLimit(product.subcategory);
          const flavors = Array.isArray(payload.flavors) ? payload.flavors : [];
          const unique = [...new Set(flavors)];
 
