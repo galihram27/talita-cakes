@@ -14,12 +14,12 @@ const { t } = useI18n()
 
 const TYPE_OPTIONS = computed(() => [
   { value: 'ALL', label: t('admin.products.allTypes') },
-  { value: 'TYPE1', label: t('admin.products.type', { num: 1 }) },
-  { value: 'TYPE2', label: t('admin.products.type', { num: 2 }) },
-  { value: 'TYPE3', label: t('admin.products.type', { num: 3 }) },
-  { value: 'TYPE4', label: t('admin.products.type', { num: 4 }) },
-  { value: 'TYPE5', label: t('admin.products.type', { num: 5 }) },
-  { value: 'TYPE6', label: t('admin.products.type', { num: 6 }) },
+  // sertakan nama singkat tipe (mis. "Type 1 · Shortcake Series") agar konsisten
+  // dengan kolom "Type" di tabel
+  ...['TYPE1', 'TYPE2', 'TYPE3', 'TYPE4', 'TYPE5', 'TYPE6'].map((key, i) => ({
+    value: key,
+    label: `${t('admin.products.type', { num: i + 1 })} · ${TYPE_SHORT_NAMES[key]}`,
+  })),
 ])
 
 // Nama singkat per tipe untuk kolom "Tipe" (mis. "Tipe 1 · Shortcake Series")
@@ -48,6 +48,15 @@ const toastMessage = ref('')
 
 const searchQuery = ref('')
 const selectedType = ref('ALL')
+const selectedSort = ref('default') // default | az | priceAsc | priceDesc
+
+// Opsi pengurutan (memakai label yang sama dengan halaman Menu)
+const SORT_OPTIONS = computed(() => [
+  { value: 'default', label: t('menu.sort.default') },
+  { value: 'az', label: t('menu.sort.az') },
+  { value: 'priceAsc', label: t('menu.sort.priceAsc') },
+  { value: 'priceDesc', label: t('menu.sort.priceDesc') },
+])
 
 // modal add / edit / copy produk
 const isModalOpen = ref(false)
@@ -128,6 +137,28 @@ const filteredProducts = computed(() => {
 
     return matchesType && matchesKeyword
   })
+})
+
+// harga termurah (sebelum diskon) untuk pengurutan harga
+const sortPriceOf = (product) => {
+  const prices = product.variants?.map((v) => Number(v.price)) ?? []
+  return prices.length ? Math.min(...prices) : 0
+}
+
+const sortedProducts = computed(() => {
+  const list = [...filteredProducts.value]
+  switch (selectedSort.value) {
+    case 'az':
+      return list.sort((a, b) =>
+        (a.name ?? '').localeCompare(b.name ?? '', undefined, { sensitivity: 'base' }),
+      )
+    case 'priceAsc':
+      return list.sort((a, b) => sortPriceOf(a) - sortPriceOf(b))
+    case 'priceDesc':
+      return list.sort((a, b) => sortPriceOf(b) - sortPriceOf(a))
+    default:
+      return list // urutan default = urutan store (terbaru dulu)
+  }
 })
 
 const typeCell = (product) => {
@@ -223,6 +254,21 @@ const confirmDelete = async () => {
         />
       </div>
 
+      <div class="relative shrink-0 w-full sm:w-auto">
+        <select
+          v-model="selectedSort"
+          :aria-label="t('menu.sort.label')"
+          class="appearance-none w-full rounded-full border border-cream-300 bg-white pl-4 pr-10 py-2.5 text-sm font-semibold text-cocoa-500 focus:outline-none focus:border-brand-400 cursor-pointer"
+        >
+          <option v-for="opt in SORT_OPTIONS" :key="opt.value" :value="opt.value">
+            {{ t('menu.sort.label') }}: {{ opt.label }}
+          </option>
+        </select>
+        <ChevronDown
+          class="w-4 h-4 text-cocoa-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
+        />
+      </div>
+
       <button
         type="button"
         @click="openAddModal"
@@ -243,7 +289,7 @@ const confirmDelete = async () => {
 
     <!-- EMPTY -->
     <div
-      v-else-if="filteredProducts.length === 0"
+      v-else-if="sortedProducts.length === 0"
       class="text-center text-cocoa-400 py-24 bg-white rounded-2xl border border-dashed border-cream-300"
     >
       {{ t('admin.products.empty') }}
@@ -270,7 +316,7 @@ const confirmDelete = async () => {
           </thead>
           <tbody>
             <tr
-              v-for="product in filteredProducts"
+              v-for="product in sortedProducts"
               :key="product.id"
               class="border-t border-cream-200"
             >

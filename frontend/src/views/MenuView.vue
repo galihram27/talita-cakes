@@ -273,7 +273,8 @@ const pagedProducts = computed(() => {
 const goToPage = (page) => {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  // pindah halaman -> kembali ke deretan toolbar, sama seperti saat ganti filter
+  nextTick(scrollToFilters)
 }
 
 // Ganti filter/kategori/pencarian/urutan -> balik ke halaman 1 supaya tidak
@@ -292,7 +293,8 @@ watch(
 // sengaja tidak ikut supaya tidak mengganggu saat mengetik.
 const toolbarRef = ref(null)
 const scrollToFilters = () => {
-  toolbarRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // langsung lompat ke posisi toolbar (tanpa animasi scroll)
+  toolbarRef.value?.scrollIntoView({ behavior: 'instant', block: 'start' })
 }
 watch(
   [activeFilter, sectionCategory, sectionSubcategory],
