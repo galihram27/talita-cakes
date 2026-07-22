@@ -757,6 +757,7 @@ export default {
       actions: "Aksi",
       from: "Mulai ",
       editAria: "Ubah {name}",
+      copyAria: "Salin {name}",
       deleteAria: "Hapus {name}",
       deleteTitle: "Hapus Produk",
       deleteMessage:
@@ -764,9 +765,11 @@ export default {
       deleteFailed: "Gagal menghapus produk",
       addSuccess: "Produk berhasil ditambahkan",
       editSuccess: "Produk berhasil diperbarui",
+      copySuccess: "Produk berhasil disalin",
     },
     productForm: {
       editTitle: "Ubah: {name}",
+      copyTitle: "Salin dari: {name}",
       addTitle: "Tambah Produk",
       productType: "Tipe Produk",
       category: "Kategori",

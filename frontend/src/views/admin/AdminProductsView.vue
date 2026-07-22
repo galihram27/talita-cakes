@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Search, Plus, Pencil, Trash2, ChevronDown } from 'lucide-vue-next'
+import { Search, Plus, Pencil, Copy, Trash2, ChevronDown } from 'lucide-vue-next'
 import { deleteProduct } from '@/services/product.service'
 import { cloudinaryThumb } from '@/utils/cloudinaryImage'
 import { useProductStore } from '@/stores/product.store'
@@ -49,17 +49,27 @@ const toastMessage = ref('')
 const searchQuery = ref('')
 const selectedType = ref('ALL')
 
-// modal add / edit produk
+// modal add / edit / copy produk
 const isModalOpen = ref(false)
 const editingProduct = ref(null)
+const isCopyMode = ref(false) // true = form di-prefill dari produk lain untuk disalin
 
 const openAddModal = () => {
   editingProduct.value = null
+  isCopyMode.value = false
   isModalOpen.value = true
 }
 
 const openEditModal = (product) => {
   editingProduct.value = product
+  isCopyMode.value = false
+  isModalOpen.value = true
+}
+
+// Salin produk: buka form dengan data produk terpilih, tapi membuat produk baru
+const openCopyModal = (product) => {
+  editingProduct.value = product
+  isCopyMode.value = true
   isModalOpen.value = true
 }
 
@@ -73,10 +83,12 @@ const products = computed(() => productStore.products)
 const isLoading = computed(() => !productStore.hasLoaded && !errorMessage.value)
 
 const handleSaved = () => {
-  // editingProduct masih menyimpan mode saat modal ter-submit (null = tambah)
-  toastMessage.value = editingProduct.value
-    ? t('admin.products.editSuccess')
-    : t('admin.products.addSuccess')
+  // salin & tambah sama-sama membuat produk baru; hanya edit yang memperbarui
+  toastMessage.value = isCopyMode.value
+    ? t('admin.products.copySuccess')
+    : editingProduct.value
+      ? t('admin.products.editSuccess')
+      : t('admin.products.addSuccess')
   // refresh cache bersama tanpa mengosongkannya — halaman Menu ikut ter-update
   productStore.refresh().catch(() => {})
   analyticsStore.invalidate() // angka "Jumlah Produk" di dashboard ikut segar
@@ -299,8 +311,16 @@ const confirmDelete = async () => {
                 <div class="flex items-center justify-end gap-2">
                   <button
                     type="button"
+                    @click="openCopyModal(product)"
+                    class="p-2 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                    :aria-label="t('admin.products.copyAria', { name: product.name })"
+                  >
+                    <Copy class="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
                     @click="openEditModal(product)"
-                    class="p-2 rounded-lg border border-cream-300 text-brand-500 hover:bg-brand-50 transition-colors"
+                    class="p-2 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
                     :aria-label="t('admin.products.editAria', { name: product.name })"
                   >
                     <Pencil class="w-4 h-4" />
@@ -326,6 +346,7 @@ const confirmDelete = async () => {
     <ProductFormModal
       :open="isModalOpen"
       :product="editingProduct"
+      :copy="isCopyMode"
       @close="isModalOpen = false"
       @saved="handleSaved"
     />

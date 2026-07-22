@@ -756,6 +756,7 @@ export default {
       actions: "Actions",
       from: "From ",
       editAria: "Edit {name}",
+      copyAria: "Duplicate {name}",
       deleteAria: "Delete {name}",
       deleteTitle: "Delete Product",
       deleteMessage:
@@ -763,9 +764,11 @@ export default {
       deleteFailed: "Failed to delete product",
       addSuccess: "Product added successfully",
       editSuccess: "Product updated successfully",
+      copySuccess: "Product duplicated successfully",
     },
     productForm: {
       editTitle: "Edit: {name}",
+      copyTitle: "Copy of: {name}",
       addTitle: "Add Product",
       productType: "Product Type",
       category: "Category",

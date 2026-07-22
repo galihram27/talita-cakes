@@ -25,13 +25,16 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   // null = mode "Add", object produk = mode "Edit"
   product: { type: Object, default: null },
+  // true = mode "Copy": form di-prefill dari `product` tapi tetap MEMBUAT produk baru
+  copy: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['close', 'saved'])
 const { t } = useI18n()
 const productStore = useProductStore()
 
-const isEdit = computed(() => !!props.product)
+// Copy memakai data produk untuk prefill tapi bukan mode edit (membuat produk baru)
+const isEdit = computed(() => !!props.product && !props.copy)
 
 // label tipe & bentuk mengikuti bahasa aktif (nilai tetap sinkron dengan backend)
 const PRODUCT_TYPE_OPTIONS = computed(() =>
@@ -229,11 +232,13 @@ const usesVariantGrid = computed(() => form.type === 'TYPE3' || form.type === 'T
 // TYPE5 (non-cake): harga tunggal tanpa shape/size
 const usesNonCake = computed(() => form.type === 'TYPE5')
 
-const modalTitle = computed(() =>
-  isEdit.value
+const modalTitle = computed(() => {
+  if (props.copy && props.product)
+    return t('admin.productForm.copyTitle', { name: props.product.name })
+  return isEdit.value
     ? t('admin.productForm.editTitle', { name: props.product.name })
     : t('admin.productForm.addTitle')
-)
+})
 
 // ===== RESET / PREFILL saat modal dibuka =====
 const clearPriceMap = (map) => Object.keys(map).forEach((k) => delete map[k])
@@ -280,7 +285,8 @@ const resetForm = () => {
     Array.isArray(p.images) && p.images.length ? [...p.images] : p.image ? [p.image] : []
   Object.assign(form, {
     type: p.type,
-    name: p.name ?? '',
+    // saat menyalin, beri akhiran "(Copy)" supaya nama tidak identik & mudah dikenali
+    name: props.copy ? `${p.name ?? ''} (Copy)`.trim() : p.name ?? '',
     description: p.description ?? '',
     descriptionEn: p.descriptionEn ?? '',
     images: prefillImages,
