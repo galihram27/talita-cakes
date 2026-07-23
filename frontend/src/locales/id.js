@@ -446,6 +446,7 @@ export default {
     round: "Bulat",
     square: "Kotak",
     backToMenu: "← Kembali ke menu",
+    descriptionTitle: "Deskripsi",
     flavor: "Rasa",
     noImage: "Tidak Ada Gambar",
     prevPhoto: "Foto sebelumnya",

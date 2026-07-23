@@ -445,6 +445,7 @@ export default {
     round: "Round",
     square: "Square",
     backToMenu: "← Back to menu",
+    descriptionTitle: "Description",
     flavor: "Flavor",
     noImage: "No Image",
     prevPhoto: "Previous photo",
