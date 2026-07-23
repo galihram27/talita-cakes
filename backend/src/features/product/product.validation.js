@@ -9,6 +9,14 @@ import {
   isGoodiebagCupcake,
   goodiebagSubcategories,
   isGoodiebagSubcategory,
+  usesFilling,
+  usesTopping,
+  CINROLLS_VAN_DEPOK,
+  MAX_FILLING_OPTIONS,
+  MAX_TOPPING_OPTIONS,
+  MAX_TOPPING_SELECT,
+  isBreadCategory,
+  BREAD_SIZE_KEYS,
 } from './product.constant.js';
 import {
   isValidSize,
@@ -59,6 +67,8 @@ const partialBaseFields = {
     .min(1, 'Minimal 1 gambar wajib diunggah')
     .optional(),
   discount: z.coerce.number().min(0).max(100).optional(),
+  // flag "pajang di Home" — bisa di-toggle sendiri via panel admin
+  featured: z.boolean().optional(),
 };
 
 const variantSchema = z
@@ -244,9 +254,188 @@ const type5SizeVariantSchema = z.object({
   price: z.coerce.number().positive('Price harus lebih dari 0'),
 });
 
+// Ukuran Bread (Personal/Family/Sharing): admin hanya mengisi harga per key;
+// dimensinya sudah ditentukan (lihat BREAD_SIZES di constant).
+const breadSizeSchema = z.object({
+  key: z.enum(BREAD_SIZE_KEYS, { message: 'Ukuran bread tidak valid' }),
+  price: z.coerce.number().positive('Price harus lebih dari 0'),
+});
+
+// ===== FILLING (khusus CINROLLS VAN DEPOK) — pilih SATU, tanpa harga =====
+// Harga ada di comboPrices (per kombinasi filling + topping), bukan di sini.
+const fillingOptionSchema = z.object({
+  name: z.string().trim().min(1, 'Nama filling wajib diisi'),
+});
+
+// Konfigurasi filling: daftar opsi (nama saja, maks 6) + opsi default yang
+// dipakai otomatis kalau user tidak memilih. Selalu pilih satu (radio).
+const fillingConfigSchema = z
+  .object({
+    options: z
+      .array(fillingOptionSchema)
+      .min(1, 'Minimal satu pilihan filling')
+      .max(MAX_FILLING_OPTIONS, `Maksimal ${MAX_FILLING_OPTIONS} pilihan filling`),
+    defaultIndex: z.coerce.number().int().min(0).default(0),
+  })
+  .superRefine((data, ctx) => {
+    const names = data.options.map((o) => o.name.trim().toLowerCase());
+    if (new Set(names).size !== names.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Nama pilihan filling tidak boleh sama',
+        path: ['options'],
+      });
+    }
+    if (data.defaultIndex >= data.options.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Pilihan filling default tidak valid',
+        path: ['defaultIndex'],
+      });
+    }
+  });
+
+// ===== HARGA KOMBINASI (filling + topping) — CINROLLS VAN DEPOK =====
+// Tiap baris: harga TAMBAHAN saat filling & topping ini dipasangkan.
+const comboPriceSchema = z.object({
+  filling: z.string().trim().min(1, 'Filling kombinasi wajib diisi'),
+  topping: z.string().trim().min(1, 'Topping kombinasi wajib diisi'),
+  price: z.coerce.number().min(0, 'Harga kombinasi tidak boleh negatif').default(0),
+});
+const comboPricesSchema = z.array(comboPriceSchema);
+
+// ===== TOPPING (khusus CINROLLS VAN DEPOK) — wajib pilih min 1, tanpa harga =====
+const toppingOptionSchema = z.object({
+  name: z.string().trim().min(1, 'Nama topping wajib diisi'),
+});
+
+// Konfigurasi topping: daftar opsi (nama saja) + batas jumlah pilihan user.
+const toppingConfigSchema = z
+  .object({
+    options: z
+      .array(toppingOptionSchema)
+      .min(1, 'Minimal satu pilihan topping')
+      .max(MAX_TOPPING_OPTIONS, `Maksimal ${MAX_TOPPING_OPTIONS} pilihan topping`),
+    maxSelect: z.coerce.number().int().min(1).max(MAX_TOPPING_SELECT).default(1),
+  })
+  .superRefine((data, ctx) => {
+    const names = data.options.map((o) => o.name.trim().toLowerCase());
+    if (new Set(names).size !== names.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Nama pilihan topping tidak boleh sama',
+        path: ['options'],
+      });
+    }
+    if (data.maxSelect > data.options.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Batas jumlah pilihan melebihi jumlah opsi topping',
+        path: ['maxSelect'],
+      });
+    }
+  });
+
+// Filling/topping hanya boleh dikirim untuk sub-kategori CINROLLS VAN DEPOK.
+// Saat update, subcategory bisa tidak dikirim — dalam kasus itu lewati cek di
+// sini; service layer yang memastikan keduanya hanya tersimpan bila subcategory
+// efektif produk memang CINROLLS VAN DEPOK.
+const refineFilling = (data, ctx) => {
+  if (data.filling === undefined || data.filling === null) return;
+  if (data.subcategory !== undefined && !usesFilling(data.subcategory)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Filling hanya tersedia untuk ${CINROLLS_VAN_DEPOK}`,
+      path: ['filling'],
+    });
+  }
+};
+
+const refineTopping = (data, ctx) => {
+  if (data.topping === undefined || data.topping === null) return;
+  if (data.subcategory !== undefined && !usesTopping(data.subcategory)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Topping hanya tersedia untuk ${CINROLLS_VAN_DEPOK}`,
+      path: ['topping'],
+    });
+  }
+};
+
+// Harga kombinasi hanya untuk cinrolls; pasangan (filling, topping) tidak boleh
+// ganda; dan bila config filling & topping ikut dikirim, referensinya harus valid.
+const refineComboPrices = (data, ctx) => {
+  if (data.comboPrices === undefined || data.comboPrices === null) return;
+  if (data.subcategory !== undefined && !usesFilling(data.subcategory)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Harga kombinasi hanya tersedia untuk ${CINROLLS_VAN_DEPOK}`,
+      path: ['comboPrices'],
+    });
+    return;
+  }
+  // pasangan (filling, topping) unik
+  const seen = new Set();
+  for (const c of data.comboPrices) {
+    const key = `${c.filling} ${c.topping}`;
+    if (seen.has(key)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Kombinasi ganda: ${c.filling} + ${c.topping}`,
+        path: ['comboPrices'],
+      });
+    }
+    seen.add(key);
+  }
+  // referensi harus menunjuk opsi filling & topping yang ada (kalau ikut dikirim)
+  const fillingNames = data.filling?.options?.map((o) => o.name);
+  const toppingNames = data.topping?.options?.map((o) => o.name);
+  if (fillingNames && toppingNames) {
+    for (const c of data.comboPrices) {
+      if (!fillingNames.includes(c.filling)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Filling kombinasi tidak dikenal: ${c.filling}`,
+          path: ['comboPrices'],
+        });
+      }
+      if (!toppingNames.includes(c.topping)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Topping kombinasi tidak dikenal: ${c.topping}`,
+          path: ['comboPrices'],
+        });
+      }
+    }
+  }
+};
+
 // Cabang sizing TYPE5: sub-kategori size-pilihan pakai `variants` (harga per
 // size); sub-kategori lain pakai shape+size tunggal input admin.
 const refineType5Sizing = (data, ctx) => {
+  // Bread: user memilih ukuran bernama (Personal/Family/Sharing); admin isi
+  // harga per ukuran. Minimal satu ukuran diberi harga, tanpa key ganda.
+  if (isBreadCategory(data.category)) {
+    const sizes = data.breadSizes ?? [];
+    if (sizes.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Isi harga minimal satu ukuran',
+        path: ['breadSizes'],
+      });
+      return;
+    }
+    const keys = sizes.map((s) => s.key);
+    if (new Set(keys).size !== keys.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Terdapat ukuran duplikat',
+        path: ['breadSizes'],
+      });
+    }
+    return;
+  }
+
   const cfg = type5SizeConfig(data.subcategory);
   if (cfg) {
     const variants = data.variants ?? [];
@@ -305,9 +494,18 @@ const type5Schema = z.object({
   price: z.coerce.number().positive('Price harus lebih dari 0').optional(),
   // per-size (sub-kategori size-pilihan)
   variants: z.array(type5SizeVariantSchema).optional(),
+  // harga per ukuran Bread (Personal/Family/Sharing)
+  breadSizes: z.array(breadSizeSchema).optional(),
+  // pilihan filling & topping + harga kombinasi (hanya CINROLLS VAN DEPOK) — opsional
+  filling: fillingConfigSchema.nullish(),
+  topping: toppingConfigSchema.nullish(),
+  comboPrices: comboPricesSchema.nullish(),
 }).superRefine((data, ctx) => {
   refineType5Subcategory(data, ctx);
   refineType5Sizing(data, ctx);
+  refineFilling(data, ctx);
+  refineTopping(data, ctx);
+  refineComboPrices(data, ctx);
 });
 
 // ===== TYPE 6 (cupcakes: harga per isi box, rasa tergantung kategori) =====
@@ -495,8 +693,27 @@ const updateType5Schema = z
     sizeB: z.coerce.number().int().nullable().optional(),
     price: z.coerce.number().positive('Price harus lebih dari 0').optional(),
     variants: z.array(type5SizeVariantSchema).optional(),
+    breadSizes: z.array(breadSizeSchema).optional(),
+    // filling & topping + harga kombinasi (hanya CINROLLS VAN DEPOK); null = kosongkan
+    filling: fillingConfigSchema.nullish(),
+    topping: toppingConfigSchema.nullish(),
+    comboPrices: comboPricesSchema.nullish(),
   })
   .superRefine((data, ctx) => {
+    refineFilling(data, ctx);
+    refineTopping(data, ctx);
+    refineComboPrices(data, ctx);
+    // Bread: kalau breadSizes dikirim, pastikan tidak ada key ganda.
+    if (data.breadSizes !== undefined) {
+      const keys = data.breadSizes.map((s) => s.key);
+      if (new Set(keys).size !== keys.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Terdapat ukuran duplikat',
+          path: ['breadSizes'],
+        });
+      }
+    }
     // Basque dsb.: kalau variants dikirim, validasi ukuran terhadap config.
     if (data.variants !== undefined) {
       const cfg = type5SizeConfig(data.subcategory);

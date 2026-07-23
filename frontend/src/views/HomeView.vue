@@ -15,8 +15,13 @@ const productStore = useProductStore()
 const { products } = storeToRefs(productStore)
 const isLoading = ref(!productStore.hasLoaded)
 
-// tampilkan 4 produk pertama sebagai favorit
-const featuredProducts = computed(() => products.value.slice(0, 4))
+// Produk yang ditandai admin (flag `featured`) dipajang di section ini.
+// Kalau admin belum menandai satu pun, jatuh ke 4 produk pertama supaya
+// section tidak kosong.
+const featuredProducts = computed(() => {
+  const flagged = products.value.filter((p) => p.featured)
+  return flagged.length > 0 ? flagged : products.value.slice(0, 4)
+})
 
 onMounted(async () => {
   try {

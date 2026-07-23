@@ -8,6 +8,11 @@ const baseAddItemSchema = z.object({
    flavor: z.enum(ALL_FLAVORS, { message: `flavor harus salah satu dari: ${ALL_FLAVORS.join(', ')}` }).optional(),
   // rasa jamak (mis. goodiebag: 1-4 rasa). Isi & jumlahnya divalidasi di service.
   flavors: z.array(z.enum(ALL_FLAVORS)).optional(),
+  // pilihan filling (satu) & topping (bisa beberapa) — CINROLLS VAN DEPOK.
+  // Nama bebas (ditentukan admin per produk), divalidasi terhadap config produk
+  // di service layer, bukan enum di sini.
+  filling: z.string().optional(),
+  toppings: z.array(z.string()).optional(),
   customImage: z.string().min(1).optional(),
   textOnCake: z.string().optional(),
   notes: z.string().optional(),

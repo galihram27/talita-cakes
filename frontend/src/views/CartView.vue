@@ -8,7 +8,25 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { formatRupiah } from '@/utils/formatCurrency'
-import { isGoodiebagCupcake, goodiebagMinQty } from '@/config/productOptions'
+import {
+  isGoodiebagCupcake,
+  goodiebagMinQty,
+  isBreadCategory,
+  breadSizeForVariant,
+} from '@/config/productOptions'
+
+// Label ukuran Bread (Personal/Family/Sharing) dari shape/size/sizeB item.
+const breadSizeText = (item) => {
+  const s = breadSizeForVariant(item)
+  if (!s) return item.size
+  const dim =
+    s.shape === null
+      ? t('product.boxOf', { count: s.size })
+      : s.shape === 'SQUARE'
+        ? `${s.size}×${s.sizeB ?? s.size} cm`
+        : `${s.size} cm`
+  return `${s.label} · ${dim}`
+}
 
 // Batas bawah stepper untuk item goodiebag (min beli 10 box); 1 untuk item lain.
 const minQtyForItem = (item) =>
@@ -234,11 +252,23 @@ onMounted(fetchCart)
                   <span class="text-cocoa-400">{{ t('cart.flavor') }}</span>
                   <strong class="text-[#4A3A30] ml-1">{{ item.flavor }}</strong>
                 </p>
+                <p v-if="item.filling">
+                  <span class="text-cocoa-400">{{ t('cart.filling') }}</span>
+                  <strong class="text-[#4A3A30] ml-1">{{ item.filling }}</strong>
+                </p>
+                <p v-if="item.topping">
+                  <span class="text-cocoa-400">{{ t('cart.topping') }}</span>
+                  <strong class="text-[#4A3A30] ml-1">{{ item.topping }}</strong>
+                </p>
                 <p v-if="item.shape">
                   <span class="text-cocoa-400">{{ t('cart.shape') }}</span>
                   <strong class="text-[#4A3A30] ml-1">{{ formatShape(item.shape) }}</strong>
                 </p>
-                <p v-if="item.size">
+                <p v-if="isBreadCategory(item.productCategory)">
+                  <span class="text-cocoa-400">{{ t('cart.size') }}</span>
+                  <strong class="text-[#4A3A30] ml-1">{{ breadSizeText(item) }}</strong>
+                </p>
+                <p v-else-if="item.size">
                   <span class="text-cocoa-400">
                     {{ item.productType === 'TYPE6' ? t('cart.box') : t('cart.size') }}
                   </span>

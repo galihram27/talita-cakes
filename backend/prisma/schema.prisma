@@ -89,6 +89,21 @@ model Product {
   subcategory   String?
   flavor        String?
   discount      Decimal          @default(0) @db.Decimal(5, 2)
+  // true = dipajang di section "Our Cake Samples" pada halaman Home.
+  // Admin menandai/melepas flag ini lewat panel produk.
+  featured      Boolean          @default(false)
+  // Konfigurasi pilihan "Filling" (hanya sub-kategori CINROLLS VAN DEPOK).
+  // Pilih SATU (radio). Harga TIDAK di sini — ada di comboPrices per kombinasi.
+  // Bentuk: { options: [{ name }], defaultIndex }. null = tanpa filling.
+  filling       Json?
+  // Konfigurasi pilihan "Topping" (hanya CINROLLS VAN DEPOK). Wajib pilih
+  // minimal 1, boleh beberapa (batas maxSelect 1-3 diatur admin).
+  // Bentuk: { options: [{ name }], maxSelect }. null = tanpa topping.
+  topping       Json?
+  // Harga TAMBAHAN per kombinasi (filling + topping), diisi admin manual.
+  // Total = harga dasar + Σ harga kombinasi (filling terpilih × tiap topping terpilih).
+  // Bentuk: [{ filling, topping, price }]. null = tanpa penyesuaian harga.
+  comboPrices   Json?
   variants      ProductVariant[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
@@ -142,6 +157,11 @@ model CartItem {
   variantId   String?
   variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
   flavor      String?
+  // pilihan filling user (satu nama). null = produk tanpa filling.
+  // Hanya dipakai CINROLLS VAN DEPOK (TYPE5).
+  filling     String?
+  // pilihan topping user (nama tergabung, mis. "Almond, Keju"). null = tanpa topping.
+  topping     String?
   customImage String?
   textOnCake  String?
   notes       String?
@@ -209,6 +229,10 @@ model OrderItem {
   variantId   String?
   variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
   flavor      String?
+  // snapshot pilihan filling user (satu nama). null = tanpa filling.
+  filling     String?
+  // snapshot pilihan topping user (nama tergabung). null = tanpa topping.
+  topping     String?
   customImage String?
   textOnCake  String?
   notes       String?

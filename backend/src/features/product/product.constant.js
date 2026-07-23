@@ -67,6 +67,48 @@ export const TYPE5_SIZE_SUBCATEGORIES = {
 export const type5SizeConfig = (subcategory) =>
    TYPE5_SIZE_SUBCATEGORIES[subcategory] ?? null;
 
+// ===== BREAD (kategori) — ukuran-pilihan user dengan dimensi TETAP =====
+// Semua produk Bread (Cinrolls & Mozzarella) memakai 3 ukuran ini. User memilih
+// salah satunya; admin menetapkan HARGA tiap ukuran (ukuran tanpa harga = tidak
+// dijual). Dimensi sudah ditentukan (bukan input admin).
+// (mirror ke frontend/src/config/productOptions.js)
+export const BREAD_CATEGORY = "Bread";
+export const isBreadCategory = (category) => category === BREAD_CATEGORY;
+
+export const BREAD_SIZES = [
+   { key: "PERSONAL", label: "Personal Size", shape: "SQUARE", size: 22, sizeB: 10 },
+   { key: "FAMILY", label: "Family Size", shape: "ROUND", size: 25, sizeB: null },
+   { key: "SHARING", label: "Sharing Size", shape: null, size: 9, sizeB: null },
+];
+
+export const BREAD_SIZE_KEYS = BREAD_SIZES.map((s) => s.key);
+
+export const breadSizeByKey = (key) =>
+   BREAD_SIZES.find((s) => s.key === key) ?? null;
+
+// Cari ukuran bread yang cocok dengan sebuah variant (berdasar shape/size/sizeB).
+export const breadSizeForVariant = (variant) =>
+   BREAD_SIZES.find(
+      (s) =>
+         s.shape === (variant.shape ?? null) &&
+         s.size === (variant.size ?? null) &&
+         (s.sizeB ?? null) === (variant.sizeB ?? null)
+   ) ?? null;
+
+// ===== FILLING & TOPPING (khusus sub-kategori CINROLLS VAN DEPOK) =====
+// Admin menentukan sendiri daftar pilihan untuk keduanya.
+// - FILLING: pilih SATU (radio). Tiap opsi punya harga (opsional, default 0).
+// - TOPPING: wajib pilih min 1, boleh beberapa (maks 3). TANPA harga.
+// (mirror ke frontend/src/config/productOptions.js)
+export const CINROLLS_VAN_DEPOK = "CINROLLS VAN DEPOK";
+export const MAX_FILLING_OPTIONS = 6; // maksimal opsi filling yang bisa dibuat admin
+export const MAX_TOPPING_OPTIONS = 6; // maksimal opsi topping yang bisa dibuat admin
+export const MAX_TOPPING_SELECT = 3; // maksimal jumlah topping yang boleh dipilih user
+
+// Apakah sub-kategori TYPE5 ini memakai pilihan filling & topping?
+export const usesFilling = (subcategory) => subcategory === CINROLLS_VAN_DEPOK;
+export const usesTopping = (subcategory) => subcategory === CINROLLS_VAN_DEPOK;
+
 // Apakah sub-kategori TYPE5 ini memakai pilihan size oleh user?
 export const isType5SizeSubcategory = (subcategory) =>
    Object.prototype.hasOwnProperty.call(TYPE5_SIZE_SUBCATEGORIES, subcategory);

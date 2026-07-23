@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { X, Upload, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { X, Upload, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-vue-next'
 import {
   PRODUCT_CATEGORIES,
   TYPE5_SUBCATEGORIES,
@@ -15,6 +15,14 @@ import {
   SQUARE_MIN_OPTIONS,
   generateSizeRange,
   sizeLabel,
+  usesFilling,
+  usesTopping,
+  MAX_FILLING_OPTIONS,
+  MAX_TOPPING_OPTIONS,
+  MAX_TOPPING_SELECT,
+  isBreadCategory,
+  BREAD_SIZES,
+  breadSizeForVariant,
 } from '@/config/productOptions'
 import { createProduct, updateProduct } from '@/services/product.service'
 import { uploadImage } from '@/services/upload.service'
@@ -70,6 +78,32 @@ const nonCakePrice = ref(null)
 const nonCake = reactive({ shape: 'ROUND', size: null, sizeB: null })
 // TYPE5 sub-kategori size-pilihan (Basque): harga per size -> { [size]: price }
 const nonCakeSizePrices = reactive({})
+
+// TYPE5 Bread: harga per ukuran bernama -> { PERSONAL, FAMILY, SHARING }
+const breadSizePrices = reactive({})
+
+// TYPE5 CINROLLS VAN DEPOK: konfigurasi pilihan FILLING (pilih satu, tanpa harga).
+// Harga ada di comboRows (per kombinasi filling + topping).
+// enabled: apakah produk memakai filling. options: [{ name }].
+// defaultIndex: opsi yang dipakai otomatis kalau user tidak memilih.
+const filling = reactive({
+  enabled: false,
+  defaultIndex: 0,
+  options: [],
+})
+
+// Konfigurasi TOPPING (wajib pilih min 1, boleh beberapa, tanpa harga).
+// enabled: apakah produk memakai topping. options: [{ name }].
+// maxSelect: batas jumlah topping yang boleh dipilih user.
+const topping = reactive({
+  enabled: false,
+  maxSelect: 1,
+  options: [],
+})
+
+// Harga TAMBAHAN per kombinasi (filling + topping) — daftar manual.
+// Tiap baris: { filling, topping, price }.
+const comboRows = reactive({ list: [] })
 
 // TYPE6 (cupcakes): harga per isi box -> { [isiBox]: price }
 const boxPrices = reactive({})
@@ -231,6 +265,89 @@ const usesSingleVariant = computed(() => form.type === 'TYPE1' || form.type === 
 const usesVariantGrid = computed(() => form.type === 'TYPE3' || form.type === 'TYPE4')
 // TYPE5 (non-cake): harga tunggal tanpa shape/size
 const usesNonCake = computed(() => form.type === 'TYPE5')
+// TYPE5 Bread: user memilih ukuran bernama (harga per ukuran diisi admin)
+const usesBread = computed(() => form.type === 'TYPE5' && isBreadCategory(form.category))
+
+// daftar ukuran Bread + deskripsi dimensi tetap (untuk label di form)
+const breadSizeList = computed(() =>
+  BREAD_SIZES.map((s) => ({
+    ...s,
+    desc:
+      s.shape === null
+        ? t('product.boxOf', { count: s.size })
+        : s.shape === 'SQUARE'
+          ? `${s.size}×${s.sizeB ?? s.size} cm`
+          : `${s.size} cm`,
+  }))
+)
+
+// ukuran Bread yang diberi harga > 0 -> jadi varian { key, price }
+const buildBreadSizeVariants = () =>
+  BREAD_SIZES.filter((s) => Number(breadSizePrices[s.key]) > 0).map((s) => ({
+    key: s.key,
+    price: Number(breadSizePrices[s.key]),
+  }))
+
+// ===== FILLING & TOPPING (CINROLLS VAN DEPOK) =====
+// Sub-kategori yang memakai pilihan filling/topping (admin bisa mengaktifkannya).
+const usesFillingSubcat = computed(
+  () => form.type === 'TYPE5' && usesFilling(form.subcategory)
+)
+const usesToppingSubcat = computed(
+  () => form.type === 'TYPE5' && usesTopping(form.subcategory)
+)
+
+const canAddFillingOption = computed(
+  () => filling.options.length < MAX_FILLING_OPTIONS
+)
+const addFillingOption = () => {
+  if (!canAddFillingOption.value) return
+  filling.options.push({ name: '' })
+}
+const removeFillingOption = (index) => {
+  filling.options.splice(index, 1)
+  // jaga defaultIndex tetap valid setelah penghapusan
+  if (filling.defaultIndex >= filling.options.length) {
+    filling.defaultIndex = Math.max(0, filling.options.length - 1)
+  }
+}
+
+const canAddToppingOption = computed(
+  () => topping.options.length < MAX_TOPPING_OPTIONS
+)
+// batas jumlah pilihan user tidak boleh melebihi jumlah opsi maupun MAX_TOPPING_SELECT
+const toppingMaxSelectCeiling = computed(() =>
+  Math.min(topping.options.length || 1, MAX_TOPPING_SELECT)
+)
+const addToppingOption = () => {
+  if (!canAddToppingOption.value) return
+  topping.options.push({ name: '' })
+}
+const removeToppingOption = (index) => {
+  topping.options.splice(index, 1)
+  if (topping.maxSelect > toppingMaxSelectCeiling.value) {
+    topping.maxSelect = toppingMaxSelectCeiling.value
+  }
+}
+
+// ===== HARGA KOMBINASI (filling + topping) =====
+// Dropdown baris kombinasi memakai nama opsi filling/topping yang sudah diisi.
+const fillingNameOptions = computed(() =>
+  filling.options.map((o) => (o.name ?? '').trim()).filter((n) => n)
+)
+const toppingNameOptions = computed(() =>
+  topping.options.map((o) => (o.name ?? '').trim()).filter((n) => n)
+)
+// baris kombinasi hanya relevan kalau kedua daftar opsi terisi
+const canBuildCombos = computed(
+  () => fillingNameOptions.value.length > 0 && toppingNameOptions.value.length > 0
+)
+const addComboRow = () => {
+  comboRows.list.push({ filling: '', topping: '', price: 0 })
+}
+const removeComboRow = (index) => {
+  comboRows.list.splice(index, 1)
+}
 
 const modalTitle = computed(() => {
   if (props.copy && props.product)
@@ -262,6 +379,10 @@ const resetForm = () => {
   goodiebagPrice.value = null
   Object.assign(nonCake, { shape: 'ROUND', size: null, sizeB: null })
   clearPriceMap(nonCakeSizePrices)
+  clearPriceMap(breadSizePrices)
+  Object.assign(filling, { enabled: false, defaultIndex: 0, options: [] })
+  Object.assign(topping, { enabled: false, maxSelect: 1, options: [] })
+  comboRows.list = []
 
   if (!props.product) {
     Object.assign(form, {
@@ -309,6 +430,36 @@ const resetForm = () => {
   }
 
   if (p.type === 'TYPE5') {
+    // CINROLLS VAN DEPOK: muat config filling & topping kalau ada
+    if (usesFilling(p.subcategory) && p.filling?.options?.length) {
+      Object.assign(filling, {
+        enabled: true,
+        defaultIndex: Number(p.filling.defaultIndex) || 0,
+        options: p.filling.options.map((o) => ({ name: o.name ?? '' })),
+      })
+    }
+    if (usesTopping(p.subcategory) && p.topping?.options?.length) {
+      Object.assign(topping, {
+        enabled: true,
+        maxSelect: Number(p.topping.maxSelect) || 1,
+        options: p.topping.options.map((o) => ({ name: o.name ?? '' })),
+      })
+    }
+    if (usesFilling(p.subcategory) && Array.isArray(p.comboPrices)) {
+      comboRows.list = p.comboPrices.map((c) => ({
+        filling: c.filling ?? '',
+        topping: c.topping ?? '',
+        price: Number(c.price) || 0,
+      }))
+    }
+    // Bread: harga per ukuran bernama (cocokkan variant -> key)
+    if (isBreadCategory(p.category)) {
+      variants.forEach((v) => {
+        const s = breadSizeForVariant(v)
+        if (s) breadSizePrices[s.key] = Number(v.price)
+      })
+      return
+    }
     // Sub-kategori size-pilihan (Basque): harga per size
     if (type5SizeConfig(p.subcategory)) {
       variants.forEach((v) => {
@@ -478,6 +629,57 @@ const toggleBoxImage = (size, url) => {
   else boxImages[size] = url
 }
 
+// Validasi config filling (hanya kalau sub-kategori cinrolls & filling diaktifkan).
+const validateFilling = () => {
+  if (!usesFillingSubcat.value || !filling.enabled) return null
+  if (filling.options.length === 0)
+    return t('admin.productForm.fillingOptionsRequired')
+  const names = filling.options.map((o) => (o.name ?? '').trim())
+  if (names.some((n) => !n)) return t('admin.productForm.fillingNameRequired')
+  const lower = names.map((n) => n.toLowerCase())
+  if (new Set(lower).size !== lower.length)
+    return t('admin.productForm.fillingNameDuplicate')
+  if (filling.defaultIndex < 0 || filling.defaultIndex >= filling.options.length)
+    return t('admin.productForm.fillingDefaultInvalid')
+  return null
+}
+
+// Validasi daftar harga kombinasi (filling + topping).
+const validateCombos = () => {
+  if (!usesFillingSubcat.value) return null
+  const rows = comboRows.list
+  if (rows.length === 0) return null // boleh kosong (tanpa penyesuaian harga)
+  const seen = new Set()
+  for (const r of rows) {
+    if (!r.filling || !r.topping) return t('admin.productForm.comboIncomplete')
+    if (!fillingNameOptions.value.includes(r.filling))
+      return t('admin.productForm.comboFillingUnknown')
+    if (!toppingNameOptions.value.includes(r.topping))
+      return t('admin.productForm.comboToppingUnknown')
+    if (Number(r.price) < 0) return t('admin.productForm.comboPriceInvalid')
+    const key = `${r.filling}||${r.topping}`
+    if (seen.has(key)) return t('admin.productForm.comboDuplicate')
+    seen.add(key)
+  }
+  return null
+}
+
+// Validasi config topping (nama saja, tanpa harga; batas jumlah pilihan user).
+const validateTopping = () => {
+  if (!usesToppingSubcat.value || !topping.enabled) return null
+  if (topping.options.length === 0)
+    return t('admin.productForm.toppingOptionsRequired')
+  const names = topping.options.map((o) => (o.name ?? '').trim())
+  if (names.some((n) => !n)) return t('admin.productForm.toppingNameRequired')
+  const lower = names.map((n) => n.toLowerCase())
+  if (new Set(lower).size !== lower.length)
+    return t('admin.productForm.toppingNameDuplicate')
+  const ceil = toppingMaxSelectCeiling.value
+  if (!(topping.maxSelect >= 1 && topping.maxSelect <= ceil))
+    return t('admin.productForm.toppingMaxInvalid')
+  return null
+}
+
 const validate = () => {
   if (!form.name.trim()) return t('admin.productForm.nameRequired')
   if (!form.description.trim()) return t('admin.productForm.descriptionRequired')
@@ -493,6 +695,13 @@ const validate = () => {
       return t('admin.productForm.sizeInvalid')
     if (!(Number(type1.price) > 0)) return t('admin.productForm.priceInvalid')
     return null
+  }
+
+  if (usesBread.value) {
+    // minimal satu ukuran diberi harga
+    if (buildBreadSizeVariants().length === 0)
+      return t('admin.productForm.sizePriceRequired')
+    return validateFilling() || validateTopping() || validateCombos()
   }
 
   if (usesNonCakeSize.value) {
@@ -512,7 +721,7 @@ const validate = () => {
         return t('admin.productForm.sizeInvalid')
     }
     if (!(Number(nonCakePrice.value) > 0)) return t('admin.productForm.priceInvalid')
-    return null
+    return validateFilling() || validateTopping() || validateCombos()
   }
 
   if (usesGoodiebag.value) {
@@ -535,6 +744,37 @@ const validate = () => {
   if (incomplete) return t('admin.productForm.pricesIncomplete')
 
   return null
+}
+
+// Tempelkan config filling & topping + harga kombinasi ke payload (cinrolls).
+// null = kosongkan (mis. saat filling/topping dinonaktifkan atau bukan cinrolls).
+const attachFillingTopping = (payload) => {
+  if (usesFillingSubcat.value) {
+    payload.filling =
+      filling.enabled && filling.options.length
+        ? {
+            options: filling.options.map((o) => ({ name: o.name.trim() })),
+            defaultIndex: Number(filling.defaultIndex) || 0,
+          }
+        : null
+    payload.comboPrices =
+      filling.enabled && comboRows.list.length
+        ? comboRows.list.map((r) => ({
+            filling: r.filling,
+            topping: r.topping,
+            price: Number(r.price) || 0,
+          }))
+        : null
+  }
+  if (usesToppingSubcat.value) {
+    payload.topping =
+      topping.enabled && topping.options.length
+        ? {
+            options: topping.options.map((o) => ({ name: o.name.trim() })),
+            maxSelect: Number(topping.maxSelect) || 1,
+          }
+        : null
+  }
 }
 
 const buildPayload = () => {
@@ -571,8 +811,21 @@ const buildPayload = () => {
     }
   }
 
+  if (usesBread.value) {
+    // Bread: user memilih ukuran bernama; kirim harga per ukuran (+ filling/topping cinrolls)
+    const payload = {
+      ...base,
+      type: 'TYPE5',
+      subcategory: form.subcategory,
+      flavor: form.flavor.trim(),
+      breadSizes: buildBreadSizeVariants(),
+    }
+    attachFillingTopping(payload)
+    return payload
+  }
+
   if (usesNonCake.value) {
-    return {
+    const payload = {
       ...base,
       type: 'TYPE5',
       // kategori tanpa sub-kategori tidak mengirim field subcategory
@@ -584,6 +837,8 @@ const buildPayload = () => {
       sizeB: nonCake.shape === 'SQUARE' ? Number(nonCake.sizeB) : undefined,
       price: Number(nonCakePrice.value),
     }
+    attachFillingTopping(payload)
+    return payload
   }
 
   if (usesCupcake.value) {
@@ -955,6 +1210,41 @@ const close = () => {
             </div>
           </template>
 
+          <!-- Bread: harga per ukuran bernama (dimensi tetap) -->
+          <template v-else-if="usesBread">
+            <div>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
+                {{ t('admin.productForm.breadSizePrices') }}
+              </label>
+              <p class="text-xs text-cocoa-400 mb-2">
+                {{ t('admin.productForm.breadSizeHint') }}
+              </p>
+              <div class="rounded-2xl border border-cream-300 p-4 space-y-4">
+                <div v-for="s in breadSizeList" :key="s.key">
+                  <p class="text-sm mb-1">
+                    <span class="font-semibold text-cocoa-900">{{ s.label }}</span>
+                    <span class="text-cocoa-400"> · {{ s.desc }}</span>
+                  </p>
+                  <PriceInput
+                    v-model="breadSizePrices[s.key]"
+                    class="w-full rounded-full border border-cream-300 px-4 py-2 text-sm focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.discount') }}</label>
+              <input
+                v-model.number="form.discount"
+                type="number"
+                min="0"
+                max="100"
+                :placeholder="t('admin.productForm.discountPlaceholder')"
+                class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
+              />
+            </div>
+          </template>
+
           <!-- Sub-kategori biasa: shape + size tunggal + harga -->
           <template v-else>
           <!-- SHAPE -->
@@ -1022,6 +1312,187 @@ const close = () => {
             </div>
           </div>
           </template>
+
+          <!-- ===== FILLING (khusus CINROLLS VAN DEPOK) ===== -->
+          <div v-if="usesFillingSubcat" class="border-t border-cream-200 pt-4">
+            <label class="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" v-model="filling.enabled" class="w-4 h-4 accent-brand-500" />
+              <span class="text-sm font-bold text-cocoa-900">{{ t('admin.productForm.fillingEnable') }}</span>
+            </label>
+            <p class="text-xs text-cocoa-400 mt-1">{{ t('admin.productForm.fillingHint') }}</p>
+
+            <div v-if="filling.enabled" class="mt-4 space-y-3">
+              <!-- daftar opsi filling -->
+              <div class="space-y-2">
+                <div
+                  v-for="(opt, i) in filling.options"
+                  :key="i"
+                  class="flex items-center gap-2"
+                >
+                  <label
+                    class="flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    :title="t('admin.productForm.fillingDefaultHint')"
+                  >
+                    <input type="radio" :value="i" v-model.number="filling.defaultIndex" class="accent-brand-500" />
+                    <span class="text-[11px] font-semibold text-cocoa-400">{{ t('admin.productForm.fillingDefault') }}</span>
+                  </label>
+                  <input
+                    v-model="opt.name"
+                    type="text"
+                    :placeholder="t('admin.productForm.fillingNamePlaceholder')"
+                    class="flex-1 min-w-0 rounded-full border border-cream-300 px-3.5 py-2 text-sm focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    @click="removeFillingOption(i)"
+                    class="shrink-0 p-2 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                    :aria-label="t('admin.productForm.fillingRemoveOption')"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </div>
+                <p v-if="filling.options.length === 0" class="text-xs text-cocoa-400 italic">
+                  {{ t('admin.productForm.fillingOptionsRequired') }}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                @click="addFillingOption"
+                :disabled="!canAddFillingOption"
+                class="inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+              >
+                <Plus class="w-4 h-4" stroke-width="2.4" />
+                {{ t('admin.productForm.fillingAddOption') }} ({{ filling.options.length }}/{{ MAX_FILLING_OPTIONS }})
+              </button>
+            </div>
+          </div>
+
+          <!-- ===== TOPPING (khusus CINROLLS VAN DEPOK) ===== -->
+          <div v-if="usesToppingSubcat" class="border-t border-cream-200 pt-4">
+            <label class="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" v-model="topping.enabled" class="w-4 h-4 accent-brand-500" />
+              <span class="text-sm font-bold text-cocoa-900">{{ t('admin.productForm.toppingEnable') }}</span>
+            </label>
+            <p class="text-xs text-cocoa-400 mt-1">{{ t('admin.productForm.toppingHint') }}</p>
+
+            <div v-if="topping.enabled" class="mt-4 space-y-3">
+              <!-- daftar opsi topping (nama saja, tanpa harga) -->
+              <div class="space-y-2">
+                <div
+                  v-for="(opt, i) in topping.options"
+                  :key="i"
+                  class="flex items-center gap-2"
+                >
+                  <input
+                    v-model="opt.name"
+                    type="text"
+                    :placeholder="t('admin.productForm.toppingNamePlaceholder')"
+                    class="flex-1 min-w-0 rounded-full border border-cream-300 px-3.5 py-2 text-sm focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    @click="removeToppingOption(i)"
+                    class="shrink-0 p-2 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                    :aria-label="t('admin.productForm.toppingRemoveOption')"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </div>
+                <p v-if="topping.options.length === 0" class="text-xs text-cocoa-400 italic">
+                  {{ t('admin.productForm.toppingOptionsRequired') }}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                @click="addToppingOption"
+                :disabled="!canAddToppingOption"
+                class="inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+              >
+                <Plus class="w-4 h-4" stroke-width="2.4" />
+                {{ t('admin.productForm.toppingAddOption') }} ({{ topping.options.length }}/{{ MAX_TOPPING_OPTIONS }})
+              </button>
+
+              <!-- batas jumlah pilihan user -->
+              <div class="grid grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.toppingMaxSelect') }}</label>
+                  <input
+                    v-model.number="topping.maxSelect"
+                    type="number"
+                    min="1"
+                    :max="toppingMaxSelectCeiling"
+                    class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
+                  />
+                  <p class="text-xs text-cocoa-400 mt-1">{{ t('admin.productForm.toppingMaxHint', { max: MAX_TOPPING_SELECT }) }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== HARGA KOMBINASI (filling + topping) ===== -->
+          <div
+            v-if="usesFillingSubcat && filling.enabled && topping.enabled"
+            class="border-t border-cream-200 pt-4"
+          >
+            <p class="text-sm font-bold text-cocoa-900">{{ t('admin.productForm.comboTitle') }}</p>
+            <p class="text-xs text-cocoa-400 mt-1">{{ t('admin.productForm.comboHint') }}</p>
+
+            <p v-if="!canBuildCombos" class="text-xs text-cocoa-400 italic mt-3">
+              {{ t('admin.productForm.comboNeedOptions') }}
+            </p>
+            <div v-else class="mt-3 space-y-2">
+              <div
+                v-for="(row, i) in comboRows.list"
+                :key="i"
+                class="flex items-center gap-2"
+              >
+                <div class="relative flex-1 min-w-0">
+                  <select
+                    v-model="row.filling"
+                    class="appearance-none w-full rounded-full border border-cream-300 bg-white px-3.5 py-2 text-sm focus:outline-none cursor-pointer"
+                  >
+                    <option value="" disabled>{{ t('admin.productForm.comboFillingPlaceholder') }}</option>
+                    <option v-for="n in fillingNameOptions" :key="n" :value="n">{{ n }}</option>
+                  </select>
+                  <ChevronDown class="w-4 h-4 text-cocoa-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                <span class="shrink-0 text-cocoa-400 text-xs font-bold">+</span>
+                <div class="relative flex-1 min-w-0">
+                  <select
+                    v-model="row.topping"
+                    class="appearance-none w-full rounded-full border border-cream-300 bg-white px-3.5 py-2 text-sm focus:outline-none cursor-pointer"
+                  >
+                    <option value="" disabled>{{ t('admin.productForm.comboToppingPlaceholder') }}</option>
+                    <option v-for="n in toppingNameOptions" :key="n" :value="n">{{ n }}</option>
+                  </select>
+                  <ChevronDown class="w-4 h-4 text-cocoa-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+                <PriceInput
+                  v-model="row.price"
+                  class="w-28 shrink-0 rounded-full border border-cream-300 px-3.5 py-2 text-sm focus:outline-none"
+                />
+                <button
+                  type="button"
+                  @click="removeComboRow(i)"
+                  class="shrink-0 p-2 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                  :aria-label="t('admin.productForm.comboRemoveRow')"
+                >
+                  <Trash2 class="w-4 h-4" />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                @click="addComboRow"
+                class="inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 hover:opacity-70 transition-opacity"
+              >
+                <Plus class="w-4 h-4" stroke-width="2.4" />
+                {{ t('admin.productForm.comboAddRow') }}
+              </button>
+            </div>
+          </div>
         </template>
 
         <!-- ===== TYPE6 goodiebag: harga tunggal per box + discount ===== -->

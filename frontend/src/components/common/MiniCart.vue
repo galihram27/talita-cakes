@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { ShoppingBag, X } from 'lucide-vue-next'
 import { useCartStore } from '@/stores/cart.store'
 import { formatRupiah } from '@/utils/formatCurrency'
+import { isBreadCategory, breadSizeForVariant } from '@/config/productOptions'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -14,17 +15,25 @@ const cartStore = useCartStore()
 const formatShape = (shape) =>
   shape ? shape.charAt(0).toUpperCase() + shape.slice(1).toLowerCase() : ''
 
-// Ringkasan opsi item jadi satu baris pendek (rasa · bentuk · ukuran).
+// Ringkasan opsi item jadi satu baris pendek (rasa · filling · topping · ukuran).
 const itemOptions = (item) => {
   const parts = []
   if (item.flavor) parts.push(item.flavor)
-  if (item.shape) parts.push(formatShape(item.shape))
-  if (item.size) {
-    parts.push(
-      item.productType === 'TYPE6'
-        ? t('product.boxOf', { count: item.size })
-        : item.size
-    )
+  if (item.filling) parts.push(item.filling)
+  if (item.topping) parts.push(item.topping)
+  // Bread: tampilkan nama ukuran (Personal/Family/Sharing), bukan shape/size mentah.
+  if (isBreadCategory(item.productCategory)) {
+    const s = breadSizeForVariant(item)
+    if (s) parts.push(s.label)
+  } else {
+    if (item.shape) parts.push(formatShape(item.shape))
+    if (item.size) {
+      parts.push(
+        item.productType === 'TYPE6'
+          ? t('product.boxOf', { count: item.size })
+          : item.size
+      )
+    }
   }
   return parts.join(' · ')
 }

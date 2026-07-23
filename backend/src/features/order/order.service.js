@@ -29,6 +29,8 @@ const buildOrderCalculation = async (userId, payload, schema = checkoutSchema) =
     productId: item.productId,
     variantId: item.variantId,
     flavor: item.flavor,
+    filling: item.filling,
+    topping: item.topping,
     customImage: item.customImage,
     textOnCake: item.textOnCake,
     notes: item.notes,

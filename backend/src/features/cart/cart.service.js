@@ -12,6 +12,10 @@ import {
    goodiebagFlavorsForSubcategory,
    goodiebagFlavorLimit,
    isType5SizeSubcategory,
+   usesFilling,
+   usesTopping,
+   MAX_TOPPING_SELECT,
+   isBreadCategory,
 } from "../../features/product/product.constant.js";
 
 const PRODUCT_TYPE = {
@@ -33,6 +37,97 @@ const applyDiscount = (basePrice, discountPercent) => {
    const discount = Number(discountPercent ?? 0);
    const finalPrice = price - (price * discount) / 100;
    return Math.round(finalPrice * 100) / 100; // 2 desimal
+};
+
+/**
+ * Resolve pilihan FILLING user (CINROLLS VAN DEPOK). Pilih SATU, tanpa harga
+ * (harga ada di kombinasi). Mengembalikan { fillingLabel }. Kalau user tidak
+ * memilih, otomatis memakai opsi default (mis. "Tanpa Filling").
+ */
+const resolveFilling = (product, payload) => {
+   const config = product.filling;
+   if (
+      !usesFilling(product.subcategory) ||
+      !config ||
+      !Array.isArray(config.options) ||
+      config.options.length === 0
+   ) {
+      return { fillingLabel: null };
+   }
+
+   const { options } = config;
+   const validNames = new Set(options.map((o) => o.name));
+   const defaultIndex =
+      Number.isInteger(config.defaultIndex) &&
+      config.defaultIndex >= 0 &&
+      config.defaultIndex < options.length
+         ? config.defaultIndex
+         : 0;
+
+   const selected =
+      typeof payload.filling === "string" && payload.filling.trim() !== ""
+         ? payload.filling
+         : options[defaultIndex].name;
+
+   if (!validNames.has(selected)) {
+      throw new AppError(`Filling tidak valid: ${selected}`, 422);
+   }
+   return { fillingLabel: selected };
+};
+
+/**
+ * Resolve pilihan TOPPING user (CINROLLS VAN DEPOK). WAJIB pilih min 1, boleh
+ * beberapa (maks sesuai config, plafon MAX_TOPPING_SELECT). TANPA harga sendiri.
+ * Mengembalikan { toppingLabel, toppingNames }.
+ */
+const resolveTopping = (product, payload) => {
+   const config = product.topping;
+   if (
+      !usesTopping(product.subcategory) ||
+      !config ||
+      !Array.isArray(config.options) ||
+      config.options.length === 0
+   ) {
+      return { toppingLabel: null, toppingNames: [] };
+   }
+
+   const { options } = config;
+   const validNames = new Set(options.map((o) => o.name));
+   const maxSelect = Math.min(config.maxSelect ?? 1, MAX_TOPPING_SELECT);
+
+   const selected = Array.isArray(payload.toppings)
+      ? [...new Set(payload.toppings.filter((n) => typeof n === "string"))]
+      : [];
+
+   if (selected.length === 0) {
+      throw new AppError("Wajib memilih minimal satu topping", 422);
+   }
+   const invalid = selected.filter((n) => !validNames.has(n));
+   if (invalid.length > 0) {
+      throw new AppError(`Topping tidak valid: ${invalid.join(", ")}`, 422);
+   }
+   if (selected.length > maxSelect) {
+      throw new AppError(`Maksimal memilih ${maxSelect} topping`, 422);
+   }
+
+   // urutkan sesuai config supaya label konsisten
+   const ordered = options
+      .map((o) => o.name)
+      .filter((n) => selected.includes(n));
+   return { toppingLabel: ordered.join(", "), toppingNames: ordered };
+};
+
+/**
+ * Total harga TAMBAHAN dari kombinasi: untuk filling terpilih + tiap topping
+ * terpilih, jumlahkan harga baris kombinasi yang cocok (yang tak terdaftar = 0).
+ */
+const comboPriceFor = (product, fillingName, toppingNames) => {
+   const combos = product.comboPrices;
+   if (!Array.isArray(combos) || combos.length === 0 || !fillingName) return 0;
+   return toppingNames.reduce((sum, top) => {
+      const row = combos.find((c) => c.filling === fillingName && c.topping === top);
+      return sum + (row ? Number(row.price) || 0 : 0);
+   }, 0);
 };
 
 /**
@@ -78,18 +173,33 @@ const resolveItemDetails = async (product, payload) => {
       };
    }
 
-   // TYPE 1, TYPE 2 & TYPE 5: variant fixed (1 row), tidak disimpan di cart item.
-   // TYPE5 (non-cake) tidak ada shape/size/flavor pilihan user — cukup note & qty.
+   // TYPE 1, TYPE 2 & TYPE 5: satu varian.
+   // Bread (TYPE5): user memilih UKURAN (variant) -> variantId wajib.
+   // TYPE5 lain: varian fixed (1 row).
    if (
       type === PRODUCT_TYPE.TYPE1 ||
       type === PRODUCT_TYPE.TYPE2 ||
       type === PRODUCT_TYPE.TYPE5
    ) {
-      const variant = await productRepository.findSingleVariantByProductId(
-         product.id
-      );
-      if (!variant) {
-         throw new AppError("Variant untuk produk ini belum tersedia", 422);
+      const isBread =
+         type === PRODUCT_TYPE.TYPE5 && isBreadCategory(product.category);
+
+      let variant;
+      if (isBread) {
+         if (!payload.variantId) {
+            throw new AppError("variantId (ukuran) wajib dipilih", 422);
+         }
+         variant = await productRepository.findVariantById(payload.variantId);
+         if (!variant || variant.productId !== product.id) {
+            throw new AppError("Ukuran tidak ditemukan untuk produk ini", 404);
+         }
+      } else {
+         variant = await productRepository.findSingleVariantByProductId(
+            product.id
+         );
+         if (!variant) {
+            throw new AppError("Variant untuk produk ini belum tersedia", 422);
+         }
       }
 
       // TYPE 2: user pilih flavor + dekorasi (custom image)
@@ -97,11 +207,30 @@ const resolveItemDetails = async (product, payload) => {
          validateCustomFlavor(payload.flavor, PRODUCT_TYPE.TYPE2);
       }
 
+      // TYPE 5 CINROLLS VAN DEPOK: user memilih 1 filling + beberapa topping.
+      // Harga = harga dasar + Σ harga kombinasi (filling × tiap topping).
+      const { fillingLabel } =
+         type === PRODUCT_TYPE.TYPE5
+            ? resolveFilling(product, payload)
+            : { fillingLabel: null };
+      const { toppingLabel, toppingNames } =
+         type === PRODUCT_TYPE.TYPE5
+            ? resolveTopping(product, payload)
+            : { toppingLabel: null, toppingNames: [] };
+      const comboAdd =
+         type === PRODUCT_TYPE.TYPE5
+            ? comboPriceFor(product, fillingLabel, toppingNames)
+            : 0;
+
       return {
-         variantId: null, // tidak disimpan di cart item, sesuai desain
+         // Bread menyimpan variantId agar keranjang menampilkan ukuran terpilih;
+         // TYPE1/2/5 lain tidak menyimpan variant (varian tunggal).
+         variantId: isBread ? variant.id : null,
          flavor: type === PRODUCT_TYPE.TYPE2 ? payload.flavor : null,
+         filling: fillingLabel,
+         topping: toppingLabel,
          customImage: type === PRODUCT_TYPE.TYPE2 ? payload.customImage : null,
-         price: applyDiscount(variant.price, discount),
+         price: applyDiscount(variant.price, discount) + comboAdd,
       };
    }
 
@@ -229,10 +358,8 @@ export const addItemToCart = async (userId, payload) => {
       }
    }
 
-   const { variantId, flavor, customImage, price } = await resolveItemDetails(
-      product,
-      payload
-   );
+   const { variantId, flavor, filling, topping, customImage, price } =
+      await resolveItemDetails(product, payload);
 
    const cart = await cartRepository.findOrCreateCart(userId);
 
@@ -241,6 +368,9 @@ export const addItemToCart = async (userId, payload) => {
       productId,
       variantId,
       flavor,
+      // filling/topping berbeda = baris terpisah (harga & pilihannya beda)
+      filling,
+      topping,
    });
 
    if (existingItem) {
@@ -255,6 +385,8 @@ export const addItemToCart = async (userId, payload) => {
       productId,
       variantId,
       flavor,
+      filling,
+      topping,
       customImage,
       textOnCake,
       notes,
@@ -293,7 +425,10 @@ export const getCartByUserId = async (userId) => {
          variantId: item.variantId,
          shape: item.variant?.shape ?? null,
          size: item.variant?.size ?? null,
+         sizeB: item.variant?.sizeB ?? null,
          flavor: item.flavor,
+         filling: item.filling,
+         topping: item.topping,
          customImage: item.customImage,
          textOnCake: item.textOnCake,
          notes: item.notes,

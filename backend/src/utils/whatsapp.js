@@ -44,6 +44,8 @@ export const buildWhatsappMessage = (order, { includeEmail = false } = {}) => {
     lines.push('');
     lines.push(`${idx + 1}. *${item.productName}*${variantInfo}`);
     if (item.flavor) lines.push(`   - Rasa: ${item.flavor}`);
+    if (item.filling) lines.push(`   - Filling: ${item.filling}`);
+    if (item.topping) lines.push(`   - Topping: ${item.topping}`);
     lines.push(
       `   - ${item.quantity} x ${formatRupiah(item.price)} = *${formatRupiah(itemSubtotal)}*`
     );

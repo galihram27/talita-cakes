@@ -73,6 +73,37 @@ export const type5SizeConfig = (subcategory) =>
 export const isType5SizeSubcategory = (subcategory) =>
   Object.prototype.hasOwnProperty.call(TYPE5_SIZE_SUBCATEGORIES, subcategory)
 
+// ===== BREAD (kategori) — ukuran-pilihan user dengan dimensi TETAP — mirror backend =====
+export const BREAD_CATEGORY = 'Bread'
+export const isBreadCategory = (category) => category === BREAD_CATEGORY
+
+export const BREAD_SIZES = [
+  { key: 'PERSONAL', label: 'Personal Size', shape: 'SQUARE', size: 22, sizeB: 10 },
+  { key: 'FAMILY', label: 'Family Size', shape: 'ROUND', size: 25, sizeB: null },
+  { key: 'SHARING', label: 'Sharing Size', shape: null, size: 9, sizeB: null },
+]
+
+export const breadSizeByKey = (key) => BREAD_SIZES.find((s) => s.key === key) ?? null
+
+// Cari ukuran bread yang cocok dengan variant (berdasar shape/size/sizeB).
+export const breadSizeForVariant = (v) =>
+  BREAD_SIZES.find(
+    (s) =>
+      s.shape === (v.shape ?? null) &&
+      s.size === (v.size ?? null) &&
+      (s.sizeB ?? null) === (v.sizeB ?? null),
+  ) ?? null
+
+// ===== FILLING & TOPPING (khusus CINROLLS VAN DEPOK) — mirror backend =====
+export const CINROLLS_VAN_DEPOK = 'CINROLLS VAN DEPOK'
+export const MAX_FILLING_OPTIONS = 6 // maksimal opsi filling yang bisa dibuat admin
+export const MAX_TOPPING_OPTIONS = 6 // maksimal opsi topping yang bisa dibuat admin
+export const MAX_TOPPING_SELECT = 3 // maksimal jumlah topping yang boleh dipilih user
+
+// Apakah sub-kategori ini memakai pilihan filling & topping?
+export const usesFilling = (subcategory) => subcategory === CINROLLS_VAN_DEPOK
+export const usesTopping = (subcategory) => subcategory === CINROLLS_VAN_DEPOK
+
 // mirror dari backend product.constant.js -> TYPE6_CATEGORY_CONFIG
 // Rasa cupcake memakai nama tersendiri (berakhiran "Cupcakes") supaya tidak
 // tertukar dengan rasa cake yang namanya mirip. Seluruh kategori cupcake

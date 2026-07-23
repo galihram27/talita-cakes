@@ -7,6 +7,10 @@ import {
   isGoodiebagCupcake,
   type5HasSubcategories,
   type5SizeConfig,
+  usesFilling,
+  usesTopping,
+  isBreadCategory,
+  breadSizeByKey,
 } from './product.constant.js';
 
 // Tipe/kategori yang menyimpan subcategory: TYPE5 (non-cake) & TYPE6 goodiebag.
@@ -59,7 +63,13 @@ export const createProduct = async (payload) => {
     ];
   } else if (type === 'TYPE5') {
     const sizeCfg = type5SizeConfig(payload.subcategory);
-    if (sizeCfg) {
+    if (isBreadCategory(category)) {
+      // Bread: satu varian per ukuran bernama (dimensi tetap dari BREAD_SIZES).
+      variantsData = payload.breadSizes.map((bs) => {
+        const s = breadSizeByKey(bs.key);
+        return { shape: s.shape, size: s.size, sizeB: s.sizeB, price: bs.price };
+      });
+    } else if (sizeCfg) {
       // Sub-kategori size-pilihan (Basque): satu varian per size, bentuk tetap.
       variantsData = payload.variants.map((v) => ({
         shape: sizeCfg.shape,
@@ -111,6 +121,13 @@ export const createProduct = async (payload) => {
     // subcategory: TYPE5 (kategori ber-subkategori) & TYPE6 goodiebag; lainnya null
     subcategory: storesSubcategory(type, category) ? subcategory ?? null : null,
     flavor: storesFixedFlavor(type, category) ? flavor : null,
+    // filling & topping + harga kombinasi hanya untuk CINROLLS VAN DEPOK; lainnya null
+    filling:
+      type === 'TYPE5' && usesFilling(subcategory) ? payload.filling ?? null : null,
+    topping:
+      type === 'TYPE5' && usesTopping(subcategory) ? payload.topping ?? null : null,
+    comboPrices:
+      type === 'TYPE5' && usesFilling(subcategory) ? payload.comboPrices ?? null : null,
     discount,
     variants: {
       create: variantsData,
@@ -192,7 +209,10 @@ export const updateProduct = async (id, body) => {
   // TYPE1/TYPE2/TYPE5: 1 variant · TYPE6: varian box diganti utuh ·
   // TYPE3/TYPE4: grid variant shape+size
   let updated;
-  if (type === 'TYPE5' && payload.variants !== undefined) {
+  if (type === 'TYPE5' && payload.breadSizes !== undefined) {
+    // Bread: varian per ukuran bernama diganti utuh
+    updated = await updateBreadSizes(id, existing, payload);
+  } else if (type === 'TYPE5' && payload.variants !== undefined) {
     // TYPE5 size-pilihan (Basque): varian per-size diganti utuh
     updated = await updateType5SizeType(id, existing, payload);
   } else if (type === 'TYPE1' || type === 'TYPE2' || type === 'TYPE5') {
@@ -219,6 +239,17 @@ const updateSingleVariantType = async (id, existing, payload) => {
   if (existing.type === 'TYPE5') {
     const category = productFields.category ?? existing.category;
     if (!type5HasSubcategories(category)) productFields.subcategory = null;
+    // filling & topping hanya untuk CINROLLS VAN DEPOK; kosongkan kalau
+    // subcategory efektifnya bukan itu (mis. admin memindah ke sub-kategori lain).
+    const subcategory =
+      productFields.subcategory !== undefined
+        ? productFields.subcategory
+        : existing.subcategory;
+    if (!usesFilling(subcategory)) {
+      productFields.filling = null;
+      productFields.comboPrices = null;
+    }
+    if (!usesTopping(subcategory)) productFields.topping = null;
   }
 
   const existingVariant = existing.variants[0];
@@ -252,6 +283,31 @@ const updateSingleVariantType = async (id, existing, payload) => {
     existingVariant.id,
     variantFields
   );
+};
+
+// Bread: varian per ukuran bernama (Personal/Family/Sharing) diganti seluruhnya.
+// filling/topping/comboPrices ikut lewat productFields (untuk Cinrolls).
+const updateBreadSizes = async (id, existing, payload) => {
+  const { breadSizes, variants, ...rest } = payload;
+  const productFields = withDerivedCover(pickDefined(rest));
+
+  // filling/topping/combo hanya untuk CINROLLS VAN DEPOK; kosongkan kalau bukan.
+  const subcategory =
+    productFields.subcategory !== undefined
+      ? productFields.subcategory
+      : existing.subcategory;
+  if (!usesFilling(subcategory)) {
+    productFields.filling = null;
+    productFields.comboPrices = null;
+  }
+  if (!usesTopping(subcategory)) productFields.topping = null;
+
+  const variantsData = (breadSizes || []).map((bs) => {
+    const s = breadSizeByKey(bs.key);
+    return { shape: s.shape, size: s.size, sizeB: s.sizeB, price: bs.price };
+  });
+
+  return productRepository.replaceProductVariants(id, productFields, variantsData);
 };
 
 // TYPE5 size-pilihan (Basque): varian per-size diganti seluruhnya.

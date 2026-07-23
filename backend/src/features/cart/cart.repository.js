@@ -59,13 +59,15 @@ export const findOrCreateCart = async (userId) => {
  * Catatan: kalau bisnisnya ingin textOnCake/notes berbeda = item terpisah,
  * tinggal tambahkan ke kondisi where di bawah.
  */
-export const findMatchingCartItem = async ({ cartId, productId, variantId, flavor }) => {
+export const findMatchingCartItem = async ({ cartId, productId, variantId, flavor, filling, topping }) => {
   return prisma.cartItem.findFirst({
     where: {
       cartId,
       productId,
       variantId: variantId ?? null,
       flavor: flavor ?? null,
+      filling: filling ?? null,
+      topping: topping ?? null,
     },
   });
 };
@@ -88,6 +90,8 @@ export const createCartItem = async (data) => {
       productId: data.productId,
       variantId: data.variantId ?? null,
       flavor: data.flavor ?? null,
+      filling: data.filling ?? null,
+      topping: data.topping ?? null,
       customImage: data.customImage ?? null,
       textOnCake: data.textOnCake ?? null,
       notes: data.notes ?? null,

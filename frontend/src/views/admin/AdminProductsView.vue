@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Search, Plus, Pencil, Copy, Trash2, ChevronDown } from 'lucide-vue-next'
-import { deleteProduct } from '@/services/product.service'
+import { Search, Plus, Pencil, Copy, Trash2, ChevronDown, Star } from 'lucide-vue-next'
+import { deleteProduct, updateProduct } from '@/services/product.service'
 import { cloudinaryThumb } from '@/utils/cloudinaryImage'
 import { useProductStore } from '@/stores/product.store'
 import { useAnalyticsStore } from '@/stores/analytics.store'
@@ -189,6 +189,30 @@ const priceLabel = (product) => {
   return { value, hasRange }
 }
 
+// ===== TOGGLE FEATURED (pajang di section "Our Cake Samples" di Home) =====
+// id produk yang flag-nya sedang diproses (disable tombolnya sementara)
+const togglingFeaturedId = ref(null)
+
+const toggleFeatured = async (product) => {
+  if (togglingFeaturedId.value) return
+  const next = !product.featured
+  togglingFeaturedId.value = product.id
+  try {
+    await updateProduct(product.id, { featured: next })
+    // update cache seketika supaya bintang langsung berubah tanpa nunggu refetch
+    const target = productStore.products.find((p) => p.id === product.id)
+    if (target) target.featured = next
+    productStore.refresh().catch(() => {})
+    toastMessage.value = next
+      ? t('admin.products.featureSuccess', { name: product.name })
+      : t('admin.products.unfeatureSuccess', { name: product.name })
+  } catch (err) {
+    alert(err.response?.data?.message || t('admin.products.featureFailed'))
+  } finally {
+    togglingFeaturedId.value = null
+  }
+}
+
 // konfirmasi hapus produk via pop-up (bukan confirm bawaan browser)
 const productToDelete = ref(null)
 
@@ -342,6 +366,13 @@ const confirmDelete = async () => {
                   >
                     -{{ Number(product.discount) }}%
                   </span>
+                  <span
+                    v-if="product.featured"
+                    class="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs font-bold"
+                  >
+                    <Star class="w-3 h-3" fill="currentColor" stroke-width="0" />
+                    {{ t('admin.products.featuredBadge') }}
+                  </span>
                 </div>
               </td>
               <td class="px-5 py-4 text-cocoa-400 whitespace-nowrap">
@@ -355,6 +386,21 @@ const confirmDelete = async () => {
               </td>
               <td class="px-5 py-4">
                 <div class="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    :disabled="togglingFeaturedId === product.id"
+                    @click="toggleFeatured(product)"
+                    class="p-2 rounded-lg border transition-colors disabled:opacity-50"
+                    :class="product.featured
+                      ? 'border-amber-300 text-amber-500 bg-amber-50 hover:bg-amber-100'
+                      : 'border-cream-300 text-cocoa-400 hover:text-amber-500 hover:bg-amber-50'"
+                    :aria-label="product.featured
+                      ? t('admin.products.unfeatureAria', { name: product.name })
+                      : t('admin.products.featureAria', { name: product.name })"
+                    :aria-pressed="!!product.featured"
+                  >
+                    <Star class="w-4 h-4" :fill="product.featured ? 'currentColor' : 'none'" />
+                  </button>
                   <button
                     type="button"
                     @click="openCopyModal(product)"
