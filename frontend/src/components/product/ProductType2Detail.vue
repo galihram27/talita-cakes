@@ -69,7 +69,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="grid md:grid-cols-[minmax(0,384px)_minmax(0,448px)] justify-center gap-6 md:gap-8 items-start">
+  <div class="grid md:grid-cols-[minmax(0,440px)_minmax(0,1fr)] gap-6 md:gap-8 lg:gap-10 items-start">
     <ProductImage :image="product.image" :images="product.images" :alt="product.name" />
 
     <div>

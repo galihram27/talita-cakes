@@ -79,7 +79,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="grid md:grid-cols-[minmax(0,384px)_minmax(0,448px)] justify-center gap-6 md:gap-8 items-start">
+  <div class="grid md:grid-cols-[minmax(0,440px)_minmax(0,1fr)] gap-6 md:gap-8 lg:gap-10 items-start">
     <ProductImage :image="product.image" :images="product.images" :alt="product.name" />
 
     <div>
@@ -101,7 +101,7 @@ const handleSubmit = async () => {
       <!-- Flavor fixed untuk TYPE5, read-only -->
       <div
         v-if="product.flavor"
-        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
+        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5 max-w-md"
       >
         <span class="flex flex-col gap-0.5 min-w-0">
           <span class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">
@@ -124,7 +124,7 @@ const handleSubmit = async () => {
       <!-- Size tetap (sub-kategori lain): read-only -->
       <div
         v-else-if="sizeText"
-        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
+        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5 max-w-md"
       >
         <span class="flex flex-col gap-0.5 min-w-0">
           <span class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">

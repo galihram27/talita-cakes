@@ -59,7 +59,7 @@ watch(
 </script>
 
 <template>
-  <div class="mb-6">
+  <div class="mb-6 max-w-md">
     <!-- Bentuk hanya ditampilkan kalau ada lebih dari satu pilihan. Produk
          bentuk-tunggal (mis. Basque, ROUND saja) langsung ke pilihan size. -->
     <template v-if="availableShapes.length > 1">

@@ -15,6 +15,8 @@ export const useCartStore = defineStore('cart', {
     // true setelah cart pernah diambil dari server (sukses / kosong) minimal
     // sekali. Dipakai view untuk memutuskan perlu tampilkan spinner atau tidak.
     loaded: false,
+    // isMiniOpen: panel mini keranjang di Navbar sedang tampil?
+    isMiniOpen: false,
   }),
 
   actions: {
@@ -44,11 +46,24 @@ export const useCartStore = defineStore('cart', {
       }
     },
 
+    openMini() {
+      this.isMiniOpen = true
+    },
+
+    closeMini() {
+      this.isMiniOpen = false
+    },
+
+    toggleMini() {
+      this.isMiniOpen = !this.isMiniOpen
+    },
+
     reset() {
       this.count = 0
       this.items = []
       this.subtotal = 0
       this.loaded = false
+      this.isMiniOpen = false
     },
   },
 })

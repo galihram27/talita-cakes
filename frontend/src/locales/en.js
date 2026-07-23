@@ -529,6 +529,13 @@ export default {
     confirmRemoveMessage: "Remove {name} from the cart?",
     thisItem: "this item",
   },
+  miniCart: {
+    title: "My Cart",
+    itemsCount: "{count} item",
+    empty: "Your cart is empty",
+    subtotal: "Subtotal",
+    viewCart: "View Cart",
+  },
   checkout: {
     backToCart: "← Back to cart",
     title: "Checkout",

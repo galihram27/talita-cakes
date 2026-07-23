@@ -85,7 +85,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="grid md:grid-cols-[minmax(0,384px)_minmax(0,448px)] justify-center gap-6 md:gap-8 items-start">
+  <div class="grid md:grid-cols-[minmax(0,440px)_minmax(0,1fr)] gap-6 md:gap-8 lg:gap-10 items-start">
     <!-- memilih bentuk menggeser galeri ke foto bentuk tsb (kalau ada fotonya) -->
     <ProductImage
       :image="product.image"

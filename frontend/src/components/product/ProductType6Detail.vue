@@ -159,7 +159,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="grid md:grid-cols-[minmax(0,384px)_minmax(0,448px)] justify-center gap-6 md:gap-8 items-start">
+  <div class="grid md:grid-cols-[minmax(0,440px)_minmax(0,1fr)] gap-6 md:gap-8 lg:gap-10 items-start">
     <!-- memilih isi box menggeser galeri ke foto box tsb (kalau ada fotonya) -->
     <ProductImage
       :image="product.image"
@@ -187,7 +187,7 @@ const handleSubmit = async () => {
       <!-- Rasa fixed (American Butter), read-only -->
       <div
         v-if="flavorIsFixed && product.flavor"
-        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
+        class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5 max-w-md"
       >
         <span class="flex flex-col gap-0.5 min-w-0">
           <span class="text-[11px] font-extrabold uppercase tracking-widest text-cocoa-400">

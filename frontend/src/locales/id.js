@@ -530,6 +530,13 @@ export default {
     confirmRemoveMessage: "Hapus {name} dari keranjang?",
     thisItem: "item ini",
   },
+  miniCart: {
+    title: "Keranjang Saya",
+    itemsCount: "{count} item",
+    empty: "Keranjang masih kosong",
+    subtotal: "Subtotal",
+    viewCart: "Lihat Keranjang",
+  },
   checkout: {
     backToCart: "← Kembali ke keranjang",
     title: "Checkout",

@@ -45,7 +45,7 @@ onMounted(fetchProduct)
 </script>
 
 <template>
-  <div class="tc-page max-w-[864px] mx-auto px-5 md:px-8 pt-10 pb-20">
+  <div class="tc-page max-w-[1280px] mx-auto px-5 md:px-10 lg:px-16 pt-10 pb-20">
     <RouterLink
       to="/menu"
       class="inline-flex items-center gap-1.5 text-cocoa-400 hover:text-brand-500 font-bold text-sm mb-6 transition-colors"

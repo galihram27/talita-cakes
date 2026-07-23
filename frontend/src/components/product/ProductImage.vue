@@ -87,7 +87,7 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
 </script>
 
 <template>
-  <div class="w-full max-w-sm mx-auto md:mx-0 md:sticky md:top-24">
+  <div class="w-full max-w-[440px] mx-auto md:mx-0 md:sticky md:top-24">
     <!-- FOTO UTAMA -->
     <div
       class="relative aspect-square rounded-[20px] border border-cream-300 overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_10px,#F0E3D6_10px_20px)]"

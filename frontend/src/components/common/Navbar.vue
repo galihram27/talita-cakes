@@ -1,17 +1,26 @@
 <script setup>
 import { ref, computed, watch } from "vue";
+import { useRoute } from "vue-router";
 import { ShoppingCart, ChevronDown, User, LogOut, Menu, X } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCartStore } from "@/stores/cart.store";
 import { setLocale } from "@/i18n";
+import MiniCart from "@/components/common/MiniCart.vue";
 import logo from "@/assets/images/logo.png";
 
 const { t, locale } = useI18n();
+const route = useRoute();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
 
 const switchLocale = (lang) => setLocale(lang);
+
+// Tutup mini keranjang otomatis setiap kali pindah halaman.
+watch(
+  () => route.fullPath,
+  () => cartStore.closeMini()
+);
 
 // Picu animasi "memantul" pada ikon + badge keranjang tiap kali jumlah item
 // bertambah (mis. setelah add to cart). Kelas dilepas lagi setelah animasi
@@ -140,24 +149,31 @@ const navLinks = computed(() => [
         </div>
 
         <!-- Cart -->
-        <RouterLink
-          to="/cart"
-          :title="t('nav.cart')"
-          class="relative inline-flex items-center justify-center w-[42px] h-[42px] rounded-full bg-white border border-[#EBDCCC] text-cocoa-900 hover:border-brand-500 hover:bg-brand-100 hover:text-brand-500 transition-colors"
-        >
-          <ShoppingCart
-            class="w-5 h-5"
-            :class="{ 'tc-cart-bump': isCartBumping }"
-            stroke-width="1.7"
-          />
-          <span
-            v-if="cartStore.count > 0"
-            class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-500 text-white text-[11px] font-extrabold flex items-center justify-center"
-            :class="{ 'tc-cart-bump': isCartBumping }"
+        <div class="relative">
+          <button
+            type="button"
+            :title="t('nav.cart')"
+            :aria-expanded="cartStore.isMiniOpen"
+            @click="cartStore.toggleMini()"
+            class="relative inline-flex items-center justify-center w-[42px] h-[42px] rounded-full bg-white border text-cocoa-900 hover:border-brand-500 hover:bg-brand-100 hover:text-brand-500 transition-colors"
+            :class="cartStore.isMiniOpen ? 'border-brand-500 bg-brand-100 text-brand-500' : 'border-[#EBDCCC]'"
           >
-            {{ cartStore.count }}
-          </span>
-        </RouterLink>
+            <ShoppingCart
+              class="w-5 h-5"
+              :class="{ 'tc-cart-bump': isCartBumping }"
+              stroke-width="1.7"
+            />
+            <span
+              v-if="cartStore.count > 0"
+              class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-500 text-white text-[11px] font-extrabold flex items-center justify-center"
+              :class="{ 'tc-cart-bump': isCartBumping }"
+            >
+              {{ cartStore.count }}
+            </span>
+          </button>
+
+          <MiniCart />
+        </div>
 
         <!-- GUEST -->
         <RouterLink
@@ -311,6 +327,15 @@ const navLinks = computed(() => [
     </Transition>
     </div>
   </header>
+
+  <!-- Backdrop penutup mini keranjang. Sibling <header> supaya berada di
+       bawah header (yang z-50) — header & panel tetap bisa diklik, sementara
+       klik di area halaman menutup mini keranjang. -->
+  <div
+    v-if="cartStore.isMiniOpen"
+    class="fixed inset-0 z-40"
+    @click="cartStore.closeMini()"
+  ></div>
 </template>
 
 <style scoped>
