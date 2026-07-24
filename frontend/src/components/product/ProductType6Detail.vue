@@ -210,7 +210,7 @@ const handleSubmit = async () => {
           inputmode="numeric"
           :min="minQty"
           :placeholder="String(minQty)"
-          class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[15px] font-bold text-cocoa-900 placeholder-[#B7A18E] focus:outline-none focus:border-brand-500"
+          class="w-32 rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[15px] font-bold text-cocoa-900 placeholder-[#B7A18E] focus:outline-none focus:border-brand-500"
         />
         <p class="mt-2 text-[13px] font-semibold text-cocoa-400">
           {{ t('product.goodiebagMin', { count: minQty }) }}

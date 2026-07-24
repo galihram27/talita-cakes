@@ -330,12 +330,12 @@ const confirmDelete = async () => {
             <tr
               class="bg-cocoa-900 text-left text-[11px] font-sans font-bold tracking-[0.12em] uppercase text-cream-50"
             >
-              <th class="px-5 py-3.5">{{ t('admin.products.photo') }}</th>
-              <th class="px-5 py-3.5">{{ t('admin.products.name') }}</th>
-              <th class="px-5 py-3.5">{{ t('admin.products.typeCol') }}</th>
-              <th class="px-5 py-3.5">{{ t('admin.products.category') }}</th>
-              <th class="px-5 py-3.5">{{ t('admin.products.price') }}</th>
-              <th class="px-5 py-3.5"><span class="sr-only">{{ t('admin.products.actions') }}</span></th>
+              <th class="px-4 py-3.5">{{ t('admin.products.photo') }}</th>
+              <th class="px-4 py-3.5">{{ t('admin.products.name') }}</th>
+              <th class="px-4 py-3.5">{{ t('admin.products.typeCol') }}</th>
+              <th class="px-4 py-3.5">{{ t('admin.products.category') }}</th>
+              <th class="px-4 py-3.5">{{ t('admin.products.price') }}</th>
+              <th class="px-4 py-3.5"><span class="sr-only">{{ t('admin.products.actions') }}</span></th>
             </tr>
           </thead>
           <tbody>
@@ -344,7 +344,7 @@ const confirmDelete = async () => {
               :key="product.id"
               class="border-t border-cream-200"
             >
-              <td class="px-5 py-4">
+              <td class="px-4 py-4">
                 <div
                   class="w-14 h-14 rounded-lg bg-cream-100 overflow-hidden flex items-center justify-center"
                 >
@@ -357,8 +357,8 @@ const confirmDelete = async () => {
                   />
                 </div>
               </td>
-              <td class="px-5 py-4">
-                <div class="flex items-center gap-2 min-w-[160px]">
+              <td class="px-4 py-4">
+                <div class="flex items-center gap-2 min-w-[140px]">
                   <span class="font-bold text-cocoa-900">{{ product.name }}</span>
                   <span
                     v-if="Number(product.discount) > 0"
@@ -375,22 +375,22 @@ const confirmDelete = async () => {
                   </span>
                 </div>
               </td>
-              <td class="px-5 py-4 text-cocoa-400 whitespace-nowrap">
+              <td class="px-4 py-4 text-cocoa-400 whitespace-nowrap">
                 {{ typeCell(product) }}
               </td>
-              <td class="px-5 py-4 text-cocoa-500 whitespace-nowrap">
+              <td class="px-4 py-4 text-cocoa-500 whitespace-nowrap">
                 {{ categoryCell(product) }}
               </td>
-              <td class="px-5 py-4 font-extrabold text-brand-600 whitespace-nowrap">
+              <td class="px-4 py-4 font-extrabold text-brand-600 whitespace-nowrap">
                 <span v-if="priceLabel(product).hasRange" class="text-cocoa-400 font-semibold">{{ t('admin.products.from') }}</span>{{ priceLabel(product).value }}
               </td>
-              <td class="px-5 py-4">
-                <div class="flex items-center justify-end gap-2">
+              <td class="px-4 py-4">
+                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
                   <button
                     type="button"
                     :disabled="togglingFeaturedId === product.id"
                     @click="toggleFeatured(product)"
-                    class="p-2 rounded-lg border transition-colors disabled:opacity-50"
+                    class="p-1.5 rounded-lg border transition-colors disabled:opacity-50"
                     :class="product.featured
                       ? 'border-amber-300 text-amber-500 bg-amber-50 hover:bg-amber-100'
                       : 'border-cream-300 text-cocoa-400 hover:text-amber-500 hover:bg-amber-50'"
@@ -404,7 +404,7 @@ const confirmDelete = async () => {
                   <button
                     type="button"
                     @click="openCopyModal(product)"
-                    class="p-2 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                    class="p-1.5 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
                     :aria-label="t('admin.products.copyAria', { name: product.name })"
                   >
                     <Copy class="w-4 h-4" />
@@ -412,7 +412,7 @@ const confirmDelete = async () => {
                   <button
                     type="button"
                     @click="openEditModal(product)"
-                    class="p-2 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                    class="p-1.5 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
                     :aria-label="t('admin.products.editAria', { name: product.name })"
                   >
                     <Pencil class="w-4 h-4" />
@@ -420,7 +420,7 @@ const confirmDelete = async () => {
                   <button
                     type="button"
                     :disabled="deletingId === product.id"
-                    class="p-2 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-50"
+                    class="p-1.5 rounded-lg border border-cream-300 text-cocoa-400 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-50"
                     :aria-label="t('admin.products.deleteAria', { name: product.name })"
                     @click="askDelete(product)"
                   >

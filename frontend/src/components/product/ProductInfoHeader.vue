@@ -5,8 +5,8 @@ import { FileText, ChevronDown } from 'lucide-vue-next'
 
 const { t, locale } = useI18n()
 
-// Deskripsi bisa disembunyikan/ditampilkan (default terbuka).
-const showDescription = ref(true)
+// Deskripsi bisa disembunyikan/ditampilkan (default tertutup — user klik untuk buka).
+const showDescription = ref(false)
 const toggleDescription = () => (showDescription.value = !showDescription.value)
 
 // label tipe memakai kamus yang sama dengan kartu tipe di HomeView

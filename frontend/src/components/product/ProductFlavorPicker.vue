@@ -52,7 +52,7 @@ const guideItems = computed(() =>
 </script>
 
 <template>
-  <div class="mb-6">
+  <div class="mb-6 max-w-md">
     <div class="flex items-center justify-between gap-2 mb-2.5">
       <p class="text-[15px] font-extrabold">
         {{ stepLabel || t('product.chooseFlavor') }} <span class="text-brand-500">*</span>

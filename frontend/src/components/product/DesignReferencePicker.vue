@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Upload, Images } from 'lucide-vue-next'
 import GalleryPickerModal from './GalleryPickerModal.vue'
 import { uploadImage } from '@/services/upload.service'
 
@@ -61,6 +62,7 @@ const remove = () => emit('update:modelValue', null)
         :disabled="isUploading"
         class="inline-flex items-center gap-2 rounded-xl border-2 border-dashed border-[#D9C4AE] bg-white px-5 py-3 text-sm font-bold text-[#6E5A4D] hover:border-brand-500 hover:text-brand-500 transition-colors disabled:opacity-50 disabled:cursor-wait"
       >
+        <Upload v-if="!isUploading" class="w-4 h-4" stroke-width="2" />
         {{ isUploading ? t('product.designRef.uploading') : t('product.designRef.upload') }}
       </button>
       <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="handleFileChange" />
@@ -70,6 +72,7 @@ const remove = () => emit('update:modelValue', null)
         @click="isGalleryModalOpen = true"
         class="inline-flex items-center gap-2 rounded-xl border-2 border-[#EBDCCC] bg-white px-5 py-3 text-sm font-bold text-[#6E5A4D] hover:border-brand-500 hover:text-brand-500 transition-colors"
       >
+        <Images class="w-4 h-4" stroke-width="2" />
         {{ t('product.designRef.chooseFromGallery') }}
       </button>
     </div>

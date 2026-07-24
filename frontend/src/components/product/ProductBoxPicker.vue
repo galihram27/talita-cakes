@@ -26,7 +26,7 @@ const sortedVariants = () => [...props.variants].sort((a, b) => a.size - b.size)
 </script>
 
 <template>
-  <div class="mb-6">
+  <div class="mb-6 max-w-md">
     <p class="text-[15px] font-extrabold mb-2.5">
       {{ t('product.chooseBox') }} <span class="text-brand-500">*</span>
     </p>

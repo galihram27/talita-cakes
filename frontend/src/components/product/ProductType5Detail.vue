@@ -156,7 +156,8 @@ const sizeText = computed(() => {
   const v = props.product.variants?.[0]
   if (isSizeSubcat.value || !v || v.size == null) return ''
   const shapeWord = v.shape === 'ROUND' ? t('product.round') : t('product.square')
-  return `${shapeWord} · ${variantSizeLabel(v.shape, v.size, v.sizeB)}`
+  // em space (U+2003) memberi jarak lebih lega antara bentuk & ukuran
+  return `${shapeWord} ${variantSizeLabel(v.shape, v.size, v.sizeB)}`
 })
 
 const handleSubmit = async () => {
