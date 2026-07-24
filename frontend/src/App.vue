@@ -24,11 +24,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="authStore.isReady">
-    <router-view />
-    <WhatsAppButton />
-  </div>
-  <div v-else class="flex items-center justify-center h-screen">
-    <!-- loading spinner sederhana, hindari flicker guest/login -->
-  </div>
+  <!-- Konten selalu dirender (juga saat prerender SSG) supaya HTML tidak kosong
+       dan bisa dibaca crawler. Pemulihan sesi berjalan di onMounted (client);
+       proteksi rute privat ditangani navigation guard di router. -->
+  <router-view />
+  <WhatsAppButton />
 </template>

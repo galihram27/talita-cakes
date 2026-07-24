@@ -1,9 +1,10 @@
-import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
-const routes = [
+// Daftar rute diekspor sebagai array supaya ViteSSG yang membuat instance
+// router-nya (createWebHistory di client, memory history saat prerender).
+export const routes = [
   {
     path: '/',
     component: DefaultLayout,
@@ -104,57 +105,57 @@ const routes = [
 // dan pengunjung terlempar ke hero section. Posisinya kita ingat sendiri.
 let menuScrollTop = 0
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes,
-  // Setiap pindah halaman, mulai dari atas. Saat back/forward (savedPosition),
-  // kembalikan ke posisi scroll sebelumnya.
-  scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) return savedPosition
+// Diteruskan ke ViteSSG sebagai opsi router. Saat prerender (SSR) tidak ada
+// window/requestAnimationFrame, jadi cukup kembalikan posisi atas.
+export function scrollBehavior(to, from, savedPosition) {
+  if (import.meta.env.SSR) return { top: 0 }
+  if (savedPosition) return savedPosition
 
-    // Kembali ke Menu dari detail produk: pulihkan posisi terakhir supaya
-    // pengunjung mendarat lagi di kartu yang tadi dibuka. Menunggu satu frame
-    // karena daftar produk perlu ter-render dulu — kalau halaman masih pendek,
-    // browser mengabaikan offset-nya dan tetap berhenti di atas.
-    if (to.name === 'menu' && from.name === 'product-detail' && menuScrollTop > 0) {
-      return new Promise((resolve) => {
-        requestAnimationFrame(() => resolve({ top: menuScrollTop }))
-      })
+  // Kembali ke Menu dari detail produk: pulihkan posisi terakhir supaya
+  // pengunjung mendarat lagi di kartu yang tadi dibuka.
+  if (to.name === 'menu' && from.name === 'product-detail' && menuScrollTop > 0) {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => resolve({ top: menuScrollTop }))
+    })
+  }
+
+  return { top: 0 }
+}
+
+// Dipasang di client (dipanggil dari main.js pada instance router bikinan ViteSSG).
+// Saat prerender guard di-skip: rute yang diprerender semuanya publik.
+export function registerGuards(router) {
+  // Rekam posisi scroll tepat sebelum meninggalkan halaman Menu.
+  router.beforeEach((to, from) => {
+    if (!import.meta.env.SSR && from.name === 'menu') menuScrollTop = window.scrollY
+  })
+
+  // Navigation guard: proteksi route berdasarkan meta requiresAuth / requiresAdmin
+  router.beforeEach(async (to) => {
+    // Saat prerender tidak ada sesi & tidak perlu proteksi (rute publik saja).
+    if (import.meta.env.SSR) return true
+
+    const auth = useAuthStore()
+
+    // Tunggu sesi selesai dipulihkan (penting saat user refresh halaman admin)
+    if (!auth.isReady) {
+      await auth.restoreSession()
     }
 
-    return { top: 0 }
-  },
-})
+    const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
+    const requiresAdmin = to.matched.some((r) => r.meta.requiresAdmin)
 
-// Rekam posisi scroll tepat sebelum meninggalkan halaman Menu.
-router.beforeEach((to, from) => {
-  if (from.name === 'menu') menuScrollTop = window.scrollY
-})
+    // Belum login -> arahkan ke login
+    if (requiresAuth && !auth.isAuthenticated) {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
 
-// Navigation guard: proteksi route berdasarkan meta requiresAuth / requiresAdmin
-router.beforeEach(async (to) => {
-  const auth = useAuthStore()
+    // Bukan admin tapi coba akses halaman admin -> lempar ke 404
+    // (pakai 404 supaya user tidak "tahu" bahwa halaman admin itu ada)
+    if (requiresAdmin && !auth.isAdmin) {
+      return { name: 'not-found' }
+    }
 
-  // Tunggu sesi selesai dipulihkan (penting saat user refresh halaman admin)
-  if (!auth.isReady) {
-    await auth.restoreSession()
-  }
-
-  const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
-  const requiresAdmin = to.matched.some((r) => r.meta.requiresAdmin)
-
-  // Belum login -> arahkan ke login
-  if (requiresAuth && !auth.isAuthenticated) {
-    return { name: 'login', query: { redirect: to.fullPath } }
-  }
-
-  // Bukan admin tapi coba akses halaman admin -> lempar ke 404 / home
-  // (pakai 404 supaya user tidak "tahu" bahwa halaman admin itu ada)
-  if (requiresAdmin && !auth.isAdmin) {
-    return { name: 'not-found' }
-  }
-
-  return true
-})
-
-export default router
+    return true
+  })
+}

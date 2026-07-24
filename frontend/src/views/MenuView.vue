@@ -59,6 +59,8 @@ const handleSortKeydown = (e) => {
 onMounted(() => {
   document.addEventListener('mousedown', handleClickOutside)
   document.addEventListener('keydown', handleSortKeydown)
+  // Terapkan default responsif di client (di layar kecil sidebar filter ditutup).
+  isFilterOpen.value = window.innerWidth >= 768
 })
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleClickOutside)
@@ -79,8 +81,10 @@ const TYPE_SECTIONS = computed(() =>
 const expandedType = ref(filterStore.expandedType)
 
 // Sidebar filter bisa disembunyikan supaya grid produk memakai lebar penuh.
-// Default tertutup di layar kecil karena di sana sidebar menumpuk di atas grid.
-const isFilterOpen = ref(window.innerWidth >= 768)
+// Default terbuka (cocok untuk desktop & konsisten dengan HTML prerender);
+// di layar kecil ditutup lewat onMounted. Tidak boleh baca window di setup
+// karena setup ini juga jalan saat prerender (Node, tanpa window).
+const isFilterOpen = ref(true)
 const toggleFilter = () => {
   isFilterOpen.value = !isFilterOpen.value
 }
