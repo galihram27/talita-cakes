@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onServerPrefetch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getProductById } from '@/services/product.service'
@@ -41,6 +41,8 @@ const fetchProduct = async () => {
   }
 }
 
+// Prerender (SSG, aktif setelah Fase 4): render detail produk ke HTML saat build.
+onServerPrefetch(fetchProduct)
 onMounted(fetchProduct)
 </script>
 

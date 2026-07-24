@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, onServerPrefetch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useProductStore } from '@/stores/product.store'
@@ -62,6 +62,18 @@ onMounted(() => {
   // Terapkan default responsif di client (di layar kecil sidebar filter ditutup).
   isFilterOpen.value = window.innerWidth >= 768
 })
+
+// Muat katalog. Prerender (SSG) mengisi produk saat build → masuk ke HTML;
+// di client tetap dipanggil supaya halaman mandiri (tidak bergantung App.vue).
+const loadProducts = async () => {
+  try {
+    await productStore.ensureLoaded()
+  } finally {
+    isLoading.value = false
+  }
+}
+onServerPrefetch(loadProducts)
+onMounted(loadProducts)
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleClickOutside)
   document.removeEventListener('keydown', handleSortKeydown)

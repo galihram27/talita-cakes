@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onServerPrefetch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useProductStore } from '@/stores/product.store'
@@ -23,13 +23,16 @@ const featuredProducts = computed(() => {
   return flagged.length > 0 ? flagged : products.value.slice(0, 4)
 })
 
-onMounted(async () => {
+const loadProducts = async () => {
   try {
     await productStore.ensureLoaded()
   } finally {
     isLoading.value = false
   }
-})
+}
+// Prerender (SSG): isi katalog saat build supaya produk favorit masuk ke HTML.
+onServerPrefetch(loadProducts)
+onMounted(loadProducts)
 
 // Kartu tipe produk (dari desain)
 const typeCards = computed(() => [
