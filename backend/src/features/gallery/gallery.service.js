@@ -7,12 +7,17 @@ import {
    deleteGallery,
 } from "./gallery.repository.js";
 import { cached, cacheDeleteByPrefix } from "../../lib/cache.js";
+import { triggerRebuild } from "../../utils/deployHook.js";
 
 // Prefix untuk semua key cache gallery (list per kombinasi search/page/limit
 // + detail per id). Sekali invalidasi membersihkan semuanya.
 const GALLERY_CACHE_PREFIX = "gallery:";
 
-const invalidateGalleryCache = () => cacheDeleteByPrefix(GALLERY_CACHE_PREFIX);
+// Bersihkan cache + picu rebuild situs statis (halaman /gallery diprerender).
+const invalidateGalleryCache = () => {
+   cacheDeleteByPrefix(GALLERY_CACHE_PREFIX);
+   triggerRebuild("gallery changed");
+};
 
 // =========================
 // GET ALL (user & admin)
