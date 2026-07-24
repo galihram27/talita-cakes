@@ -204,19 +204,8 @@ const whyChoose = computed(() =>
     <!-- FEATURED / FAVORITES -->
     <section class="relative">
       <div class="relative max-w-[1440px] mx-auto px-5 md:px-8 lg:px-12 py-16">
-      <div class="flex items-baseline justify-between gap-4 flex-wrap mb-7">
-        <div>
-          <h2 class="font-display text-[32px] mb-1">{{ t('home.favoritesTitle') }}</h2>
-          <p class="text-[#6E5A4D] text-[15.5px]">
-            {{ t('home.favoritesSubtitle') }}
-          </p>
-        </div>
-        <RouterLink
-          to="/menu"
-          class="text-brand-500 font-extrabold text-[14.5px] hover:opacity-65 transition-opacity"
-        >
-          {{ t('home.allMenu') }}
-        </RouterLink>
+      <div class="text-center mb-11">
+        <h2 class="font-display text-[38px] leading-tight">{{ t('home.favoritesTitle') }}</h2>
       </div>
 
       <div v-if="isLoading" class="text-center text-cocoa-400 py-12">
@@ -228,6 +217,16 @@ const whyChoose = computed(() =>
           :key="product.id"
           :product="product"
         />
+      </div>
+
+      <!-- Tombol semua menu: di bawah grid, gaya sama seperti "View Menu" hero. -->
+      <div class="flex justify-center mt-10">
+        <RouterLink
+          to="/menu"
+          class="inline-flex items-center bg-brand-500 text-white border border-brand-500 font-bold text-[16px] px-8 py-4 rounded-full hover:bg-brand-600 hover:border-brand-600 transition-colors"
+        >
+          {{ t('home.allMenu') }}
+        </RouterLink>
       </div>
       </div>
     </section>
