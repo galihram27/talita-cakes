@@ -87,6 +87,7 @@ const handleSubmit = async () => {
       <ProductFixedSpec :shape="variant?.shape" :size="variant?.size" />
 
       <ProductOrderForm
+        :unit-price="finalPrice"
         v-model:text-on-cake="textOnCake"
         v-model:notes="notes"
         v-model:quantity="quantity"

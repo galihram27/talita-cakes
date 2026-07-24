@@ -816,6 +816,7 @@ export default {
       goodiebagHint: "Harga yang ditampilkan ke pembeli adalah harga per box. Pembeli memesan minimal {count} box.",
       boxImageHint: "Pilih foto untuk isi box ini (opsional) — klik lagi untuk melepas.",
       shapeImageHint: "Foto untuk bentuk ini (opsional) — klik lagi untuk melepas.",
+      breadSizeImageHint: "Foto untuk ukuran ini (opsional) — klik lagi untuk melepas.",
       name: "Nama Produk",
       namePlaceholder: "Nama Produk...",
       description: "Deskripsi",

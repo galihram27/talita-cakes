@@ -81,6 +81,9 @@ const nonCakeSizePrices = reactive({})
 
 // TYPE5 Bread: harga per ukuran bernama -> { PERSONAL, FAMILY, SHARING }
 const breadSizePrices = reactive({})
+// Foto khusus per ukuran bread (dipilih dari form.images). Saat user memilih
+// ukuran di halaman produk, galeri bergeser ke foto ini. -> { PERSONAL, FAMILY }
+const breadSizeImages = reactive({})
 
 // TYPE5 CINROLLS VAN DEPOK: konfigurasi pilihan FILLING (pilih satu, tanpa harga).
 // Harga ada di comboRows (per kombinasi filling + topping).
@@ -286,6 +289,8 @@ const buildBreadSizeVariants = () =>
   BREAD_SIZES.filter((s) => Number(breadSizePrices[s.key]) > 0).map((s) => ({
     key: s.key,
     price: Number(breadSizePrices[s.key]),
+    // foto opsional; hanya dikirim kalau admin memilihnya
+    ...(breadSizeImages[s.key] ? { image: breadSizeImages[s.key] } : {}),
   }))
 
 // ===== FILLING & TOPPING (CINROLLS VAN DEPOK) =====
@@ -380,6 +385,7 @@ const resetForm = () => {
   Object.assign(nonCake, { shape: 'ROUND', size: null, sizeB: null })
   clearPriceMap(nonCakeSizePrices)
   clearPriceMap(breadSizePrices)
+  clearPriceMap(breadSizeImages)
   Object.assign(filling, { enabled: false, defaultIndex: 0, options: [] })
   Object.assign(topping, { enabled: false, maxSelect: 1, options: [] })
   comboRows.list = []
@@ -456,7 +462,10 @@ const resetForm = () => {
     if (isBreadCategory(p.category)) {
       variants.forEach((v) => {
         const s = breadSizeForVariant(v)
-        if (s) breadSizePrices[s.key] = Number(v.price)
+        if (s) {
+          breadSizePrices[s.key] = Number(v.price)
+          if (v.image) breadSizeImages[s.key] = v.image
+        }
       })
       return
     }
@@ -553,6 +562,9 @@ const removeImage = (index) => {
   Object.keys(shapeImages).forEach((shape) => {
     if (shapeImages[shape] === removed) shapeImages[shape] = ''
   })
+  Object.keys(breadSizeImages).forEach((key) => {
+    if (breadSizeImages[key] === removed) delete breadSizeImages[key]
+  })
 }
 
 // jadikan foto tertentu sebagai cover (pindahkan ke posisi pertama)
@@ -609,6 +621,11 @@ const buildVariantList = () => {
 // klik thumbnail untuk menetapkan foto bentuk; klik lagi untuk melepasnya
 const toggleShapeImage = (shape, url) => {
   shapeImages[shape] = shapeImages[shape] === url ? '' : url
+}
+
+// klik thumbnail untuk menetapkan foto ukuran bread; klik lagi untuk melepasnya
+const toggleBreadSizeImage = (key, url) => {
+  breadSizeImages[key] = breadSizeImages[key] === url ? '' : url
 }
 
 // TYPE6: hanya isi box yang diberi harga > 0 yang dijadikan varian.
@@ -1229,6 +1246,27 @@ const close = () => {
                     v-model="breadSizePrices[s.key]"
                     class="w-full rounded-full border border-cream-300 px-4 py-2 text-sm focus:outline-none"
                   />
+                  <!-- FOTO UNTUK UKURAN INI (opsional): galeri bergeser ke foto
+                       ini saat user memilih ukuran di halaman produk. -->
+                  <div v-if="form.images.length" class="mt-2">
+                    <label class="block text-xs font-semibold text-cocoa-500 mb-1.5">
+                      {{ t('admin.productForm.breadSizeImageHint') }}
+                    </label>
+                    <div class="flex gap-2 flex-wrap">
+                      <button
+                        v-for="(img, i) in form.images"
+                        :key="`bread-${s.key}-img-${i}`"
+                        type="button"
+                        @click="toggleBreadSizeImage(s.key, img)"
+                        class="w-11 aspect-square rounded-lg border-2 overflow-hidden transition-colors bg-cream-100"
+                        :class="breadSizeImages[s.key] === img
+                          ? 'border-brand-500'
+                          : 'border-transparent hover:border-brand-400'"
+                      >
+                        <img :src="img" alt="" class="w-full h-full object-cover" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

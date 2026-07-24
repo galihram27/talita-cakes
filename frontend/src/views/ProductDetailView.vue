@@ -58,7 +58,7 @@ const canonical = computed(() => absUrl(route.path))
 useSeoMeta({
   title: () => metaTitle.value,
   description: () => metaDesc.value,
-  ogTitle: () => `${metaTitle.value} · ${SITE_NAME}`,
+  ogTitle: () => `${metaTitle.value} - ${SITE_NAME}`,
   ogDescription: () => metaDesc.value,
   ogType: 'product',
   ogImage: () => metaImage.value || undefined,

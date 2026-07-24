@@ -16,7 +16,7 @@ const galleryStore = useGalleryStore()
 // Default SEO untuk semua halaman. Tiap view menimpa title/description/og
 // spesifiknya sendiri lewat useSeoMeta. titleTemplate menyisipkan nama situs.
 useHead({
-  titleTemplate: (title) => (title ? `${title} · ${SITE_NAME}` : SITE_NAME),
+  titleTemplate: (title) => (title ? `${title} - ${SITE_NAME}` : SITE_NAME),
   htmlAttrs: { lang: 'id' },
   meta: [
     { name: 'description', content: DEFAULT_DESCRIPTION },

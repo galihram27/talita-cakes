@@ -93,7 +93,10 @@ const variantSchema = z
 const refineVariantImages = (data, ctx) => {
   if (!Array.isArray(data.images)) return;
 
-  const orphan = (data.variants ?? []).find(
+  // Varian bershape (TYPE2/TYPE3) & ukuran bread sama-sama boleh punya foto
+  // khusus; keduanya harus menunjuk foto yang benar-benar ada di galeri.
+  const withImage = [...(data.variants ?? []), ...(data.breadSizes ?? [])];
+  const orphan = withImage.find(
     (v) => v.image && !data.images.includes(v.image)
   );
   if (orphan) {
@@ -259,6 +262,8 @@ const type5SizeVariantSchema = z.object({
 const breadSizeSchema = z.object({
   key: z.enum(BREAD_SIZE_KEYS, { message: 'Ukuran bread tidak valid' }),
   price: z.coerce.number().positive('Price harus lebih dari 0'),
+  // foto khusus ukuran ini (dipilih dari Product.images) — opsional.
+  image: z.string().trim().min(1).optional(),
 });
 
 // ===== FILLING (khusus CINROLLS VAN DEPOK) — pilih SATU, tanpa harga =====

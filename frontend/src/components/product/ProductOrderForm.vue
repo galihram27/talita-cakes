@@ -1,9 +1,11 @@
 <script setup>
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatRupiah } from '@/utils/formatCurrency'
 
 const { t } = useI18n()
 
-defineProps({
+const props = defineProps({
   textOnCake: { type: String, default: '' },
   notes: { type: String, default: '' },
   quantity: { type: Number, default: 1 },
@@ -15,9 +17,19 @@ defineProps({
   isSubmitting: { type: Boolean, default: false },
   submitError: { type: String, default: '' },
   submitSuccess: { type: Boolean, default: false },
+  // harga satuan (setelah diskon). Bila ada, total = unitPrice × quantity
+  // ditampilkan di tombol "Add to cart". null = belum ada (mis. size belum dipilih).
+  unitPrice: { type: Number, default: null },
 })
 
 const emit = defineEmits(['update:textOnCake', 'update:notes', 'update:quantity', 'submit'])
+
+// Total untuk label tombol. Kosong bila harga belum tersedia.
+const totalLabel = computed(() =>
+  props.unitPrice != null && props.unitPrice > 0
+    ? formatRupiah(props.unitPrice * (props.quantity || 1))
+    : ''
+)
 
 const increaseQuantity = (current) => emit('update:quantity', current + 1)
 const decreaseQuantity = (current) => {
@@ -123,7 +135,16 @@ const decreaseQuantity = (current) => {
         @click="$emit('submit')"
         class="flex-1 inline-flex items-center justify-center gap-3 bg-gradient-to-br from-[#C6423F] to-[#A82E30] text-white rounded-full px-5 py-[15px] font-extrabold text-[15.5px] shadow-[0_12px_26px_-12px_rgba(169,46,48,0.65)] hover:-translate-y-px hover:shadow-[0_16px_32px_-12px_rgba(169,46,48,0.78)] active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {{ isSubmitting ? t('product.orderForm.adding') : t('product.orderForm.addToCart') }}
+        <template v-if="isSubmitting">{{ t('product.orderForm.adding') }}</template>
+        <template v-else>
+          <span>{{ t('product.orderForm.addToCart') }}</span>
+          <span
+            v-if="totalLabel"
+            class="pl-3 ml-1 border-l border-white/35 font-extrabold"
+          >
+            {{ totalLabel }}
+          </span>
+        </template>
       </button>
     </div>
   </div>

@@ -113,6 +113,7 @@ const handleSubmit = async () => {
       />
 
       <ProductOrderForm
+        :unit-price="finalPrice"
         v-model:text-on-cake="textOnCake"
         v-model:notes="notes"
         v-model:quantity="quantity"

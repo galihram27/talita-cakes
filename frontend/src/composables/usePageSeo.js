@@ -8,7 +8,7 @@ export function usePageSeo({ title, description, path } = {}) {
   useSeoMeta({
     title,
     description: desc,
-    ogTitle: title ? `${title} · ${SITE_NAME}` : SITE_NAME,
+    ogTitle: title ? `${title} - ${SITE_NAME}` : SITE_NAME,
     ogDescription: desc,
   })
   const href = path ? absUrl(path) : null

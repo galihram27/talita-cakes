@@ -156,8 +156,8 @@ const sizeText = computed(() => {
   const v = props.product.variants?.[0]
   if (isSizeSubcat.value || !v || v.size == null) return ''
   const shapeWord = v.shape === 'ROUND' ? t('product.round') : t('product.square')
-  // em space (U+2003) memberi jarak lebih lega antara bentuk & ukuran
-  return `${shapeWord} ${variantSizeLabel(v.shape, v.size, v.sizeB)}`
+  // pemisah titik-tengah antara bentuk & ukuran (jarak rapi)
+  return `${shapeWord} ${variantSizeLabel(v.shape, v.size, v.sizeB)}`
 })
 
 const handleSubmit = async () => {
@@ -201,7 +201,12 @@ const handleSubmit = async () => {
 
 <template>
   <div class="grid md:grid-cols-[minmax(0,440px)_minmax(0,1fr)] gap-6 md:gap-8 lg:gap-10 items-start">
-    <ProductImage :image="product.image" :images="product.images" :alt="product.name" />
+    <ProductImage
+      :image="product.image"
+      :images="product.images"
+      :alt="product.name"
+      :active-url="activeVariant?.image || ''"
+    />
 
     <div>
       <ProductInfoHeader
@@ -363,6 +368,7 @@ const handleSubmit = async () => {
 
       <!-- TYPE5: user hanya isi note & jumlah item -->
       <ProductOrderForm
+        :unit-price="finalPrice"
         v-model:notes="notes"
         v-model:quantity="quantity"
         :show-text-on-cake="false"

@@ -119,6 +119,7 @@ const handleSubmit = async () => {
       <DesignReferencePicker v-model="designImage" />
 
       <ProductOrderForm
+        :unit-price="finalPrice"
         v-model:text-on-cake="textOnCake"
         v-model:notes="notes"
         v-model:quantity="quantity"

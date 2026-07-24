@@ -73,7 +73,13 @@ export const createProduct = async (payload) => {
       // Bread: satu varian per ukuran bernama (dimensi tetap dari BREAD_SIZES).
       variantsData = payload.breadSizes.map((bs) => {
         const s = breadSizeByKey(bs.key);
-        return { shape: s.shape, size: s.size, sizeB: s.sizeB, price: bs.price };
+        return {
+          shape: s.shape,
+          size: s.size,
+          sizeB: s.sizeB,
+          price: bs.price,
+          image: bs.image ?? null,
+        };
       });
     } else if (sizeCfg) {
       // Sub-kategori size-pilihan (Basque): satu varian per size, bentuk tetap.
@@ -310,7 +316,13 @@ const updateBreadSizes = async (id, existing, payload) => {
 
   const variantsData = (breadSizes || []).map((bs) => {
     const s = breadSizeByKey(bs.key);
-    return { shape: s.shape, size: s.size, sizeB: s.sizeB, price: bs.price };
+    return {
+      shape: s.shape,
+      size: s.size,
+      sizeB: s.sizeB,
+      price: bs.price,
+      image: bs.image ?? null,
+    };
   });
 
   return productRepository.replaceProductVariants(id, productFields, variantsData);

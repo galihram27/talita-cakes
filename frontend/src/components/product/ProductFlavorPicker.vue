@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Check } from 'lucide-vue-next'
 import { FLAVOR_DESCRIPTIONS } from '@/config/constants'
 
 // Grid pilihan flavor (TYPE2 & TYPE4) — gaya tombol radio dari desain.
@@ -84,12 +85,14 @@ const guideItems = computed(() =>
           : 'border-[#EBDCCC] bg-white hover:border-brand-500 hover:bg-[#F4D6D1]'"
       >
         <span
-          class="w-4 h-4 border-2 shrink-0"
+          class="w-4 h-4 border-2 shrink-0 flex items-center justify-center"
           :class="[
             multiple ? 'rounded-[5px]' : 'rounded-full',
             isSelected(f) ? 'border-brand-500 bg-brand-500' : 'border-[#D9C4AE] bg-white',
           ]"
-        />
+        >
+          <Check v-if="isSelected(f)" class="w-3 h-3 text-white" stroke-width="3.5" />
+        </span>
         {{ f }}
       </button>
     </div>

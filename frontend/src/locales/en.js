@@ -815,6 +815,7 @@ export default {
       goodiebagHint: "The price shown to customers is per box. Customers order a minimum of {count} boxes.",
       boxImageHint: "Pick a photo for this box size (optional) — click again to unset.",
       shapeImageHint: "Photo for this shape (optional) — click again to unset.",
+      breadSizeImageHint: "Photo for this size (optional) — click again to unset.",
       name: "Product Name",
       namePlaceholder: "Product Name...",
       description: "Description",
