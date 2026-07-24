@@ -2,8 +2,16 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronDown } from 'lucide-vue-next'
+import { usePageSeo } from '@/composables/usePageSeo'
 
 const { t, tm, rt } = useI18n()
+
+usePageSeo({
+  title: 'FAQ',
+  description:
+    "Pertanyaan umum seputar pemesanan, pre-order, pengiriman, dan pembayaran di Talita's Cake & Cupcakes.",
+  path: '/faq',
+})
 
 // index item yang sedang terbuka (-1 = semua tertutup)
 const openIndex = ref(-1)

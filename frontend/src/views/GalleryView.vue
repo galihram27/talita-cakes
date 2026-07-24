@@ -1,10 +1,18 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, onServerPrefetch, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useGalleryStore } from '@/stores/gallery.store'
+import { usePageSeo } from '@/composables/usePageSeo'
 
 const { t } = useI18n()
+
+usePageSeo({
+  title: 'Galeri',
+  description:
+    "Galeri kue custom, cupcakes, brownies, dan hampers buatan Talita's Cake & Cupcakes Depok.",
+  path: '/gallery',
+})
 
 // ===== STATE: LIST =====
 // List (termasuk posisi search & pagination) disimpan di store supaya balik
@@ -46,7 +54,7 @@ const handleSearchInput = () => {
   }, 400)
 }
 
-onMounted(async () => {
+const loadGallery = async () => {
   try {
     await galleryStore.ensureLoaded()
   } catch (err) {
@@ -54,7 +62,10 @@ onMounted(async () => {
   } finally {
     isLoading.value = false
   }
-})
+}
+// Prerender (SSG): isi gallery saat build supaya masuk ke HTML.
+onServerPrefetch(loadGallery)
+onMounted(loadGallery)
 
 // ===== STATE: DETAIL MODAL =====
 const selectedItem = ref(null)

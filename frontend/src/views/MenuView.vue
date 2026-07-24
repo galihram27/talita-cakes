@@ -1,13 +1,21 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, onServerPrefetch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useProductStore } from '@/stores/product.store'
 import { useMenuFilterStore } from '@/stores/menuFilter.store'
 import { PRODUCT_CATEGORIES } from '@/config/productOptions'
+import { usePageSeo } from '@/composables/usePageSeo'
 import ProductCard from '@/components/product/ProductCard.vue'
 
 const { t } = useI18n()
+
+usePageSeo({
+  title: 'Menu Kue & Cupcakes',
+  description:
+    "Jelajahi katalog Talita's Cake — custom cake, cupcakes, brownies, roti & hampers. Pilih ukuran, rasa, filling & topping, lalu pesan via WhatsApp.",
+  path: '/menu',
+})
 
 // ===== STATE =====
 const productStore = useProductStore()
@@ -59,7 +67,21 @@ const handleSortKeydown = (e) => {
 onMounted(() => {
   document.addEventListener('mousedown', handleClickOutside)
   document.addEventListener('keydown', handleSortKeydown)
+  // Terapkan default responsif di client (di layar kecil sidebar filter ditutup).
+  isFilterOpen.value = window.innerWidth >= 768
 })
+
+// Muat katalog. Prerender (SSG) mengisi produk saat build → masuk ke HTML;
+// di client tetap dipanggil supaya halaman mandiri (tidak bergantung App.vue).
+const loadProducts = async () => {
+  try {
+    await productStore.ensureLoaded()
+  } finally {
+    isLoading.value = false
+  }
+}
+onServerPrefetch(loadProducts)
+onMounted(loadProducts)
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleClickOutside)
   document.removeEventListener('keydown', handleSortKeydown)
@@ -79,8 +101,10 @@ const TYPE_SECTIONS = computed(() =>
 const expandedType = ref(filterStore.expandedType)
 
 // Sidebar filter bisa disembunyikan supaya grid produk memakai lebar penuh.
-// Default tertutup di layar kecil karena di sana sidebar menumpuk di atas grid.
-const isFilterOpen = ref(window.innerWidth >= 768)
+// Default terbuka (cocok untuk desktop & konsisten dengan HTML prerender);
+// di layar kecil ditutup lewat onMounted. Tidak boleh baca window di setup
+// karena setup ini juga jalan saat prerender (Node, tanpa window).
+const isFilterOpen = ref(true)
 const toggleFilter = () => {
   isFilterOpen.value = !isFilterOpen.value
 }

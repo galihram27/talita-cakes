@@ -1,7 +1,14 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
+import { usePageSeo } from '@/composables/usePageSeo'
 
 const { t, tm, rt } = useI18n()
+
+usePageSeo({
+  title: 'Syarat & Ketentuan',
+  description: "Syarat & ketentuan pemesanan di Talita's Cake & Cupcakes.",
+  path: '/terms',
+})
 </script>
 
 <template>

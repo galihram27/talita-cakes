@@ -1,14 +1,31 @@
-import { createApp } from 'vue'
+import { ViteSSG } from 'vite-ssg'
 import { createPinia } from 'pinia'
 import App from './App.vue'
-import router from './router'
+import { routes, scrollBehavior, registerGuards } from './router'
+import { setRouterInstance } from './router/holder'
 import i18n from './i18n'
 import './assets/main.css'
 
-const app = createApp(App)
+// ViteSSG membuat router (client: history API, prerender: memory) dari `routes`,
+// merender tiap rute publik jadi HTML statis saat build, lalu meng-hydrate di
+// client sehingga tetap terasa seperti SPA.
+export const createApp = ViteSSG(
+  App,
+  { routes, scrollBehavior },
+  ({ app, router, initialState }) => {
+    const pinia = createPinia()
+    app.use(pinia)
+    app.use(i18n)
 
-app.use(createPinia())
-app.use(router)
-app.use(i18n)
+    registerGuards(router)
+    setRouterInstance(router)
 
-app.mount('#app')
+    // Hidrasi state Pinia: di server, snapshot state disematkan ke HTML;
+    // di client, state dipulihkan dari snapshot itu supaya tidak refetch/flash.
+    if (import.meta.env.SSR) {
+      initialState.pinia = pinia.state.value
+    } else {
+      pinia.state.value = initialState.pinia || {}
+    }
+  }
+)

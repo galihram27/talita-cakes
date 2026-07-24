@@ -2,6 +2,7 @@ import { AppError } from '../../utils/appError.js';
 import * as productRepository from './product.repository.js';
 import { updateProductSchemaMap } from './product.validation.js';
 import { cached, cacheDeleteByPrefix } from '../../lib/cache.js';
+import { triggerRebuild } from '../../utils/deployHook.js';
 import {
   isFixedFlavorCupcake,
   isGoodiebagCupcake,
@@ -32,7 +33,12 @@ const PRODUCT_CACHE_PREFIX = 'product:';
 
 // Dipanggil setiap kali data produk berubah (create/update/delete) supaya
 // pembaca berikutnya mendapat data terbaru, bukan versi cache lama.
-const invalidateProductCache = () => cacheDeleteByPrefix(PRODUCT_CACHE_PREFIX);
+// Sekaligus memicu rebuild situs statis (SSG) — agar halaman produk yang
+// diprerender ikut diperbarui untuk SEO (debounced; mati kalau tak dikonfigurasi).
+const invalidateProductCache = () => {
+  cacheDeleteByPrefix(PRODUCT_CACHE_PREFIX);
+  triggerRebuild('product changed');
+};
 
 // helper: buang key yang value-nya undefined (field yang tidak dikirim admin)
 const pickDefined = (obj) =>

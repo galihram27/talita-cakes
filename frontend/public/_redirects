@@ -1,0 +1,7 @@
+# SPA fallback untuk host statis (Netlify / Cloudflare Pages / dsb).
+# Halaman yang SUDAH diprerender (/, /menu, /product/<id>, /gallery, /about,
+# /faq, /terms, /privacy) tetap dilayani dari file HTML statisnya karena host
+# mengecek file yang cocok lebih dulu. Rute yang TIDAK diprerender (/cart,
+# /checkout, /profile, /admin/*, halaman auth, atau produk baru sebelum rebuild)
+# tidak punya file → di-fallback ke index.html lalu dirender client-side (SPA).
+/*    /index.html   200
