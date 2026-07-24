@@ -949,6 +949,13 @@ export default {
       deleteFailed: "Gagal menghapus gambar",
       addSuccess: "Gambar berhasil ditambahkan",
       editSuccess: "Gambar berhasil diperbarui",
+      heroTitle: "Foto Hero Homepage",
+      heroDesc: "Foto kue utama yang tampil di bagian hero halaman utama. Gunakan PNG dengan latar transparan untuk hasil terbaik.",
+      heroNoImage: "Foto bawaan",
+      heroChange: "Ganti foto",
+      heroUploading: "Mengunggah...",
+      heroUpdateSuccess: "Foto hero berhasil diperbarui",
+      heroUpdateFailed: "Gagal memperbarui foto hero. Silakan coba lagi.",
     },
     analytics: {
       title: "Analitik",

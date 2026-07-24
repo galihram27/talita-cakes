@@ -948,6 +948,13 @@ export default {
       deleteFailed: "Failed to delete image",
       addSuccess: "Image added successfully",
       editSuccess: "Image updated successfully",
+      heroTitle: "Homepage Hero Photo",
+      heroDesc: "The main cake photo shown in the hero section of the homepage. Use a PNG with a transparent background for the best result.",
+      heroNoImage: "Default photo",
+      heroChange: "Change photo",
+      heroUploading: "Uploading...",
+      heroUpdateSuccess: "Hero photo updated successfully",
+      heroUpdateFailed: "Failed to update hero photo. Please try again.",
     },
     analytics: {
       title: "Analytics",

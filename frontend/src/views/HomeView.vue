@@ -7,6 +7,7 @@ import { useProductStore } from '@/stores/product.store'
 import { DEFAULT_DESCRIPTION, absUrl, bakeryJsonLd } from '@/config/seo'
 import ProductCard from '@/components/product/ProductCard.vue'
 import GoogleReviews from '@/components/common/GoogleReviews.vue'
+import { getSetting } from '@/services/settings.service'
 import heroCake from '@/assets/images/hero-cake.png'
 
 const { t } = useI18n()
@@ -45,9 +46,24 @@ const loadProducts = async () => {
     isLoading.value = false
   }
 }
-// Prerender (SSG): isi katalog saat build supaya produk favorit masuk ke HTML.
+
+// Foto hero bisa diganti admin (SiteSetting "hero-image", URL Cloudinary).
+// Bila belum diset / gagal ambil, pakai foto bawaan `heroCake`.
+const heroImageUrl = ref('')
+const heroSrc = computed(() => heroImageUrl.value || heroCake)
+const loadHero = async () => {
+  try {
+    heroImageUrl.value = (await getSetting('hero-image')) || ''
+  } catch {
+    // diamkan — fallback ke foto bawaan
+  }
+}
+
+// Prerender (SSG): isi katalog + foto hero saat build supaya masuk ke HTML.
 onServerPrefetch(loadProducts)
+onServerPrefetch(loadHero)
 onMounted(loadProducts)
+onMounted(loadHero)
 
 // Kartu tipe produk (dari desain)
 const typeCards = computed(() => [
@@ -150,7 +166,7 @@ const whyChoose = computed(() =>
             class="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[75%] aspect-square rounded-full bg-brand-100 blur-3xl opacity-60"
           ></div>
           <img
-            :src="heroCake"
+            :src="heroSrc"
             :alt="t('home.hero.imageAlt')"
             width="361"
             height="419"

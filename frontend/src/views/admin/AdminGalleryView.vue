@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Search, Plus, Pencil, Trash2 } from 'lucide-vue-next'
 import { deleteGallery } from '@/services/gallery.service'
+import { getSetting, updateSetting } from '@/services/settings.service'
+import { uploadImage } from '@/services/upload.service'
 import { cloudinaryThumb } from '@/utils/cloudinaryImage'
 import { useGalleryStore } from '@/stores/gallery.store'
 import { useAdminGalleryStore } from '@/stores/adminGallery.store'
@@ -29,7 +31,45 @@ const isLoading = computed(() => !adminGalleryStore.hasLoaded && !errorMessage.v
 
 let searchDebounceTimer = null
 
+// ===== FOTO HERO HOMEPAGE =====
+// Disimpan sebagai SiteSetting key "hero-image" (URL Cloudinary). Home membaca
+// nilai ini; bila kosong, Home pakai foto bawaan.
+const heroImageUrl = ref('')
+const heroUploading = ref(false)
+const heroError = ref('')
+const heroFileInput = ref(null)
+
+const loadHeroImage = async () => {
+  try {
+    heroImageUrl.value = (await getSetting('hero-image')) || ''
+  } catch {
+    // diamkan — panel tetap tampil dengan tombol unggah
+  }
+}
+
+const openHeroPicker = () => heroFileInput.value?.click()
+
+const handleHeroFileChange = async (e) => {
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  if (!file) return
+
+  heroUploading.value = true
+  heroError.value = ''
+  try {
+    const { url } = await uploadImage(file)
+    await updateSetting('hero-image', url)
+    heroImageUrl.value = url
+    toastMessage.value = t('admin.gallery.heroUpdateSuccess')
+  } catch (err) {
+    heroError.value = err.response?.data?.message || t('admin.gallery.heroUpdateFailed')
+  } finally {
+    heroUploading.value = false
+  }
+}
+
 onMounted(async () => {
+  loadHeroImage()
   try {
     await adminGalleryStore.ensureLoaded()
   } catch (err) {
@@ -132,6 +172,45 @@ const handleDelete = async () => {
         <Plus class="w-4 h-4" stroke-width="2.4" />
         {{ t('admin.gallery.add') }}
       </button>
+    </div>
+
+    <!-- FOTO HERO HOMEPAGE -->
+    <div
+      class="mb-8 bg-white rounded-2xl border border-cream-300 p-5 flex flex-col sm:flex-row sm:items-center gap-5"
+    >
+      <div
+        class="w-28 h-28 rounded-xl bg-cream-100 overflow-hidden shrink-0 flex items-center justify-center"
+      >
+        <img
+          v-if="heroImageUrl"
+          :src="cloudinaryThumb(heroImageUrl, 300)"
+          alt=""
+          class="w-full h-full object-contain"
+        />
+        <span v-else class="text-xs text-cocoa-400 text-center px-2">
+          {{ t('admin.gallery.heroNoImage') }}
+        </span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <h2 class="font-bold text-lg mb-1">{{ t('admin.gallery.heroTitle') }}</h2>
+        <p class="text-sm text-cocoa-400 mb-3">{{ t('admin.gallery.heroDesc') }}</p>
+        <button
+          type="button"
+          :disabled="heroUploading"
+          @click="openHeroPicker"
+          class="inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-5 py-2.5 text-sm font-bold hover:bg-brand-600 transition-colors disabled:opacity-50"
+        >
+          {{ heroUploading ? t('admin.gallery.heroUploading') : t('admin.gallery.heroChange') }}
+        </button>
+        <input
+          ref="heroFileInput"
+          type="file"
+          accept="image/*"
+          class="hidden"
+          @change="handleHeroFileChange"
+        />
+        <p v-if="heroError" class="text-sm text-brand-600 mt-2">{{ heroError }}</p>
+      </div>
     </div>
 
     <!-- SEARCH -->

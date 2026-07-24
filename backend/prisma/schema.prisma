@@ -271,3 +271,12 @@ model VisitorLog {
   @@index([date])
   @@map("visitor_logs")
 }
+
+// Key-value untuk konten situs yang bisa diatur admin (mis. foto hero home).
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
