@@ -2,11 +2,25 @@
 import { ref, computed, onMounted, onServerPrefetch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
+import { useSeoMeta, useHead } from '@unhead/vue'
 import { useProductStore } from '@/stores/product.store'
+import { DEFAULT_DESCRIPTION, absUrl, bakeryJsonLd } from '@/config/seo'
 import ProductCard from '@/components/product/ProductCard.vue'
 import GoogleReviews from '@/components/common/GoogleReviews.vue'
 
 const { t } = useI18n()
+
+// SEO Home: judul marketing + deskripsi + data terstruktur usaha (Bakery).
+useSeoMeta({
+  title: 'Kue Ulang Tahun & Custom Cake Premium di Depok',
+  description: DEFAULT_DESCRIPTION,
+  ogTitle: 'Talita\'s Cake & Cupcakes — Kue Premium di Depok',
+  ogDescription: DEFAULT_DESCRIPTION,
+})
+useHead({
+  link: absUrl('/') ? [{ rel: 'canonical', href: absUrl('/') }] : [],
+  script: [bakeryJsonLd()],
+})
 
 // Sumber data sama dengan halaman Menu: store dengan cache localStorage +
 // stale-while-revalidate. Kunjungan berikutnya favorit langsung tampil dari

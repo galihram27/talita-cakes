@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { usePageSeo } from '@/composables/usePageSeo'
 import GoogleReviews from '@/components/common/GoogleReviews.vue'
 import logo from '@/assets/images/logo.png'
 import whatsappIcon from '@/assets/images/whatsapp-logo-png-2290.png'
@@ -11,6 +12,13 @@ import addressIcon from '@/assets/images/pin-21504.png'
 import { STORE_INFO } from '@/config/constants'
 
 const { t } = useI18n()
+
+usePageSeo({
+  title: 'Tentang Kami',
+  description:
+    "Kenali Talita's Cake & Cupcakes — toko kue premium di Depok yang membuat custom cake, cupcakes, dan brownies fresh untuk setiap momen spesial.",
+  path: '/about',
+})
 
 const stats = computed(() => [
   { num: '12+', label: t('about.stats.years') },

@@ -5,9 +5,17 @@ import { useI18n } from 'vue-i18n'
 import { useProductStore } from '@/stores/product.store'
 import { useMenuFilterStore } from '@/stores/menuFilter.store'
 import { PRODUCT_CATEGORIES } from '@/config/productOptions'
+import { usePageSeo } from '@/composables/usePageSeo'
 import ProductCard from '@/components/product/ProductCard.vue'
 
 const { t } = useI18n()
+
+usePageSeo({
+  title: 'Menu Kue & Cupcakes',
+  description:
+    "Jelajahi katalog Talita's Cake — custom cake, cupcakes, brownies, roti & hampers. Pilih ukuran, rasa, filling & topping, lalu pesan via WhatsApp.",
+  path: '/menu',
+})
 
 // ===== STATE =====
 const productStore = useProductStore()

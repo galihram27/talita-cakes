@@ -1,9 +1,11 @@
 <script setup>
-import { ref, onMounted, onServerPrefetch } from 'vue'
+import { ref, computed, onMounted, onServerPrefetch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useSeoMeta, useHead } from '@unhead/vue'
 import { getProductById } from '@/services/product.service'
 import { useProductStore } from '@/stores/product.store'
+import { SITE_NAME, DEFAULT_DESCRIPTION, truncate, absUrl, productJsonLd } from '@/config/seo'
 import ProductType1Detail from '@/components/product/ProductType1Detail.vue'
 import ProductType2Detail from '@/components/product/ProductType2Detail.vue'
 import ProductType3Detail from '@/components/product/ProductType3Detail.vue'
@@ -44,6 +46,33 @@ const fetchProduct = async () => {
 // Prerender (SSG, aktif setelah Fase 4): render detail produk ke HTML saat build.
 onServerPrefetch(fetchProduct)
 onMounted(fetchProduct)
+
+// ===== SEO per produk (reaktif: terisi setelah produk dimuat) =====
+const metaTitle = computed(() => (product.value ? product.value.name : t('product.loading')))
+const metaDesc = computed(() =>
+  product.value ? truncate(product.value.description) : DEFAULT_DESCRIPTION
+)
+const metaImage = computed(() => product.value?.image || product.value?.images?.[0] || '')
+const canonical = computed(() => absUrl(route.path))
+
+useSeoMeta({
+  title: () => metaTitle.value,
+  description: () => metaDesc.value,
+  ogTitle: () => `${metaTitle.value} · ${SITE_NAME}`,
+  ogDescription: () => metaDesc.value,
+  ogType: 'product',
+  ogImage: () => metaImage.value || undefined,
+  ogUrl: () => canonical.value || undefined,
+  twitterTitle: () => metaTitle.value,
+  twitterDescription: () => metaDesc.value,
+  twitterImage: () => metaImage.value || undefined,
+})
+
+// canonical + data terstruktur Product (JSON-LD) — hanya kalau produk ada
+useHead({
+  link: () => (canonical.value ? [{ rel: 'canonical', href: canonical.value }] : []),
+  script: () => (product.value ? [productJsonLd(product.value, canonical.value)] : []),
+})
 </script>
 
 <template>
