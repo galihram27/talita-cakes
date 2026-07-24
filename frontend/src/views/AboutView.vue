@@ -21,9 +21,9 @@ usePageSeo({
 })
 
 const stats = computed(() => [
-  { num: '12+', label: t('about.stats.years') },
-  { num: '3000+', label: t('about.stats.cakes') },
-  { num: t('about.stats.madeNum'), label: t('about.stats.made') },
+  { num: t('about.stats.years'), label: t('about.stats.yearsDesc') },
+  { num: t('about.stats.cakes'), label: t('about.stats.cakesDesc') },
+  { num: t('about.stats.made'), label: t('about.stats.madeDesc') },
 ])
 </script>
 

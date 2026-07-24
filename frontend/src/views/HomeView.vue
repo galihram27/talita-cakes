@@ -7,6 +7,7 @@ import { useProductStore } from '@/stores/product.store'
 import { DEFAULT_DESCRIPTION, absUrl, bakeryJsonLd } from '@/config/seo'
 import ProductCard from '@/components/product/ProductCard.vue'
 import GoogleReviews from '@/components/common/GoogleReviews.vue'
+import heroCake from '@/assets/images/hero-cake.png'
 
 const { t } = useI18n()
 
@@ -30,11 +31,11 @@ const { products } = storeToRefs(productStore)
 const isLoading = ref(!productStore.hasLoaded)
 
 // Produk yang ditandai admin (flag `featured`) dipajang di section ini.
-// Kalau admin belum menandai satu pun, jatuh ke 4 produk pertama supaya
-// section tidak kosong.
+// Kalau admin belum menandai satu pun, jatuh ke 5 produk pertama supaya
+// section tidak kosong dan mengisi satu baris penuh (5 kartu per baris).
 const featuredProducts = computed(() => {
   const flagged = products.value.filter((p) => p.featured)
-  return flagged.length > 0 ? flagged : products.value.slice(0, 4)
+  return flagged.length > 0 ? flagged : products.value.slice(0, 5)
 })
 
 const loadProducts = async () => {
@@ -108,50 +109,63 @@ const whyChoose = computed(() =>
     <!-- HERO -->
     <section class="relative">
       <div
-        class="relative max-w-[1160px] mx-auto px-5 md:px-8 pt-8 md:pt-10 pb-16 tc-fade"
+        class="relative max-w-[1440px] mx-auto px-4 md:px-6 lg:px-8 pt-8 md:pt-10 pb-16 tc-fade"
       >
-        <h1
-          class="font-display text-[clamp(38px,5vw,58px)] leading-[1.12] max-w-[620px] mb-4"
-        >
-          {{ t('home.hero.title') }}
-        </h1>
-        <p class="text-[17px] leading-relaxed text-[#6E5A4D] max-w-[480px] mb-7">
-          {{ t('home.hero.subtitle') }}
-        </p>
-        <div class="flex gap-3 flex-wrap">
-          <RouterLink
-            to="/menu"
-            class="inline-flex items-center bg-brand-500 text-white font-bold text-[15px] px-7 py-3.5 rounded-full hover:bg-brand-600 transition-colors"
+        <!-- Grup dua kolom dipusatkan (mx-auto): teks (kiri) + foto (kanan)
+             sebagai satu kesatuan dengan margin kiri-kanan simetris. -->
+        <div class="relative mx-auto lg:max-w-[1060px] xl:max-w-[1180px]">
+        <!-- Teks -->
+        <div class="relative z-10 lg:max-w-[560px] xl:max-w-[620px]">
+          <h1
+            class="font-display text-[clamp(42px,5.5vw,66px)] leading-[1.1] max-w-[680px] mb-5"
           >
-            {{ t('home.hero.viewMenu') }}
-          </RouterLink>
-          <RouterLink
-            to="/gallery"
-            class="inline-flex items-center bg-white text-cocoa-900 border border-[#E4D3C1] font-bold text-[15px] px-7 py-3.5 rounded-full hover:border-brand-500 hover:text-brand-500 transition-colors"
-          >
-            {{ t('home.hero.ourGallery') }}
-          </RouterLink>
+            {{ t('home.hero.title') }}
+          </h1>
+          <p class="text-[19px] leading-relaxed text-[#6E5A4D] max-w-[520px] mb-8">
+            {{ t('home.hero.subtitle') }}
+          </p>
+          <div class="flex gap-3.5 flex-wrap">
+            <RouterLink
+              to="/menu"
+              class="inline-flex items-center bg-brand-500 text-white font-bold text-[16px] px-8 py-4 rounded-full hover:bg-brand-600 transition-colors"
+            >
+              {{ t('home.hero.viewMenu') }}
+            </RouterLink>
+            <RouterLink
+              to="/gallery"
+              class="inline-flex items-center bg-white text-cocoa-900 border border-[#E4D3C1] font-bold text-[16px] px-8 py-4 rounded-full hover:border-brand-500 hover:text-brand-500 transition-colors"
+            >
+              {{ t('home.hero.ourGallery') }}
+            </RouterLink>
+          </div>
         </div>
-        <div class="flex gap-8 mt-10 flex-wrap">
-          <div>
-            <div class="font-display text-[26px]">{{ t('home.stats.years') }}</div>
-            <div class="text-[13px] text-cocoa-400">{{ t('home.stats.yearsDesc') }}</div>
-          </div>
-          <div>
-            <div class="font-display text-[26px]">{{ t('home.stats.cakes') }}</div>
-            <div class="text-[13px] text-cocoa-400">{{ t('home.stats.cakesDesc') }}</div>
-          </div>
-          <div>
-            <div class="font-display text-[26px]">{{ t('home.stats.made') }}</div>
-            <div class="text-[13px] text-cocoa-400">{{ t('home.stats.madeDesc') }}</div>
-          </div>
+
+        <!-- Foto kue (cutout transparan). Mobile/tablet: mengalir di bawah.
+             Desktop (lg): absolute di kanan, lebar EKSPLISIT agar tidak kolaps
+             dan tidak mempengaruhi jarak teks/statistik. -->
+        <div
+          class="relative z-0 flex justify-center mt-10 lg:mt-0 lg:absolute lg:top-1/2 lg:right-0 lg:-translate-y-1/2 lg:-translate-x-12 xl:-translate-x-20 lg:w-[360px] xl:w-[420px]"
+        >
+          <div
+            class="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[75%] aspect-square rounded-full bg-brand-100 blur-3xl opacity-60"
+          ></div>
+          <img
+            :src="heroCake"
+            :alt="t('home.hero.imageAlt')"
+            width="361"
+            height="419"
+            fetchpriority="high"
+            decoding="async"
+            class="w-[68%] max-w-[300px] lg:w-full lg:max-w-none h-auto object-contain drop-shadow-[0_18px_32px_rgba(51,38,31,0.16)]"
+          />
+        </div>
         </div>
       </div>
     </section>
 
     <!-- TIPE KUE -->
-    <section class="relative border-y border-cream-200">
-      <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 py-16">
+    <section class="relative">
+      <div class="relative max-w-[1440px] mx-auto px-5 md:px-8 lg:px-12 py-16">
         <h2 class="font-display text-[32px] mb-2">
           {{ t('home.typesTitle') }}
         </h2>
@@ -189,7 +203,7 @@ const whyChoose = computed(() =>
 
     <!-- FEATURED / FAVORITES -->
     <section class="relative">
-      <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 py-16">
+      <div class="relative max-w-[1440px] mx-auto px-5 md:px-8 lg:px-12 py-16">
       <div class="flex items-baseline justify-between gap-4 flex-wrap mb-7">
         <div>
           <h2 class="font-display text-[32px] mb-1">{{ t('home.favoritesTitle') }}</h2>
@@ -208,7 +222,7 @@ const whyChoose = computed(() =>
       <div v-if="isLoading" class="text-center text-cocoa-400 py-12">
         {{ t('home.loadingFavorites') }}
       </div>
-      <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-5">
+      <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
         <ProductCard
           v-for="product in featuredProducts"
           :key="product.id"
@@ -220,7 +234,7 @@ const whyChoose = computed(() =>
 
     <!-- CARA PESAN (5 LANGKAH) -->
     <section class="relative">
-      <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 pt-16 pb-[76px]">
+      <div class="relative max-w-[1440px] mx-auto px-5 md:px-8 lg:px-12 pt-16 pb-[76px]">
         <div class="text-center max-w-[560px] mx-auto mb-11">
           <h2 class="font-display text-[38px] leading-tight">
             {{ t('home.stepsTitle') }}
@@ -247,8 +261,8 @@ const whyChoose = computed(() =>
     </section>
 
     <!-- WHY CHOOSE -->
-    <section class="relative border-t border-cream-200">
-      <div class="relative max-w-[1160px] mx-auto px-5 md:px-8 py-16">
+    <section class="relative">
+      <div class="relative max-w-[1440px] mx-auto px-5 md:px-8 lg:px-12 py-16">
         <div class="text-center max-w-[560px] mx-auto mb-10">
           <h2 class="font-display text-[34px] leading-tight">
             {{ t('home.whyTitle') }}
@@ -275,7 +289,7 @@ const whyChoose = computed(() =>
 
     <!-- GOOGLE REVIEWS -->
     <div class="relative">
-      <GoogleReviews narrow />
+      <GoogleReviews narrow :divider="false" />
     </div>
   </div>
 </template>

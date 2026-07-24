@@ -269,6 +269,7 @@ export default {
         "Setiap cake dibuat khusus setelah Anda memesan, menggunakan bahan berkualitas dan dikerjakan satu per satu dengan penuh perhatian. Mulai dari ulang tahun, pernikahan, anniversary, baby shower, wisuda, hingga berbagai momen spesial lainnya, kami siap membantu mewujudkan perayaan yang tak terlupakan.",
       viewMenu: "Lihat Menu",
       ourGallery: "Lihat Galeri",
+      imageAlt: "Kue ulang tahun custom bertema karakter lucu dengan hiasan pelangi, awan, dan balon",
     },
     stats: {
       years: "12+ Tahun",
@@ -423,10 +424,12 @@ export default {
     intro2:
       "Berbeda dengan kue produksi massal, setiap pesanan dibuat satu per satu — didesain khusus sesuai tema, gaya, dan permintaan spesial Anda.",
     stats: {
-      years: "Tahun Membuat Kue",
-      cakes: "Kue Dibuat dengan Tangan",
-      madeNum: "Made by Order",
-      made: "Dipanggang Segar untuk Setiap Pesanan",
+      years: "12+ Tahun",
+      yearsDesc: "Menghadirkan Kebahagiaan Sejak 2012",
+      cakes: "3000+ Cake",
+      cakesDesc: "Dibuat Khusus untuk Setiap Momen",
+      made: "Made to Order",
+      madeDesc: "Dibuatkan Setelah Pesanan Dikonfirmasi",
     },
     story1:
       "Selama bertahun-tahun, kami telah membuat kue dan dessert untuk ulang tahun, pernikahan, anniversary, baby shower, wisuda, acara kantor, dan berbagai perayaan bermakna lainnya. Setiap kreasi dibuat segar sesuai pesanan, disiapkan dengan bahan premium, dan didesain untuk mencerminkan cerita unik setiap pelanggan.",

@@ -10,6 +10,8 @@ const { t } = useI18n()
 defineProps({
   grid: { type: Boolean, default: false },
   narrow: { type: Boolean, default: false },
+  // divider = garis pemisah di atas section reviews (dimatikan di Home).
+  divider: { type: Boolean, default: true },
 })
 
 const scroller = ref(null)
@@ -89,7 +91,7 @@ const data = {
 
 <template>
   <div v-if="data.reviews.length">
-    <hr class="border-gray-200" />
+    <hr v-if="divider" class="border-gray-200" />
 
     <section class="mx-auto px-6 py-16" :class="narrow ? 'max-w-5xl' : 'max-w-7xl'">
     <div class="mb-10">

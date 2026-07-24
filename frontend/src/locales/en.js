@@ -269,6 +269,7 @@ export default {
         "Freshly baked custom cakes and premium desserts, handcrafted to make birthdays, weddings, anniversaries, baby showers, graduations, and every celebration truly unforgettable.",
       viewMenu: "View Menu",
       ourGallery: "Our Gallery",
+      imageAlt: "Custom character-themed birthday cake decorated with a rainbow, clouds, and balloons",
     },
     stats: {
       years: "12+ Years",
@@ -422,10 +423,12 @@ export default {
     intro2:
       "Unlike mass-produced cakes, every order is made one at a time — designed specifically to match your theme, style, and special requests.",
     stats: {
-      years: "Years of Baking",
-      cakes: "Cakes Handcrafted",
-      madeNum: "Made by Order",
-      made: "Freshly Baked for Every Order",
+      years: "12+ Years",
+      yearsDesc: "Baking Happiness Since 2012",
+      cakes: "3000+ Cakes",
+      cakesDesc: "Handcrafted with Love",
+      made: "Made by Order",
+      madeDesc: "Freshly Baked for Every Order",
     },
     story1:
       "Over the years, we have handcrafted cakes and desserts for birthdays, weddings, anniversaries, baby showers, graduations, corporate events, and countless meaningful celebrations. Every creation is made fresh to order, carefully prepared with premium ingredients, and designed to reflect each customer's unique story.",
