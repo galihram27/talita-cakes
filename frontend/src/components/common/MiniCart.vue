@@ -50,7 +50,7 @@ const goToCart = () => {
   <Transition name="mini-cart">
     <div
       v-if="cartStore.isMiniOpen"
-      class="absolute right-0 top-[calc(100%+10px)] z-[60] w-[calc(100vw-2.5rem)] max-w-[368px] bg-white border border-[#EBDCCC] rounded-2xl shadow-[0_18px_44px_-14px_rgba(51,38,31,0.4)] overflow-hidden"
+      class="fixed right-5 top-[80px] sm:absolute sm:right-0 sm:top-[calc(100%+10px)] z-[60] w-[calc(100vw-2.5rem)] max-w-[368px] bg-white border border-[#EBDCCC] rounded-2xl shadow-[0_18px_44px_-14px_rgba(51,38,31,0.4)] overflow-hidden"
       @click.stop
     >
       <!-- Header -->
