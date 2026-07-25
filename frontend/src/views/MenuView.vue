@@ -475,7 +475,7 @@ const resetMenu = () => {
           v-model="search"
           type="text"
           :placeholder="t('menu.searchPlaceholder')"
-          class="w-full border-[1.5px] border-[#E4D3C1] rounded-full py-3 pl-11 pr-10 text-[14.5px] bg-white text-cocoa-900 placeholder-[#B7A18E]"
+          class="w-full border-[1.5px] border-[#E4D3C1] rounded-full py-3 pl-11 pr-10 text-[14.5px] bg-white text-cocoa-900 placeholder-[#B7A18E] focus:outline-none focus:border-brand-500"
         />
         <button
           v-if="search"

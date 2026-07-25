@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Trash2 } from 'lucide-vue-next'
+import { Trash2, ArrowLeft } from 'lucide-vue-next'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
@@ -209,6 +209,13 @@ onMounted(fetchCart)
 
     <!-- CART DENGAN ISI -->
     <div v-else>
+      <RouterLink
+        to="/menu"
+        class="inline-flex items-center gap-1.5 text-sm font-semibold text-[#6E5A4D] hover:text-brand-500 mb-4 transition-colors"
+      >
+        <ArrowLeft class="w-4 h-4" stroke-width="2" />
+        {{ t('cart.backToMenu') }}
+      </RouterLink>
       <h1 class="font-display text-[40px] mb-6">{{ t('cart.title') }}</h1>
 
       <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start">
@@ -350,13 +357,6 @@ onMounted(fetchCart)
           <p class="text-[12.5px] text-cocoa-400 text-center mt-2.5">
             {{ t('cart.paymentNote') }}
           </p>
-
-          <RouterLink
-            to="/menu"
-            class="block text-center text-sm text-[#6E5A4D] hover:text-brand-500 mt-3 transition-colors"
-          >
-            {{ t('cart.addMore') }}
-          </RouterLink>
         </div>
       </div>
     </div>

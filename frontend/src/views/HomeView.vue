@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onServerPrefetch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
+import { ArrowRight } from 'lucide-vue-next'
 import { useSeoMeta, useHead } from '@unhead/vue'
 import { useProductStore } from '@/stores/product.store'
 import { DEFAULT_DESCRIPTION, absUrl, bakeryJsonLd } from '@/config/seo'
@@ -239,9 +240,10 @@ const whyChoose = computed(() =>
       <div class="flex justify-center mt-10">
         <RouterLink
           to="/menu"
-          class="inline-flex items-center bg-brand-500 text-white border border-brand-500 font-bold text-[16px] px-8 py-4 rounded-full hover:bg-brand-600 hover:border-brand-600 transition-colors"
+          class="inline-flex items-center gap-2 bg-brand-500 text-white border border-brand-500 font-bold text-[16px] px-8 py-4 rounded-full hover:bg-brand-600 hover:border-brand-600 transition-colors"
         >
           {{ t('home.allMenu') }}
+          <ArrowRight class="w-5 h-5" stroke-width="2" />
         </RouterLink>
       </div>
       </div>
@@ -262,7 +264,7 @@ const whyChoose = computed(() =>
             class="relative bg-white border border-[#EFE0D2] rounded-[22px] px-5 pt-7 pb-6 flex flex-col gap-3.5 shadow-sm"
           >
             <div
-              class="w-[52px] h-[52px] rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 text-white flex items-center justify-center font-display text-[26px] shadow-[0_8px_16px_rgba(185,58,60,0.28)]"
+              class="w-[52px] h-[52px] rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 text-white flex items-center justify-center font-display text-[26px]"
             >
               {{ step.n }}
             </div>

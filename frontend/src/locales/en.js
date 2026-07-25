@@ -46,7 +46,7 @@ export default {
       "Find answers to the most common questions about ordering, payment, delivery, and custom cakes at Talita's Cake & Cupcakes.",
     stillQuestions: "Still have questions?",
     contactNote:
-      "Our team is happy to help. Reach out via WhatsApp or the contact channels listed on our About Us page.",
+      "Our team is happy to help. Reach out via WhatsApp.",
     items: [
       {
         q: "How far in advance should I order?",
@@ -320,7 +320,7 @@ export default {
     },
     favoritesTitle: "Our Cake Samples",
     favoritesSubtitle: "A few cakes you can order.",
-    allMenu: "All menu →",
+    allMenu: "All menu",
     loadingFavorites: "Loading favorite cakes...",
     stepsTitle: "Order your cake in 5 simple steps",
     steps: {
@@ -525,6 +525,7 @@ export default {
     emptyTitle: "Your cart is still empty",
     emptyDesc: "Let's pick a cake for your special moment.",
     viewMenu: "View Menu",
+    backToMenu: "Back to menu",
     removeItem: "Remove item",
     flavor: "Flavor:",
     filling: "Filling:",
@@ -540,7 +541,6 @@ export default {
     estimatedTotal: "Estimated total",
     continueCheckout: "Continue to checkout",
     paymentNote: "Payment is confirmed manually via WhatsApp — no online payment.",
-    addMore: "+ Add More Items",
     confirmRemoveTitle: "Remove item",
     confirmRemoveMessage: "Remove {name} from the cart?",
     thisItem: "this item",
@@ -553,7 +553,7 @@ export default {
     viewCart: "View Cart",
   },
   checkout: {
-    backToCart: "← Back to cart",
+    backToCart: "Back to cart",
     title: "Checkout",
     subtitle: "No online payment — your order is confirmed by the owner via WhatsApp.",
     loading: "Loading checkout...",

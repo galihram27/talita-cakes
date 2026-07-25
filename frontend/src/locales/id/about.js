@@ -43,11 +43,14 @@ export default {
     "Berbeda dengan kue produksi massal, setiap pesanan dibuat satu per satu — didesain khusus sesuai tema, gaya, dan permintaan spesial Anda.",
 
   // ---- Tiga angka statistik ----
+  //  *Desc = tulisan kecil di bawah angkanya.
   stats: {
-    years: "Tahun Membuat Kue",
-    cakes: "Kue Dibuat dengan Tangan",
-    madeNum: "Made by Order",
-    made: "Dipanggang Segar untuk Setiap Pesanan",
+    years: "12+ Tahun",
+    yearsDesc: "Menghadirkan Kebahagiaan Sejak 2012",
+    cakes: "3000+ Kue",
+    cakesDesc: "Dibuat dengan Sepenuh Hati",
+    made: "Dibuat Sesuai Pesanan",
+    madeDesc: "Dipanggang Segar untuk Setiap Pesanan",
   },
 
   // ---- Cerita ----

@@ -46,7 +46,7 @@ export default {
       "Temukan jawaban atas pertanyaan yang paling sering ditanyakan seputar pemesanan, pembayaran, pengiriman, dan kue custom di Talita's Cake & Cupcakes.",
     stillQuestions: "Masih ada pertanyaan?",
     contactNote:
-      "Tim kami siap membantu. Hubungi kami melalui WhatsApp atau kanal kontak yang tertera di halaman Tentang Kami.",
+      "Tim kami siap membantu. Hubungi kami melalui WhatsApp.",
     items: [
       {
         q: "Berapa lama sebelumnya saya harus memesan?",
@@ -275,9 +275,9 @@ export default {
       years: "12+ Tahun",
       yearsDesc: "Menghadirkan Kebahagiaan Sejak 2012",
       cakes: "3000+ Cake",
-      cakesDesc: "Dibuat Khusus untuk Setiap Momen",
-      made: "Made to Order",
-      madeDesc: "Dibuatkan Setelah Pesanan Dikonfirmasi",
+      cakesDesc: "Dibuat dengan Sepenuh Hati",
+      made: "Dibuat Sesuai Pesanan",
+      madeDesc: "Dipanggang Segar untuk Setiap Pesanan",
     },
     typesTitle: "Temukan Cake yang Tepat untuk Momen Spesial Anda",
     typesSubtitle:
@@ -321,7 +321,7 @@ export default {
     favoritesTitle: "Inspirasi Cake",
     favoritesSubtitle:
       "Lihat berbagai cake yang pernah kami buat sebagai inspirasi untuk momen spesial Anda.",
-    allMenu: "Lihat Semua →",
+    allMenu: "Lihat Semua",
     loadingFavorites: "Memuat koleksi cake...",
     stepsTitle: "Cara Memesan Cake",
     steps: {
@@ -427,9 +427,9 @@ export default {
       years: "12+ Tahun",
       yearsDesc: "Menghadirkan Kebahagiaan Sejak 2012",
       cakes: "3000+ Cake",
-      cakesDesc: "Dibuat Khusus untuk Setiap Momen",
-      made: "Made to Order",
-      madeDesc: "Dibuatkan Setelah Pesanan Dikonfirmasi",
+      cakesDesc: "Dibuat dengan Sepenuh Hati",
+      made: "Dibuat Sesuai Pesanan",
+      madeDesc: "Dipanggang Segar untuk Setiap Pesanan",
     },
     story1:
       "Selama bertahun-tahun, kami telah membuat kue dan dessert untuk ulang tahun, pernikahan, anniversary, baby shower, wisuda, acara kantor, dan berbagai perayaan bermakna lainnya. Setiap kreasi dibuat segar sesuai pesanan, disiapkan dengan bahan premium, dan didesain untuk mencerminkan cerita unik setiap pelanggan.",
@@ -526,6 +526,7 @@ export default {
     emptyTitle: "Keranjang Anda masih kosong",
     emptyDesc: "Yuk pilih kue untuk momen spesial Anda.",
     viewMenu: "Lihat Menu",
+    backToMenu: "Kembali ke menu",
     removeItem: "Hapus item",
     flavor: "Rasa:",
     filling: "Filling:",
@@ -541,7 +542,6 @@ export default {
     estimatedTotal: "Perkiraan total",
     continueCheckout: "Lanjut ke checkout",
     paymentNote: "Pembayaran dikonfirmasi manual via WhatsApp — tanpa pembayaran online.",
-    addMore: "+ Tambah Item Lain",
     confirmRemoveTitle: "Hapus item",
     confirmRemoveMessage: "Hapus {name} dari keranjang?",
     thisItem: "item ini",
@@ -554,7 +554,7 @@ export default {
     viewCart: "Lihat Keranjang",
   },
   checkout: {
-    backToCart: "← Kembali ke keranjang",
+    backToCart: "Kembali ke keranjang",
     title: "Checkout",
     subtitle: "Tanpa pembayaran online — pesananmu dikonfirmasi owner via WhatsApp.",
     loading: "Memuat checkout...",

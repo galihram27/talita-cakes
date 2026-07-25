@@ -2,7 +2,7 @@
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { MapPin, Phone, LocateFixed, Route, Search, Loader2 } from 'lucide-vue-next'
+import { MapPin, Phone, LocateFixed, Route, Search, Loader2, ArrowLeft } from 'lucide-vue-next'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import markImageUrl from '@/assets/images/pin-21504.png'
@@ -586,8 +586,9 @@ onMounted(fetchCart)
   <div class="tc-page max-w-[1100px] mx-auto px-5 md:px-8 pt-10 pb-20">
     <RouterLink
       to="/cart"
-      class="inline-flex items-center gap-1.5 text-cocoa-400 hover:text-brand-500 font-bold text-sm mb-4 transition-colors"
+      class="inline-flex items-center gap-1.5 text-sm font-semibold text-[#6E5A4D] hover:text-brand-500 mb-4 transition-colors"
     >
+      <ArrowLeft class="w-4 h-4" stroke-width="2" />
       {{ t('checkout.backToCart') }}
     </RouterLink>
     <h1 class="font-display text-[38px] mb-1">{{ t('checkout.title') }}</h1>
