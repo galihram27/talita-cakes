@@ -34,6 +34,10 @@ file HTML-nya (host mengecek file lebih dulu). Config sudah disiapkan:
 - **Netlify / Cloudflare Pages** → `frontend/public/_redirects` (otomatis ke `dist/`).
 - **Vercel** → `frontend/vercel.json` (`cleanUrls: true` penting supaya `/menu`
   menyajikan `menu.html`, `/product/<id>` menyajikan `product/<id>.html`).
+  Root Directory project harus `frontend`, dan tujuan rewrite-nya `/` — **bukan**
+  `/index.html`: dengan `cleanUrls` aktif, `/index.html` sudah jadi aturan
+  redirect (308) ke `/`, rewrite tidak mengikuti redirect, jadi semua rute yang
+  tidak diprerender balik jadi 404 `NOT_FOUND`.
 - **Render (Static Site)** → tambahkan Rewrite Rule di dashboard:
   `Source: /*  →  Destination: /index.html  (Action: Rewrite)`.
 - **Nginx** →
