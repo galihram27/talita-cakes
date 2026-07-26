@@ -20,10 +20,21 @@ import * as analyticsRepository from "./analytics.repository.js";
 let seenDayKey = null;
 let seenVisitorsToday = new Set();
 
+/**
+ * Endpoint /analytics/visit publik dan visitorId dikirim klien, jadi siapa pun
+ * bisa mengirim UUID acak berkali-kali untuk menggelembungkan angka. Batasi
+ * jumlah visitorId BARU yang boleh didaftarkan satu IP dalam sehari.
+ *
+ * Ambangnya longgar supaya WiFi kantor / CGNAT operator (banyak orang berbagi
+ * satu IP) tidak ikut terpotong.
+ */
+const NEW_VISITORS_PER_IP_PER_DAY = 30;
+let newVisitorsPerIpToday = new Map();
+
 const toDayKey = (date) =>
    `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 
-export const recordVisit = async (visitorId, userId = null) => {
+export const recordVisit = async (visitorId, userId = null, clientIp = null) => {
    if (!visitorId) return;
 
    const today = new Date();
@@ -35,10 +46,17 @@ export const recordVisit = async (visitorId, userId = null) => {
    if (dayKey !== seenDayKey) {
       seenDayKey = dayKey;
       seenVisitorsToday = new Set();
+      newVisitorsPerIpToday = new Map();
    }
 
    // sudah tercatat hari ini -> tidak perlu menyentuh DB sama sekali
    if (seenVisitorsToday.has(visitorId)) return;
+
+   if (clientIp) {
+      const used = newVisitorsPerIpToday.get(clientIp) ?? 0;
+      if (used >= NEW_VISITORS_PER_IP_PER_DAY) return;
+      newVisitorsPerIpToday.set(clientIp, used + 1);
+   }
 
    // tandai lebih dulu supaya request paralel dari visitor yang sama
    // tidak sama-sama menembak DB (at-most-once per hari per instance)

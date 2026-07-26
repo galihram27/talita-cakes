@@ -4,7 +4,6 @@ import cors from "cors";
 import routes from "./routes/index.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { AppError } from './utils/appError.js';
-import { visitorTrackingMiddleware } from "./middlewares/visitorTracking.middleware.js";
 
 const app = express();
 
@@ -23,7 +22,11 @@ app.use(
 // karena belum ada endpoint upload file terpisah
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
-app.use(visitorTrackingMiddleware);
+
+// Catatan: tracking pengunjung TIDAK dipasang sebagai middleware global.
+// Dulu begitu, dan akibatnya setiap request ke /api/* ikut terhitung —
+// termasuk scanner/bot yang menembak URL backend langsung. Sekarang hanya
+// frontend yang melapor sekali per sesi lewat POST /api/analytics/visit.
 
 // semua route fitur masuk lewat sini, dengan prefix /api
 app.use("/api", routes);

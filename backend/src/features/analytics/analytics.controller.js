@@ -1,6 +1,36 @@
 // src/features/analytics/analytics.controller.js
 import { asyncHandler } from "../../middlewares/asyncHandler.js";
 import * as analyticsService from "./analytics.service.js";
+import { fingerprintVisitorId, isBotUserAgent } from "./analytics.visitor.js";
+
+/**
+ * POST /api/analytics/visit
+ * Dipanggil frontend sekali per sesi. Body: { visitorId } — UUID first-party
+ * dari localStorage, stabil walau IP berganti dan tidak kena blokir cookie
+ * pihak ketiga (frontend Vercel <-> backend Render beda domain).
+ *
+ * Selalu balas 204: analytics gagal tidak boleh terasa oleh pengunjung.
+ */
+export const recordVisitHandler = asyncHandler(async (req, res) => {
+   if (isBotUserAgent(req.get("user-agent"))) return res.status(204).end();
+
+   // prefix supaya ID dari klien tidak pernah bentrok dengan ID fingerprint
+   const visitorId = req.body.visitorId
+      ? `web_${req.body.visitorId}`
+      : fingerprintVisitorId(req);
+
+   try {
+      await analyticsService.recordVisit(
+         visitorId,
+         req.user?.userId ?? null,
+         req.ip
+      );
+   } catch (err) {
+      console.error("Gagal mencatat visitor log:", err);
+   }
+
+   res.status(204).end();
+});
 
 /**
  * GET /api/analytics/dashboard?from=2026-06-01&to=2026-06-30&groupBy=day

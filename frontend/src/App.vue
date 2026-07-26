@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
 import { useProductStore } from '@/stores/product.store'
 import { useGalleryStore } from '@/stores/gallery.store'
+import { reportVisit } from '@/services/analytics.service'
 import { SITE_NAME, DEFAULT_DESCRIPTION } from '@/config/seo'
 import WhatsAppButton from '@/components/common/WhatsAppButton.vue'
 
@@ -30,6 +31,10 @@ onMounted(async () => {
   await authStore.restoreSession()
   // setelah sesi dipulihkan, isi jumlah item cart untuk badge di Navbar
   cartStore.refresh()
+
+  // lapor kunjungan sekali per sesi tab. Sengaja setelah restoreSession
+  // supaya kunjungan user yang login bisa dikaitkan ke akunnya.
+  reportVisit()
 
   // prefetch katalog & gallery diam-diam selagi user di Home, supaya saat
   // pindah ke Menu/Gallery cache sudah panas → tampil tanpa loading
