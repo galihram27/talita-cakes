@@ -141,7 +141,7 @@ const handleSubmit = async () => {
 
     <!-- CARD -->
     <div class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
-      <h1 class="font-display text-[28px] mb-6">{{ t('auth.register.title') }}</h1>
+      <h1 class="font-display text-[28px] text-center mb-6">{{ t('auth.register.title') }}</h1>
 
       <form @submit.prevent="handleSubmit" class="flex flex-col gap-3.5">
         <!-- NAME -->

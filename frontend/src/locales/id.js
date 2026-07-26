@@ -643,8 +643,7 @@ export default {
   },
   auth: {
     login: {
-      title: "Selamat datang kembali",
-      subtitle: "Masuk untuk melanjutkan pesanan Anda.",
+      title: "Masuk",
       email: "Email",
       emailPlaceholder: "nama{'@'}email.com",
       password: "Password",
@@ -663,11 +662,11 @@ export default {
     },
     register: {
       title: "Buat akun",
-      name: "Nama lengkap",
+      name: "Nama Lengkap",
       namePlaceholder: "Nama Anda",
-      phone: "No. HP (WhatsApp aktif)",
+      phone: "No. HP (WhatsApp Aktif)",
       passwordPlaceholder: "Minimal 6 karakter",
-      confirmPassword: "Konfirmasi password",
+      confirmPassword: "Konfirmasi Password",
       confirmPasswordPlaceholder: "Ulangi password Anda",
       terms1: "Saya menyetujui",
       termsConditions: "Syarat & Ketentuan",

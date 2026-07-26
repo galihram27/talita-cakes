@@ -642,8 +642,7 @@ export default {
   },
   auth: {
     login: {
-      title: "Welcome back",
-      subtitle: "Sign in to continue your order.",
+      title: "Sign In",
       email: "Email",
       emailPlaceholder: "name{'@'}email.com",
       password: "Password",
@@ -662,11 +661,11 @@ export default {
     },
     register: {
       title: "Create account",
-      name: "Full name",
+      name: "Full Name",
       namePlaceholder: "Your name",
-      phone: "Phone (active WhatsApp)",
+      phone: "Phone (Active WhatsApp)",
       passwordPlaceholder: "At least 6 characters",
-      confirmPassword: "Confirm password",
+      confirmPassword: "Confirm Password",
       confirmPasswordPlaceholder: "Repeat your password",
       terms1: "I agree to the",
       termsConditions: "Terms & Conditions",
