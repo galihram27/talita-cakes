@@ -746,7 +746,7 @@ export default {
     loadFailed: "Failed to load order history",
     empty: "No orders yet.",
     startOrdering: "Start ordering →",
-    created: "created {date}",
+    created: "Created {date}",
     delivery: "DELIVERY",
     pickup: "PICKUP",
     total: "Total",

@@ -747,7 +747,7 @@ export default {
     loadFailed: "Gagal memuat riwayat pesanan",
     empty: "Belum ada pesanan.",
     startOrdering: "Mulai pesan →",
-    created: "dibuat {date}",
+    created: "Dibuat {date}",
     delivery: "DELIVERY",
     pickup: "PICKUP",
     total: "Total",
