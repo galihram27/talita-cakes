@@ -19,7 +19,8 @@ const infoMessage = ref('')
 const isSubmitting = ref(false)
 const isVerified = ref(false)
 
-// Cooldown kirim ulang OTP (samakan dengan cooldown backend: 60 detik)
+// Hitung mundur untuk membatasi tombol kirim ulang kode, sama seperti
+// yang dipakai di halaman lupa password.
 const resendCooldown = ref(0)
 let cooldownTimer = null
 
@@ -32,15 +33,19 @@ const startResendCooldown = () => {
 }
 
 onMounted(() => {
+  // Email dikirim dari halaman daftar lewat query di alamat URL. Kalau kosong,
+  // berarti halaman ini dibuka tanpa mendaftar dulu, jadi dikembalikan ke daftar.
   email.value = route.query.email || ''
-  // akses langsung tanpa email -> balik ke register
   if (!email.value) router.replace({ name: 'register' })
-  // OTP baru saja dikirim saat register — mulai cooldown
+
+  // Hitung mundur langsung berjalan karena kode pertama sudah dikirim
+  // otomatis saat pendaftaran tadi.
   startResendCooldown()
 })
 
 onUnmounted(() => clearInterval(cooldownTimer))
 
+// Mengirim kode untuk dicocokkan server.
 const handleVerify = async () => {
   errorMessage.value = ''
   infoMessage.value = ''
@@ -56,10 +61,12 @@ const handleVerify = async () => {
       email: email.value,
       code: code.value,
     })
-    // verifikasi sukses -> backend sudah set refresh token cookie + balas
-    // accessToken & user, jadi langsung auto-login (user tak perlu login lagi).
+    // Server membalas dengan data akun, jadi pengunjung sekalian dianggap
+    // sudah login dan tidak perlu mengisi form login lagi.
     authStore.handleAuthSuccess(data.data)
     isVerified.value = true
+
+    // Hitung mundur dimatikan karena tombol kirim ulang sudah tidak dipakai.
     clearInterval(cooldownTimer)
   } catch (err) {
     errorMessage.value = err.response?.data?.message || t('auth.forgot.otpWrong')
@@ -68,6 +75,8 @@ const handleVerify = async () => {
   }
 }
 
+// Minta kode baru. purpose dikirim supaya server tahu kode ini untuk verifikasi
+// email, bukan untuk keperluan lain seperti reset password.
 const handleResend = async () => {
   if (resendCooldown.value > 0 || isSubmitting.value) return
   errorMessage.value = ''
@@ -82,8 +91,7 @@ const handleResend = async () => {
     infoMessage.value = data.message || t('auth.verify.newCodeSent')
     startResendCooldown()
   } catch (err) {
-    errorMessage.value =
-      err.response?.data?.message || t('auth.forgot.resendFailed')
+    errorMessage.value = err.response?.data?.message || t('auth.forgot.resendFailed')
   } finally {
     isSubmitting.value = false
   }
@@ -91,20 +99,16 @@ const handleResend = async () => {
 </script>
 
 <template>
-  <div class="tc-page min-h-screen bg-[#FDF2F7] flex flex-col items-center justify-start px-5 pt-12 pb-20">
-    <!-- LOGO -->
+  <div
+    class="tc-page min-h-screen bg-[#FDF2F7] flex flex-col items-center justify-start px-5 pt-12 pb-20"
+  >
     <RouterLink to="/" class="flex flex-col items-center gap-3 mb-6">
-      <img
-        :src="logo"
-        alt="Logo Talita's Cake & Cupcakes"
-        class="h-20 w-20 object-contain"
-      />
-      <span class="font-display text-2xl text-cocoa-900">
-        Talita's Cake &amp; Cupcakes
-      </span>
+      <img :src="logo" alt="Logo Talita's Cake & Cupcakes" class="h-20 w-20 object-contain" />
+      <span class="font-display text-2xl text-cocoa-900"> Talita's Cake &amp; Cupcakes </span>
     </RouterLink>
 
-    <!-- CARD: SUKSES VERIFIKASI -->
+    <!-- Tampilan setelah berhasil: ucapan selamat datang dan tombol menuju menu.
+         Tidak dipindahkan otomatis, biar pengunjung yang memilih sendiri. -->
     <div
       v-if="isVerified"
       class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7 text-center"
@@ -127,8 +131,12 @@ const handleResend = async () => {
       </RouterLink>
     </div>
 
-    <!-- CARD: FORM VERIFIKASI -->
-    <div v-else class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
+    <!-- Tampilan sebelum berhasil: form pengisian kode 6 digit. Email pemilik
+         kode ikut ditampilkan supaya jelas ke mana kodenya dikirim. -->
+    <div
+      v-else
+      class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7"
+    >
       <h1 class="font-display text-[28px] mb-1.5">{{ t('auth.verify.title') }}</h1>
       <p class="text-[#6E5A4D] text-[14.5px] mb-6">
         {{ t('auth.forgot.otpSubtitle1') }}
@@ -174,7 +182,11 @@ const handleResend = async () => {
           :disabled="resendCooldown > 0 || isSubmitting"
           class="text-brand-500 font-bold text-[13.5px] p-1 hover:opacity-70 disabled:text-cocoa-400 disabled:cursor-not-allowed"
         >
-          {{ resendCooldown > 0 ? t('auth.forgot.resendWithCooldown', { s: resendCooldown }) : t('auth.forgot.resend') }}
+          {{
+            resendCooldown > 0
+              ? t('auth.forgot.resendWithCooldown', { s: resendCooldown })
+              : t('auth.forgot.resend')
+          }}
         </button>
       </form>
     </div>

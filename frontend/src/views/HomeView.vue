@@ -13,33 +13,36 @@ import heroCake from '@/assets/images/hero-cake.png'
 
 const { t } = useI18n()
 
-// SEO Home: judul marketing + deskripsi + data terstruktur usaha (Bakery).
+// Mengatur judul dan deskripsi halaman yang dibaca Google dan muncul
+// saat link dibagikan ke WhatsApp/media sosial.
 useSeoMeta({
   title: 'Kue Ulang Tahun & Custom Cake Premium di Depok',
   description: DEFAULT_DESCRIPTION,
-  ogTitle: 'Talita\'s Cake & Cupcakes — Kue Premium di Depok',
+  ogTitle: "Talita's Cake & Cupcakes — Kue Premium di Depok",
   ogDescription: DEFAULT_DESCRIPTION,
 })
+// Canonical menandai alamat resmi halaman ini, dan bakeryJsonLd() menyisipkan
+// data toko (nama, alamat, jam buka) dalam format yang dimengerti mesin pencari.
 useHead({
   link: absUrl('/') ? [{ rel: 'canonical', href: absUrl('/') }] : [],
   script: [bakeryJsonLd()],
 })
 
-// Sumber data sama dengan halaman Menu: store dengan cache localStorage +
-// stale-while-revalidate. Kunjungan berikutnya favorit langsung tampil dari
-// cache (loading instan), refresh berjalan diam-diam di background.
+// Daftar produk diambil dari store supaya bisa dipakai bersama halaman lain.
+// Tulisan "loading" hanya ditampilkan kalau datanya memang belum pernah dimuat.
 const productStore = useProductStore()
 const { products } = storeToRefs(productStore)
 const isLoading = ref(!productStore.hasLoaded)
 
-// Produk yang ditandai admin (flag `featured`) dipajang di section ini.
-// Kalau admin belum menandai satu pun, jatuh ke 5 produk pertama supaya
-// section tidak kosong dan mengisi satu baris penuh (5 kartu per baris).
+// Yang tampil di bagian favorit adalah produk yang dicentang "featured" oleh admin.
+// Kalau admin belum mencentang satu pun, kita ambil 5 produk pertama saja
+// supaya bagian ini tidak terlihat kosong.
 const featuredProducts = computed(() => {
   const flagged = products.value.filter((p) => p.featured)
   return flagged.length > 0 ? flagged : products.value.slice(0, 5)
 })
 
+// Pakai finally supaya loading tetap berhenti walaupun permintaan datanya gagal.
 const loadProducts = async () => {
   try {
     await productStore.ensureLoaded()
@@ -48,25 +51,26 @@ const loadProducts = async () => {
   }
 }
 
-// Foto hero bisa diganti admin (SiteSetting "hero-image", URL Cloudinary).
-// Bila belum diset / gagal ambil, pakai foto bawaan `heroCake`.
+// Foto besar di bagian atas bisa diganti admin lewat pengaturan "hero-image".
+// Kalau belum diatur atau gagal diambil, otomatis pakai foto bawaan (heroCake).
 const heroImageUrl = ref('')
 const heroSrc = computed(() => heroImageUrl.value || heroCake)
 const loadHero = async () => {
   try {
     heroImageUrl.value = (await getSetting('hero-image')) || ''
-  } catch {
-    // diamkan — fallback ke foto bawaan
-  }
+  } catch {}
 }
 
-// Prerender (SSG): isi katalog + foto hero saat build supaya masuk ke HTML.
+// Fungsi yang sama dipanggil dua kali dengan tujuan berbeda:
+// onServerPrefetch dijalankan saat halaman dibuat jadi HTML (proses build),
+// onMounted dijalankan saat halaman dibuka di browser pengunjung.
 onServerPrefetch(loadProducts)
 onServerPrefetch(loadHero)
 onMounted(loadProducts)
 onMounted(loadHero)
 
-// Kartu tipe produk (dari desain)
+// Isi 4 kartu tipe pemesanan. Dibungkus computed, bukan array biasa, supaya
+// teksnya ikut berganti otomatis ketika pengunjung mengubah bahasa.
 const typeCards = computed(() => [
   {
     tag: t('home.types.t1.tag'),
@@ -107,6 +111,9 @@ const typeCards = computed(() => [
   },
 ])
 
+// Membuat 5 langkah cara pemesanan. Judul dan keterangannya diambil dari file
+// terjemahan lewat kunci home.steps.s1 sampai s5, sedangkan nomor 1-5
+// dihasilkan otomatis dari urutan index supaya tidak perlu ditulis manual.
 const steps = computed(() =>
   ['s1', 's2', 's3', 's4', 's5'].map((key, i) => ({
     n: String(i + 1),
@@ -115,6 +122,9 @@ const steps = computed(() =>
   }))
 )
 
+// Ikon dan teksnya disimpan terpisah: ikon di array ini, teksnya di file
+// terjemahan. Keduanya digabungkan berpasangan sesuai urutan, jadi ikon ke-1
+// dapat teks home.why.w1, dan seterusnya sampai w6.
 const whyIcons = ['❤️', '🎂', '🚚', '⭐', '🥚', '💝']
 const whyChoose = computed(() =>
   whyIcons.map((icon, i) => ({ icon, label: t(`home.why.w${i + 1}`) }))
@@ -123,64 +133,61 @@ const whyChoose = computed(() =>
 
 <template>
   <div class="tc-page">
-    <!-- HERO -->
+    <!-- Bagian paling atas yang pertama dilihat pengunjung: judul, kalimat
+         pembuka, dan dua tombol ajakan (ke Menu dan ke Galeri). -->
     <section class="relative">
-      <div
-        class="relative max-w-[1440px] mx-auto px-4 md:px-6 lg:px-8 pt-8 md:pt-10 pb-16 tc-fade"
-      >
-        <!-- Grup dua kolom dipusatkan (mx-auto): teks (kiri) + foto (kanan)
-             sebagai satu kesatuan dengan margin kiri-kanan simetris. -->
+      <div class="relative max-w-[1440px] mx-auto px-4 md:px-6 lg:px-8 pt-8 md:pt-10 pb-16 tc-fade">
         <div class="relative mx-auto lg:max-w-[1060px] xl:max-w-[1180px]">
-        <!-- Teks -->
-        <div class="relative z-10 lg:max-w-[560px] xl:max-w-[620px]">
-          <h1
-            class="font-display text-[clamp(42px,5.5vw,66px)] leading-[1.1] max-w-[680px] mb-5"
-          >
-            {{ t('home.hero.title') }}
-          </h1>
-          <p class="text-[19px] leading-relaxed text-[#6E5A4D] max-w-[520px] mb-8">
-            {{ t('home.hero.subtitle') }}
-          </p>
-          <div class="flex gap-3.5 flex-wrap">
-            <RouterLink
-              to="/menu"
-              class="inline-flex items-center bg-brand-500 text-white font-bold text-[16px] px-8 py-4 rounded-full hover:bg-brand-600 transition-colors"
-            >
-              {{ t('home.hero.viewMenu') }}
-            </RouterLink>
-            <RouterLink
-              to="/gallery"
-              class="inline-flex items-center bg-white text-cocoa-900 border border-[#E4D3C1] font-bold text-[16px] px-8 py-4 rounded-full hover:border-brand-500 hover:text-brand-500 transition-colors"
-            >
-              {{ t('home.hero.ourGallery') }}
-            </RouterLink>
+          <div class="relative z-10 lg:max-w-[560px] xl:max-w-[620px]">
+            <h1 class="font-display text-[clamp(42px,5.5vw,66px)] leading-[1.1] max-w-[680px] mb-5">
+              {{ t('home.hero.title') }}
+            </h1>
+            <p class="text-[19px] leading-relaxed text-[#6E5A4D] max-w-[520px] mb-8">
+              {{ t('home.hero.subtitle') }}
+            </p>
+            <div class="flex gap-3.5 flex-wrap">
+              <RouterLink
+                to="/menu"
+                class="inline-flex items-center bg-brand-500 text-white font-bold text-[16px] px-8 py-4 rounded-full hover:bg-brand-600 transition-colors"
+              >
+                {{ t('home.hero.viewMenu') }}
+              </RouterLink>
+              <RouterLink
+                to="/gallery"
+                class="inline-flex items-center bg-white text-cocoa-900 border border-[#E4D3C1] font-bold text-[16px] px-8 py-4 rounded-full hover:border-brand-500 hover:text-brand-500 transition-colors"
+              >
+                {{ t('home.hero.ourGallery') }}
+              </RouterLink>
+            </div>
           </div>
-        </div>
 
-        <!-- Foto kue (cutout transparan). Mobile/tablet: mengalir di bawah.
-             Desktop (lg): absolute di kanan, lebar EKSPLISIT agar tidak kolaps
-             dan tidak mempengaruhi jarak teks/statistik. -->
-        <div
-          class="relative z-0 flex justify-center mt-10 lg:mt-0 lg:absolute lg:top-1/2 lg:right-0 lg:-translate-y-1/2 lg:-translate-x-12 xl:-translate-x-20 lg:w-[360px] xl:w-[420px]"
-        >
+          <!-- Foto kue. Di layar HP posisinya turun ke bawah teks, sedangkan
+               mulai layar besar (lg) dibuat absolute supaya menempel di kanan
+               dan bisa bertumpuk dengan teks tanpa mendorongnya. -->
           <div
-            class="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[75%] aspect-square rounded-full bg-brand-100 blur-3xl opacity-60"
-          ></div>
-          <img
-            :src="heroSrc"
-            :alt="t('home.hero.imageAlt')"
-            width="361"
-            height="419"
-            fetchpriority="high"
-            decoding="async"
-            class="w-[68%] max-w-[300px] lg:w-full lg:max-w-none h-auto object-contain drop-shadow-[0_18px_32px_rgba(51,38,31,0.16)]"
-          />
-        </div>
+            class="relative z-0 flex justify-center mt-10 lg:mt-0 lg:absolute lg:top-1/2 lg:right-0 lg:-translate-y-1/2 lg:-translate-x-12 xl:-translate-x-20 lg:w-[360px] xl:w-[420px]"
+          >
+            <!-- Lingkaran samar di belakang foto, hanya hiasan. Diberi -z-10
+                 supaya posisinya tetap di lapisan paling belakang. -->
+            <div
+              class="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[75%] aspect-square rounded-full bg-brand-100 blur-3xl opacity-60"
+            ></div>
+            <img
+              :src="heroSrc"
+              :alt="t('home.hero.imageAlt')"
+              width="361"
+              height="419"
+              fetchpriority="high"
+              decoding="async"
+              class="w-[68%] max-w-[300px] lg:w-full lg:max-w-none h-auto object-contain drop-shadow-[0_18px_32px_rgba(51,38,31,0.16)]"
+            />
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- TIPE KUE -->
+    <!-- Empat kartu tipe pemesanan. Ditulis pakai v-for dari typeCards supaya
+         tidak perlu menyalin struktur kartu yang sama sebanyak empat kali. -->
     <section class="relative">
       <div class="relative max-w-[1440px] mx-auto px-5 md:px-8 lg:px-12 py-16">
         <h2 class="font-display text-[32px] mb-2">
@@ -218,38 +225,35 @@ const whyChoose = computed(() =>
       </div>
     </section>
 
-    <!-- FEATURED / FAVORITES -->
+    <!-- Menu favorit. Selama data belum siap ditampilkan tulisan "loading"
+         (v-if), setelah siap barulah grid produknya muncul (v-else). -->
     <section class="relative">
       <div class="relative max-w-[1440px] mx-auto px-5 md:px-8 lg:px-12 py-16">
-      <div class="text-center mb-11">
-        <h2 class="font-display text-[38px] leading-tight">{{ t('home.favoritesTitle') }}</h2>
-      </div>
+        <div class="text-center mb-11">
+          <h2 class="font-display text-[38px] leading-tight">{{ t('home.favoritesTitle') }}</h2>
+        </div>
 
-      <div v-if="isLoading" class="text-center text-cocoa-400 py-12">
-        {{ t('home.loadingFavorites') }}
-      </div>
-      <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-        <ProductCard
-          v-for="product in featuredProducts"
-          :key="product.id"
-          :product="product"
-        />
-      </div>
+        <div v-if="isLoading" class="text-center text-cocoa-400 py-12">
+          {{ t('home.loadingFavorites') }}
+        </div>
+        <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+          <ProductCard v-for="product in featuredProducts" :key="product.id" :product="product" />
+        </div>
 
-      <!-- Tombol semua menu: di bawah grid, gaya sama seperti "View Menu" hero. -->
-      <div class="flex justify-center mt-10">
-        <RouterLink
-          to="/menu"
-          class="inline-flex items-center gap-2 bg-brand-500 text-white border border-brand-500 font-bold text-[16px] px-8 py-4 rounded-full hover:bg-brand-600 hover:border-brand-600 transition-colors"
-        >
-          {{ t('home.allMenu') }}
-          <ArrowRight class="w-5 h-5" stroke-width="2" />
-        </RouterLink>
-      </div>
+        <div class="flex justify-center mt-10">
+          <RouterLink
+            to="/menu"
+            class="inline-flex items-center gap-2 bg-brand-500 text-white border border-brand-500 font-bold text-[16px] px-8 py-4 rounded-full hover:bg-brand-600 hover:border-brand-600 transition-colors"
+          >
+            {{ t('home.allMenu') }}
+            <ArrowRight class="w-5 h-5" stroke-width="2" />
+          </RouterLink>
+        </div>
       </div>
     </section>
 
-    <!-- CARA PESAN (5 LANGKAH) -->
+    <!-- Panduan cara pesan. Tiap langkah dibuat sebagai kartu dengan nomor
+         besar di atasnya, diambil dari steps yang dibuat di script. -->
     <section class="relative">
       <div class="relative max-w-[1440px] mx-auto px-5 md:px-8 lg:px-12 pt-16 pb-[76px]">
         <div class="text-center max-w-[560px] mx-auto mb-11">
@@ -277,7 +281,8 @@ const whyChoose = computed(() =>
       </div>
     </section>
 
-    <!-- WHY CHOOSE -->
+    <!-- Enam poin alasan memilih toko ini, ditampilkan sebagai ikon dan
+         tulisan yang berpasangan dari data whyChoose. -->
     <section class="relative">
       <div class="relative max-w-[1440px] mx-auto px-5 md:px-8 lg:px-12 py-16">
         <div class="text-center max-w-[560px] mx-auto mb-10">
@@ -304,7 +309,8 @@ const whyChoose = computed(() =>
       </div>
     </section>
 
-    <!-- GOOGLE REVIEWS -->
+    <!-- Ulasan pelanggan dari Google. Halaman ini cukup memanggil komponennya,
+         karena proses ambil datanya sudah diurus di dalam komponen itu. -->
     <div class="relative">
       <GoogleReviews narrow :divider="false" />
     </div>

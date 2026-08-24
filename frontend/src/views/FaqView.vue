@@ -4,8 +4,12 @@ import { useI18n } from 'vue-i18n'
 import { ChevronDown } from 'lucide-vue-next'
 import { usePageSeo } from '@/composables/usePageSeo'
 
+// Tiga fungsi terjemahan dengan tugas berbeda: t untuk teks biasa, tm untuk
+// mengambil daftar (array) dari file terjemahan, dan rt untuk membaca isi
+// tiap baris daftar tersebut.
 const { t, tm, rt } = useI18n()
 
+// Composable ringkas yang mengurus judul, deskripsi, dan canonical sekaligus.
 usePageSeo({
   title: 'FAQ',
   description:
@@ -13,14 +17,15 @@ usePageSeo({
   path: '/faq',
 })
 
-// index item yang sedang terbuka (-1 = semua tertutup)
+// Menyimpan nomor pertanyaan yang sedang terbuka; -1 berarti semuanya tertutup.
+// Karena hanya satu angka yang disimpan, membuka satu pertanyaan otomatis
+// menutup yang lain. Menekan pertanyaan yang sedang terbuka akan menutupnya.
 const openIndex = ref(-1)
 const toggle = (i) => (openIndex.value = openIndex.value === i ? -1 : i)
 </script>
 
 <template>
   <div class="tc-page max-w-[820px] mx-auto px-5 md:px-8 pt-14 pb-20">
-    <!-- HEADER -->
     <div class="mb-10">
       <h1 class="font-display text-[clamp(32px,5vw,42px)] leading-[1.1] mb-3">
         {{ t('faq.title') }}
@@ -30,7 +35,9 @@ const toggle = (i) => (openIndex.value = openIndex.value === i ? -1 : i)
       </p>
     </div>
 
-    <!-- ITEMS -->
+    <!-- Daftar pertanyaan diambil langsung dari file terjemahan, jadi menambah
+         atau mengubah isinya cukup dilakukan di sana tanpa menyentuh file ini.
+         Panah ikut berputar 180 derajat saat jawabannya terbuka. -->
     <div class="flex flex-col gap-3">
       <div
         v-for="(item, i) in tm('faq.items')"
@@ -54,6 +61,8 @@ const toggle = (i) => (openIndex.value = openIndex.value === i ? -1 : i)
           />
         </button>
         <div v-if="openIndex === i" class="px-5 pb-5 -mt-1">
+          <!-- whitespace-pre-line membuat pindah baris yang ditulis di file
+               terjemahan tetap terlihat sebagai paragraf terpisah. -->
           <p class="text-[15px] leading-[1.8] text-[#6E5A4D] whitespace-pre-line">
             {{ rt(item.a) }}
           </p>
@@ -61,10 +70,7 @@ const toggle = (i) => (openIndex.value = openIndex.value === i ? -1 : i)
       </div>
     </div>
 
-    <!-- CONTACT CTA -->
-    <div
-      class="mt-10 bg-[#FBF3EA] border border-cream-300 rounded-[20px] p-6 md:p-7 text-center"
-    >
+    <div class="mt-10 bg-[#FBF3EA] border border-cream-300 rounded-[20px] p-6 md:p-7 text-center">
       <p class="font-display text-xl text-cocoa-900 mb-1">
         {{ t('faq.stillQuestions') }}
       </p>

@@ -12,27 +12,21 @@ import { useAuthStore } from '@/stores/auth.store'
 import { formatRupiah } from '@/utils/formatCurrency'
 import { searchAddress, reverseGeocode as reverseGeocodeApi } from '@/utils/geocode'
 import OrderConfirmModal from '@/components/checkout/OrderConfirmModal.vue'
-import {
-  DELIVERY_FEE_TIERS,
-  MAX_DELIVERY_DISTANCE_KM,
-  STORE_INFO,
-} from '@/config/constants'
+import { DELIVERY_FEE_TIERS, MAX_DELIVERY_DISTANCE_KM, STORE_INFO } from '@/config/constants'
 
 const { t } = useI18n()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 
-// Style peta MapTiler + API key (dibaca dari env). Ambil key gratis di
-// https://cloud.maptiler.com — free tier ~100k map loads/bulan, tanpa kartu.
-// Kalau key belum diisi, jatuh ke style keyless OpenFreeMap supaya peta tetap
-// tampil (masih MapLibre, sama-sama gratis).
+// Tampilan peta diambil dari MapTiler kalau kuncinya tersedia. Kalau tidak,
+// dipakai peta gratis OpenFreeMap sebagai cadangan supaya petanya tetap muncul.
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || ''
 const MAP_STYLE_URL = MAPTILER_KEY
   ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`
   : 'https://tiles.openfreemap.org/styles/liberty'
 
-// Elemen marker tujuan user: gambar pin custom (bukan marker default MapLibre).
-// Gambarnya square; anchor 'bottom' menaruh ujung pin tepat di titik koordinat.
+// Penanda peta dibuat pakai perintah DOM biasa, bukan template Vue, karena
+// maplibre meminta elemen HTML asli, bukan komponen.
 const createDestMarkerEl = () => {
   const img = document.createElement('img')
   img.src = markImageUrl
@@ -43,8 +37,6 @@ const createDestMarkerEl = () => {
   return img
 }
 
-// Penanda lokasi toko: pin bulat berisi ikon rumah (inline SVG, tidak perlu
-// file gambar). Dibedakan dari marker tujuan user supaya jelas mana toko.
 const createStoreMarkerEl = () => {
   const el = document.createElement('div')
   el.className = 'store-marker'
@@ -60,17 +52,17 @@ const createStoreMarkerEl = () => {
   return el
 }
 
-// Lokasi toko (Sukamaju, Cilodong, Depok). Dipakai untuk pusat peta awal &
-// penanda toko. Perhitungan jarak/ongkir tetap dilakukan backend dari
-// STORE_LOCATION di env — nilai ini harus sinkron dengan STORE_LATITUDE/LONGITUDE.
+// Titik toko, dipakai sebagai penanda di peta sekaligus patokan awal
+// pencarian alamat agar hasilnya condong ke wilayah sekitar toko.
 const STORE_LOCATION = { lat: -6.398744125589499, lng: 106.85493737965412 }
 const DEFAULT_MAP_CENTER = STORE_LOCATION
 
 const router = useRouter()
 
-// ===== FORM STATE =====
-const fulfillmentType = ref('PICKUP') // 'PICKUP' | 'DELIVERY'
-const recipientType = ref('FOR_MYSELF') // 'FOR_MYSELF' | 'FOR_SOMEONE_ELSE'
+// Dua pilihan utama yang menentukan isian mana saja yang perlu muncul:
+// ambil sendiri atau diantar, dan pesanan untuk diri sendiri atau orang lain.
+const fulfillmentType = ref('PICKUP')
+const recipientType = ref('FOR_MYSELF')
 const recipientName = ref('')
 const recipientPhone = ref('')
 const recipientDataConsent = ref(false)
@@ -78,14 +70,10 @@ const address = ref('')
 const addressLat = ref(null)
 const addressLng = ref(null)
 const requestCakeDate = ref('')
-// opsional: user boleh memilih menyertakan emailnya di pesan WhatsApp.
-// Dengan menyertakan email, user sekaligus setuju menerima promo/info menu.
 const includeEmail = ref(false)
 
-// ===== CART / SUMMARY STATE =====
-// Seed dari cache store supaya ringkasan pesanan langsung tampil tanpa spinner.
 const cart = ref({ items: [...cartStore.items], subtotal: cartStore.subtotal })
-const deliveryFee = ref(null) // null = belum dihitung (butuh pin lokasi)
+const deliveryFee = ref(null)
 const distanceKm = ref(null)
 const isLoading = ref(!cartStore.loaded)
 const isLocating = ref(false)
@@ -93,13 +81,10 @@ const isReverseGeocoding = ref(false)
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 const pinError = ref('')
-// terisi kalau alamat di luar radius pengiriman (maks. 25 km)
 const deliveryError = ref('')
 
-// Batas minimal tanggal: H+3 dari hari ini (sinkron dengan
-// MIN_DAYS_BEFORE_CAKE_DATE di backend order.helper.js — ubah keduanya).
-// Format manual pakai tanggal lokal — toISOString() memakai UTC sehingga
-// sebelum jam 07:00 WIB batasnya mundur 1 hari dan ditolak backend.
+// Kue dibuat setelah dipesan, jadi tanggal paling awal yang boleh dipilih
+// adalah 3 hari dari sekarang. setDate otomatis pindah bulan kalau perlu.
 const minDate = computed(() => {
   const d = new Date()
   d.setDate(d.getDate() + 3)
@@ -107,17 +92,15 @@ const minDate = computed(() => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 })
 
-// Pesan error tanggal: tampil begitu user memilih tanggal lebih awal dari
-// batas minimal (H+3). Input date bisa saja diisi manual sehingga atribut
-// `min` tidak selalu mencegahnya — validasi ini memberi tahu user langsung.
 const dateError = computed(() =>
   requestCakeDate.value && requestCakeDate.value < minDate.value
     ? t('checkout.dateTooEarly', { date: minDate.value })
     : ''
 )
 
-// Tier ongkir yang aktif berdasarkan jarak rute — mirror batas
-// calculateDeliveryFee di backend. -1 = belum ada jarak / di luar radius.
+// Ongkos kirim dibagi per rentang jarak. Nilai ini hanya menentukan baris mana
+// yang disorot di tabel ongkir; perhitungan biayanya tetap dilakukan server.
+// -1 berarti tidak ada yang disorot (jarak belum diketahui atau terlalu jauh).
 const activeTierIndex = computed(() => {
   const d = distanceKm.value
   if (d === null || d <= 0 || d > MAX_DELIVERY_DISTANCE_KM) return -1
@@ -129,21 +112,23 @@ const activeTierIndex = computed(() => {
 })
 
 const isDelivery = computed(() => fulfillmentType.value === 'DELIVERY')
-const isForSomeoneElse = computed(
-  () => recipientType.value === 'FOR_SOMEONE_ELSE'
-)
+const isForSomeoneElse = computed(() => recipientType.value === 'FOR_SOMEONE_ELSE')
 
 const total = computed(() => cart.value.subtotal + (deliveryFee.value ?? 0))
 
+// Menentukan boleh tidaknya tombol pesan ditekan. Syaratnya bertingkat:
+// syarat dasar berlaku untuk semua, syarat alamat hanya untuk pengiriman, dan
+// syarat data penerima hanya kalau pesanannya untuk orang lain.
 const canSubmit = computed(() => {
   if (!requestCakeDate.value || cart.value.items.length === 0) return false
-  // atribut min pada input date tidak mencegah user mengetik tanggal manual
   if (requestCakeDate.value < minDate.value) return false
+
+  // Ambil sendiri tidak butuh alamat, jadi sampai di sini sudah cukup.
   if (!isDelivery.value) return true
 
-  if (!address.value || addressLat.value === null || addressLng.value === null)
-    return false
-  // ongkir belum berhasil dihitung (masih loading / di luar radius layanan)
+  // Untuk pengiriman, titik lokasi wajib ditandai di peta dan ongkos kirimnya
+  // harus sudah berhasil dihitung server.
+  if (!address.value || addressLat.value === null || addressLng.value === null) return false
   if (deliveryFee.value === null) return false
   if (isForSomeoneElse.value) {
     return (
@@ -155,37 +140,41 @@ const canSubmit = computed(() => {
   return true
 })
 
-// ===== MAPLIBRE MAP =====
+// map dan marker disimpan di variabel biasa, bukan ref, karena keduanya
+// diurus sendiri oleh maplibre dan tidak perlu diawasi Vue.
 const mapEl = ref(null)
 let map = null
 let marker = null
 
-// Reverse geocode: koordinat -> alamat teks.
-// Dipakai saat user klik peta / geser marker supaya field alamat terisi otomatis.
+// Mengubah titik koordinat menjadi tulisan alamat, dipakai setelah pengunjung
+// mengklik atau menggeser penanda di peta.
 const reverseGeocode = async (lat, lng) => {
   isReverseGeocoding.value = true
   try {
     const found = await reverseGeocodeApi(lat, lng)
     if (found) {
-      // isi field alamat lewat setter ini, BUKAN dari event @input, supaya
-      // daftar saran tidak ikut terbuka setiap kali user klik peta
       address.value = found
       pinError.value = ''
     }
   } catch {
-    // gagal reverse geocode -> biarkan alamat apa adanya, titik tetap valid
   } finally {
     isReverseGeocoding.value = false
   }
 }
 
-// syncAddress: true = isi ulang field alamat dari titik (untuk aksi user di peta).
-// false = jangan sentuh alamat (mis. saat memulihkan marker atau hasil Pin).
+// Satu-satunya tempat penanda lokasi dipindahkan. Dipanggil dari mana-mana
+// (klik peta, hasil pencarian, tombol lokasi saya), jadi pilihannya dibuat
+// lentur lewat dua saklar: pan (ikut geser tampilan peta) dan syncAddress
+// (isi ulang kolom alamat dari koordinat).
 const setPoint = (lat, lng, { pan = true, syncAddress = false } = {}) => {
   addressLat.value = lat
   addressLng.value = lng
 
   if (!map) return
+
+  // Penanda dibuat sekali saja saat pertama dipakai; pemanggilan berikutnya
+  // hanya memindahkannya. Bisa digeser sendiri oleh pengunjung, dan setelah
+  // digeser alamatnya ikut diperbarui.
   if (!marker) {
     marker = new maplibregl.Marker({
       element: createDestMarkerEl(),
@@ -194,7 +183,6 @@ const setPoint = (lat, lng, { pan = true, syncAddress = false } = {}) => {
     })
       .setLngLat([lng, lat])
       .addTo(map)
-    // user geser marker -> titik lokasi ikut pindah + alamat ikut diperbarui
     marker.on('dragend', () => {
       const pos = marker.getLngLat()
       addressLat.value = pos.lat
@@ -208,19 +196,15 @@ const setPoint = (lat, lng, { pan = true, syncAddress = false } = {}) => {
   if (syncAddress) reverseGeocode(lat, lng)
 }
 
-// ===== CARI ALAMAT (alamat -> titik di peta) =====
-// User mengetik alamat -> muncul daftar saran -> pilih salah satu -> marker
-// pindah ke sana. Pencarian TIDAK otomatis memindahkan marker tanpa user
-// memilih: query seperti "jalan merdeka" ada di banyak kota, jadi biar user
-// yang memutuskan. Field alamat tetap bebas disunting untuk menambah patokan /
-// nomor rumah tanpa menggeser titik yang sudah benar.
 const suggestions = ref([])
 const isSearching = ref(false)
 const showSuggestions = ref(false)
-const activeSuggestion = ref(-1) // -1 = belum ada yang disorot keyboard
+const activeSuggestion = ref(-1)
 const searchError = ref('')
 const addressBoxEl = ref(null)
 
+// Dua pengaman untuk pencarian alamat: timer supaya tidak mencari tiap ketikan,
+// dan searchAbort untuk membatalkan pencarian lama yang belum selesai.
 let searchDebounceTimer = null
 let searchAbort = null
 
@@ -229,12 +213,9 @@ const closeSuggestions = () => {
   activeSuggestion.value = -1
 }
 
+// Pencarian lama dibatalkan lebih dulu. Tanpa ini, hasil pencarian yang lebih
+// tua bisa datang belakangan dan menimpa hasil yang lebih baru.
 const runSearch = async (query) => {
-  // Batalkan request sebelumnya supaya hasil ketikan lama tidak menimpa hasil
-  // ketikan terbaru. `controller` dipegang lokal, lalu dibandingkan dengan
-  // searchAbort setelah await: kalau sudah tidak sama berarti request ini basi
-  // (user sudah mengetik lagi) — hasilnya dibuang dan spinner dibiarkan menyala
-  // untuk request yang baru.
   searchAbort?.abort()
   const controller = new AbortController()
   searchAbort = controller
@@ -246,6 +227,8 @@ const runSearch = async (query) => {
       proximity: STORE_LOCATION,
       signal: controller.signal,
     })
+    // Pemeriksaan terakhir: kalau sudah ada pencarian yang lebih baru,
+    // hasil ini diabaikan saja.
     if (searchAbort !== controller) return
 
     suggestions.value = results
@@ -261,14 +244,13 @@ const runSearch = async (query) => {
   }
 }
 
-// Hanya dipanggil dari event @input (ketikan user) — perubahan address.value
-// secara programatik (hasil reverse geocode) sengaja tidak memicu ini.
 const handleAddressInput = () => {
   clearTimeout(searchDebounceTimer)
   searchError.value = ''
 
+  // Kurang dari 3 huruf tidak dicari, karena hasilnya pasti terlalu banyak
+  // dan tidak membantu.
   const query = address.value.trim()
-  // di bawah 3 huruf hasilnya terlalu acak untuk ditampilkan
   if (query.length < 3) {
     suggestions.value = []
     closeSuggestions()
@@ -280,25 +262,25 @@ const handleAddressInput = () => {
 
 const selectSuggestion = (item) => {
   address.value = item.label
-  // syncAddress: false — alamat sudah diisi dari label saran, tidak perlu
-  // ditimpa lagi oleh reverse geocode
   setPoint(item.lat, item.lng, { pan: true, syncAddress: false })
   suggestions.value = []
   closeSuggestions()
 }
 
+// Daftar saran alamat bisa dijelajahi pakai tombol panah, dipilih dengan Enter,
+// dan ditutup dengan Escape. e.preventDefault() menahan perilaku bawaan panah
+// yang menggeser kursor di dalam kotak isian.
 const handleAddressKeydown = (e) => {
   if (!showSuggestions.value || suggestions.value.length === 0) return
 
   if (e.key === 'ArrowDown') {
     e.preventDefault()
+    // Sisa bagi (%) membuat sorotan kembali ke awal setelah sampai di bawah.
     activeSuggestion.value = (activeSuggestion.value + 1) % suggestions.value.length
   } else if (e.key === 'ArrowUp') {
     e.preventDefault()
     activeSuggestion.value =
-      activeSuggestion.value <= 0
-        ? suggestions.value.length - 1
-        : activeSuggestion.value - 1
+      activeSuggestion.value <= 0 ? suggestions.value.length - 1 : activeSuggestion.value - 1
   } else if (e.key === 'Enter') {
     if (activeSuggestion.value >= 0) {
       e.preventDefault()
@@ -309,13 +291,14 @@ const handleAddressKeydown = (e) => {
   }
 }
 
-// Klik di luar kotak alamat menutup daftar saran. Pakai pointerdown supaya
-// tetap jalan sebelum fokus berpindah.
 const handlePointerDownOutside = (e) => {
   if (addressBoxEl.value && !addressBoxEl.value.contains(e.target)) closeSuggestions()
 }
 
 onMounted(() => document.addEventListener('pointerdown', handlePointerDownOutside))
+
+// Bersih-bersih saat halaman ditinggalkan: pemantau klik dilepas, timer
+// dimatikan, dan pencarian yang masih berjalan dibatalkan.
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', handlePointerDownOutside)
   clearTimeout(searchDebounceTimer)
@@ -323,6 +306,7 @@ onBeforeUnmount(() => {
 })
 
 const initMap = () => {
+  // Pengaman agar peta tidak dibuat dua kali.
   if (map || !mapEl.value) return
 
   map = new maplibregl.Map({
@@ -333,13 +317,8 @@ const initMap = () => {
     attributionControl: { compact: true },
   })
 
-  // Kontrol zoom di kanan atas (tanpa kompas).
-  map.addControl(
-    new maplibregl.NavigationControl({ showCompass: false }),
-    'top-right'
-  )
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
-  // Penanda toko (tetap, tidak bisa digeser). Beri popup nama/alamat toko.
   const storePopup = new maplibregl.Popup({ offset: 34, closeButton: false }).setHTML(
     `<strong>Talita's Cake</strong>${STORE_INFO.address ? `<br/>${STORE_INFO.address}` : ''}`
   )
@@ -348,12 +327,12 @@ const initMap = () => {
     .setPopup(storePopup)
     .addTo(map)
 
-  // user klik peta -> taruh/pindahkan marker + isi alamat otomatis
-  map.on('click', (e) =>
-    setPoint(e.lngLat.lat, e.lngLat.lng, { pan: false, syncAddress: true })
-  )
+  // Klik di peta menandai lokasi pengiriman. pan: false supaya tampilan peta
+  // tidak ikut bergeser — mengganggu kalau pengunjung sedang mengatur titiknya.
+  map.on('click', (e) => setPoint(e.lngLat.lat, e.lngLat.lng, { pan: false, syncAddress: true }))
 
-  // kalau titik sudah ada (mis. balik dari PICKUP ke DELIVERY), pulihkan marker
+  // Kalau lokasinya sudah pernah ditandai sebelum peta dibuat ulang
+  // (misalnya setelah berpindah dari "ambil sendiri"), penandanya dipasang lagi.
   if (addressLat.value !== null && addressLng.value !== null) {
     setPoint(addressLat.value, addressLng.value)
   }
@@ -367,8 +346,9 @@ const destroyMap = () => {
   }
 }
 
-// Section delivery pakai v-if, jadi peta harus di-init setiap section muncul
-// dan dibersihkan saat disembunyikan (elemen container-nya ikut hilang).
+// Peta hanya dibuat saat pilihan "diantar" aktif, dan dibuang saat berpindah
+// ke "ambil sendiri" supaya tidak memakan memori percuma. nextTick diperlukan
+// karena kotak petanya baru ada di layar setelah tampilan selesai diperbarui.
 watch(
   isDelivery,
   async (val) => {
@@ -384,11 +364,10 @@ watch(
 
 onBeforeUnmount(destroyMap)
 
-// ===== FETCH CART (untuk Order Summary) =====
 const fetchCart = async () => {
-  // Kalau cache sudah ada isinya, tampilkan langsung dan refresh diam-diam.
-  // (Kalau cache kosong tapi belum pernah load, biarkan spinner sampai server
-  // menjawab — jangan buru-buru redirect ke /cart.)
+  // Checkout tanpa isi keranjang tidak masuk akal, jadi dikembalikan ke
+  // halaman keranjang. Dicek dua kali: dari data yang sudah ada, dan
+  // sekali lagi setelah data terbaru diambil dari server.
   if (cartStore.loaded && cart.value.items.length === 0) {
     router.replace('/cart')
     return
@@ -399,20 +378,20 @@ const fetchCart = async () => {
     cart.value = data.data
     cartStore.setFromItems(cart.value.items)
     if (!cart.value.items || cart.value.items.length === 0) {
-      // tidak ada yang bisa di-checkout, balikin ke cart
       router.replace('/cart')
     }
   } catch (err) {
     if (!cartStore.loaded) {
-      errorMessage.value =
-        err.response?.data?.message || t('cart.loadFailed')
+      errorMessage.value = err.response?.data?.message || t('cart.loadFailed')
     }
   } finally {
     isLoading.value = false
   }
 }
 
-// ===== LOKASI SAYA: pakai GPS browser (Geolocation API) =====
+// Mengambil lokasi pengunjung lewat GPS/browser. Bisa gagal karena browsernya
+// tidak mendukung, atau karena izin lokasinya ditolak — keduanya dibedakan
+// supaya pesan yang muncul sesuai keadaan.
 const useMyLocation = () => {
   if (!('geolocation' in navigator)) {
     pinError.value = t('checkout.geoUnsupported')
@@ -424,23 +403,21 @@ const useMyLocation = () => {
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const { latitude, longitude } = pos.coords
-      // taruh marker di lokasi user + isi alamat otomatis; user masih bisa
-      // koreksi dengan menggeser marker atau klik titik lain di peta
       setPoint(latitude, longitude, { syncAddress: true })
       isLocating.value = false
     },
     (err) => {
       isLocating.value = false
       pinError.value =
-        err.code === err.PERMISSION_DENIED
-          ? t('checkout.geoDenied')
-          : t('checkout.geoFailed')
+        err.code === err.PERMISSION_DENIED ? t('checkout.geoDenied') : t('checkout.geoFailed')
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   )
 }
 
-// ===== PREVIEW: hitung ongkir + total di backend =====
+// Menyusun data yang dikirim ke server. Tanda ...( && ) membuat sekelompok
+// data hanya ikut terkirim kalau syaratnya terpenuhi — data alamat hanya ikut
+// saat diantar, dan data penerima hanya saat pesanan untuk orang lain.
 const buildPayload = () => ({
   fulfillmentType: fulfillmentType.value,
   requestCakeDate: requestCakeDate.value,
@@ -458,19 +435,13 @@ const buildPayload = () => ({
   }),
 })
 
+// Menanyakan ongkos kirim dan jarak ke server. Perhitungannya sengaja
+// dilakukan di server, bukan di browser, supaya tarifnya tidak bisa diakali
+// dari sisi pengunjung.
 const fetchPreview = async () => {
-  // Preview (ongkir) hanya butuh titik lokasi — jarak/ongkir dihitung murni
-  // dari koordinat, jadi ongkir langsung muncul saat pin ditaruh (GPS / klik
-  // peta), tanpa menunggu tanggal dipilih ataupun reverse-geocode mengisi
-  // field alamat.
-  if (isDelivery.value && (addressLat.value === null || addressLng.value === null))
-    return
+  if (isDelivery.value && (addressLat.value === null || addressLng.value === null)) return
 
   try {
-    // JANGAN pakai buildPayload() di sini: field lain yang belum terisi
-    // (recipientName/recipientPhone kosong, tanggal belum dipilih) akan
-    // ditolak validasi backend (422) — ongkir jadi macet di "Pin lokasi dulu"
-    // padahal titik sudah dipin. Preview cukup koordinat saja.
     const { data } = await api.post('/orders/preview', {
       fulfillmentType: fulfillmentType.value,
       ...(isDelivery.value && {
@@ -482,12 +453,12 @@ const fetchPreview = async () => {
     distanceKm.value = data.data.distanceKm
     deliveryError.value = ''
   } catch (err) {
-    // preview gagal (mis. validasi) -> biarkan ongkir tampil "dihitung nanti"
     deliveryFee.value = null
     distanceKm.value = null
 
-    // error tanpa details = pesan bisnis dari backend (mis. di luar radius 25 km),
-    // bukan error validasi field — tampilkan ke user
+    // Hanya pesan yang memang untuk dibaca pengunjung yang ditampilkan
+    // (misalnya "di luar jangkauan pengiriman"). Balasan yang berisi details
+    // adalah kesalahan teknis, jadi tidak perlu ditunjukkan.
     const res = err.response?.data
     deliveryError.value = res && !res.details && res.message ? res.message : ''
   }
@@ -497,6 +468,9 @@ watch(isDelivery, () => {
   deliveryError.value = ''
 })
 
+// Ongkos kirim dihitung ulang setiap kali cara pengambilan atau titik lokasinya
+// berubah. Ambil sendiri berarti ongkirnya 0. Untuk pengiriman, nilainya
+// dikosongkan dulu supaya tidak sempat terlihat angka ongkir dari lokasi lama.
 watch([fulfillmentType, addressLat, addressLng], () => {
   if (!isDelivery.value) {
     deliveryFee.value = 0
@@ -507,9 +481,8 @@ watch([fulfillmentType, addressLat, addressLng], () => {
   fetchPreview()
 })
 
-// ===== KONFIRMASI: rekap pesanan sebelum order dibuat =====
-// Tombol simpan hanya membuka modal; order baru dibuat setelah user menekan
-// konfirmasi di dalamnya.
+// Pesanan tidak langsung dikirim saat tombol ditekan. Isinya ditampilkan dulu
+// di jendela konfirmasi supaya pembeli bisa memeriksa ulang sebelum lanjut.
 const isConfirmOpen = ref(false)
 
 const confirmDetails = computed(() => ({
@@ -533,7 +506,6 @@ const openConfirm = () => {
   isConfirmOpen.value = true
 }
 
-// ===== CONFIRM: buat order + buka WhatsApp =====
 const submitOrder = async () => {
   isSubmitting.value = true
   errorMessage.value = ''
@@ -541,30 +513,24 @@ const submitOrder = async () => {
     const { data } = await api.post('/orders/confirm', buildPayload())
     const { order, whatsappLink } = data.data
 
-    // Cart sudah dikosongkan backend saat confirm — samakan cache lokal biar
-    // badge Navbar langsung ikut kosong.
+    // Keranjang dikosongkan karena isinya sudah menjadi pesanan.
     cartStore.reset()
 
-    // Taruh halaman sukses di history SEBELUM pindah ke WhatsApp, supaya saat
-    // user menekan back dari WhatsApp mereka mendarat di halaman sukses
-    // (bukan balik ke checkout dengan cart kosong). whatsappLink & orderId
-    // dibawa via history.state agar halaman sukses bisa menampilkannya.
+    // Pindah ke halaman berhasil dulu, baru buka WhatsApp. Urutannya penting:
+    // kalau pembeli menekan tombol kembali dari WhatsApp, yang ditemuinya
+    // halaman berhasil, bukan form checkout yang sudah tidak berlaku.
     await router.push({
       name: 'order-success',
       state: { whatsappLink, orderId: order?.id ?? '' },
     })
 
-    // Navigasi di tab yang sama, bukan window.open: setelah await, browser
-    // sudah tidak menganggapnya hasil klik user sehingga popup diblokir.
     window.location.href = whatsappLink
   } catch (err) {
-    // Zod flatten dari backend: { formErrors: [], fieldErrors: { field: [pesan] } }
+    // Server bisa membalas kesalahan per kolom isian. Semuanya dikumpulkan
+    // jadi satu kalimat supaya pembeli tahu bagian mana yang bermasalah.
     const details = err.response?.data?.details
     const fieldMessages = details
-      ? [
-          ...(details.formErrors ?? []),
-          ...Object.values(details.fieldErrors ?? {}).flat(),
-        ]
+      ? [...(details.formErrors ?? []), ...Object.values(details.fieldErrors ?? {}).flat()]
       : []
 
     errorMessage.value =
@@ -572,7 +538,6 @@ const submitOrder = async () => {
         ? fieldMessages.join(' — ')
         : err.response?.data?.message || t('checkout.createFailed')
 
-    // tutup modal supaya pesan error di kolom ringkasan tidak tertutup olehnya
     isConfirmOpen.value = false
   } finally {
     isSubmitting.value = false
@@ -601,9 +566,7 @@ onMounted(fetchCart)
     </div>
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
-      <!-- ===== KOLOM KIRI: FORM ===== -->
       <div class="flex flex-col gap-5">
-        <!-- 1. Tanggal kue -->
         <section class="bg-white border border-cream-300 rounded-2xl p-6">
           <div class="flex items-center gap-3 mb-3.5">
             <span
@@ -641,7 +604,6 @@ onMounted(fetchCart)
           </p>
         </section>
 
-        <!-- 2. Pickup / Delivery -->
         <section class="bg-white border border-cream-300 rounded-2xl p-6">
           <div class="flex items-center gap-3 mb-3.5">
             <span
@@ -656,12 +618,16 @@ onMounted(fetchCart)
               type="button"
               @click="fulfillmentType = 'PICKUP'"
               class="rounded-[14px] border-2 px-4 py-4 text-left transition-colors"
-              :class="fulfillmentType === 'PICKUP'
-                ? 'border-brand-500 bg-[#F4D6D1]'
-                : 'border-[#EBDCCC] bg-white hover:border-brand-500'"
+              :class="
+                fulfillmentType === 'PICKUP'
+                  ? 'border-brand-500 bg-[#F4D6D1]'
+                  : 'border-[#EBDCCC] bg-white hover:border-brand-500'
+              "
             >
               <div class="text-[22px] mb-1.5">🏠</div>
-              <div class="font-extrabold text-[15px] text-cocoa-900">{{ t('checkout.pickup') }}</div>
+              <div class="font-extrabold text-[15px] text-cocoa-900">
+                {{ t('checkout.pickup') }}
+              </div>
               <div class="text-[12.5px] text-cocoa-400 mt-0.5">
                 {{ t('checkout.pickupDesc') }}
               </div>
@@ -670,12 +636,16 @@ onMounted(fetchCart)
               type="button"
               @click="fulfillmentType = 'DELIVERY'"
               class="rounded-[14px] border-2 px-4 py-4 text-left transition-colors"
-              :class="fulfillmentType === 'DELIVERY'
-                ? 'border-brand-500 bg-[#F4D6D1]'
-                : 'border-[#EBDCCC] bg-white hover:border-brand-500'"
+              :class="
+                fulfillmentType === 'DELIVERY'
+                  ? 'border-brand-500 bg-[#F4D6D1]'
+                  : 'border-[#EBDCCC] bg-white hover:border-brand-500'
+              "
             >
               <div class="text-[22px] mb-1.5">🛵</div>
-              <div class="font-extrabold text-[15px] text-cocoa-900">{{ t('checkout.delivery') }}</div>
+              <div class="font-extrabold text-[15px] text-cocoa-900">
+                {{ t('checkout.delivery') }}
+              </div>
               <div class="text-[12.5px] text-cocoa-400 mt-0.5">
                 {{ t('checkout.deliveryDesc', { km: MAX_DELIVERY_DISTANCE_KM }) }}
               </div>
@@ -690,7 +660,9 @@ onMounted(fetchCart)
           </div>
         </section>
 
-        <!-- 3. Penerima (hanya DELIVERY) -->
+        <!-- Bagian penerima, hanya muncul kalau pesanannya diantar. Kalau untuk
+             orang lain, nama dan nomor penerimanya perlu diisi beserta
+             persetujuan pemakaian datanya. -->
         <section v-if="isDelivery" class="bg-white border border-cream-300 rounded-2xl p-6">
           <div class="flex items-center gap-3 mb-3.5">
             <span
@@ -705,9 +677,11 @@ onMounted(fetchCart)
               type="button"
               @click="recipientType = 'FOR_MYSELF'"
               class="flex-1 rounded-xl border-2 py-3 font-extrabold text-sm text-cocoa-900 transition-colors"
-              :class="recipientType === 'FOR_MYSELF'
-                ? 'border-brand-500 bg-[#F4D6D1]'
-                : 'border-[#EBDCCC] bg-white hover:border-brand-500'"
+              :class="
+                recipientType === 'FOR_MYSELF'
+                  ? 'border-brand-500 bg-[#F4D6D1]'
+                  : 'border-[#EBDCCC] bg-white hover:border-brand-500'
+              "
             >
               {{ t('checkout.forMyself') }}
             </button>
@@ -715,15 +689,16 @@ onMounted(fetchCart)
               type="button"
               @click="recipientType = 'FOR_SOMEONE_ELSE'"
               class="flex-1 rounded-xl border-2 py-3 font-extrabold text-sm text-cocoa-900 transition-colors"
-              :class="recipientType === 'FOR_SOMEONE_ELSE'
-                ? 'border-brand-500 bg-[#F4D6D1]'
-                : 'border-[#EBDCCC] bg-white hover:border-brand-500'"
+              :class="
+                recipientType === 'FOR_SOMEONE_ELSE'
+                  ? 'border-brand-500 bg-[#F4D6D1]'
+                  : 'border-[#EBDCCC] bg-white hover:border-brand-500'
+              "
             >
               {{ t('checkout.forSomeoneElse') }}
             </button>
           </div>
 
-          <!-- Data penerima (khusus For Someone Else) -->
           <div v-if="isForSomeoneElse" class="flex flex-col gap-3">
             <input
               v-model="recipientName"
@@ -732,9 +707,7 @@ onMounted(fetchCart)
               class="w-full rounded-xl border-[1.5px] border-[#E4D3C1] bg-white px-4 py-3 text-[14.5px] text-cocoa-900 placeholder-[#B7A18E]"
             />
             <div class="relative">
-              <Phone
-                class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-cocoa-400"
-              />
+              <Phone class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-cocoa-400" />
               <input
                 v-model="recipientPhone"
                 type="tel"
@@ -755,7 +728,6 @@ onMounted(fetchCart)
           </div>
         </section>
 
-        <!-- 4. Alamat tujuan (hanya DELIVERY) -->
         <section v-if="isDelivery" class="bg-white border border-cream-300 rounded-2xl p-6">
           <div class="flex items-center gap-3 mb-1.5">
             <span
@@ -781,13 +753,12 @@ onMounted(fetchCart)
 
           <p v-if="pinError" class="text-xs text-brand-600 mt-2">{{ pinError }}</p>
 
-          <!-- Alamat: ketik untuk mencari lokasi (pilih saran -> marker pindah),
-               atau terisi otomatis dari titik lokasi saat user klik peta.
-               Tetap bisa disunting untuk memperjelas (patokan, no. rumah, dsb). -->
+          <!-- Kotak pencarian alamat beserta daftar sarannya. ref di sini
+               dipakai untuk mengenali klik di luar area, agar daftar sarannya
+               ikut tertutup. role="combobox" memberitahu pembaca layar bahwa
+               ini kotak isian yang punya daftar pilihan. -->
           <div ref="addressBoxEl" class="relative mt-3.5">
-            <MapPin
-              class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-cocoa-400"
-            />
+            <MapPin class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-cocoa-400" />
             <input
               v-model="address"
               @input="handleAddressInput"
@@ -809,11 +780,12 @@ onMounted(fetchCart)
               class="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-cocoa-400"
             />
 
-            <!-- Daftar saran alamat -->
             <ul
               v-if="showSuggestions && suggestions.length > 0"
               class="absolute z-20 left-0 right-0 top-full mt-1.5 bg-white border border-cream-300 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
             >
+              <!-- @mouseenter menyamakan sorotan mouse dengan sorotan tombol
+                   panah, jadi keduanya memakai penanda yang sama. -->
               <li
                 v-for="(item, i) in suggestions"
                 :key="item.id"
@@ -830,10 +802,11 @@ onMounted(fetchCart)
 
           <p v-if="searchError" class="text-xs text-cocoa-400 mt-2">{{ searchError }}</p>
 
-          <!-- Peta interaktif (MapLibre GL + MapTiler) -->
           <div
             class="mt-3.5 rounded-[14px] border border-cream-300 overflow-hidden h-[320px] relative z-0 bg-[#F0E3D6]"
           >
+            <!-- Kotak kosong tempat maplibre menggambar petanya sendiri.
+                 Isinya tidak diurus Vue, hanya wadahnya yang disediakan. -->
             <div ref="mapEl" class="w-full h-full"></div>
           </div>
 
@@ -849,7 +822,6 @@ onMounted(fetchCart)
             </template>
           </p>
 
-          <!-- Jarak dari toko — kotak tersendiri agar langsung terlihat user -->
           <div
             v-if="distanceKm !== null"
             class="mt-3 flex items-center gap-3 rounded-xl border border-[#CDE3D2] bg-[#EDF6EF] px-4 py-3"
@@ -860,9 +832,7 @@ onMounted(fetchCart)
               <Route class="w-5 h-5 text-white" />
             </div>
             <div>
-              <div
-                class="text-[11px] font-extrabold tracking-widest uppercase text-[#3E7A4E]"
-              >
+              <div class="text-[11px] font-extrabold tracking-widest uppercase text-[#3E7A4E]">
                 {{ t('checkout.distanceLabel') }}
               </div>
               <div class="text-lg font-extrabold leading-tight text-cocoa-900">
@@ -876,7 +846,6 @@ onMounted(fetchCart)
             </span>
           </div>
 
-          <!-- Alamat di luar radius layanan pengiriman -->
           <div
             v-if="deliveryError"
             class="mt-3 rounded-xl border border-[#F0C9C4] bg-[#FBE9E7] p-4 text-xs text-brand-500 font-bold"
@@ -893,22 +862,19 @@ onMounted(fetchCart)
             </a>
           </div>
 
-          <!-- Info tarif ongkir -->
           <div class="mt-4">
-            <div
-              class="text-[13px] font-extrabold text-cocoa-400 tracking-widest uppercase mb-2"
-            >
+            <div class="text-[13px] font-extrabold text-cocoa-400 tracking-widest uppercase mb-2">
               {{ t('checkout.feeTitle') }}
             </div>
+            <!-- Tabel tarif ongkir. Baris yang sesuai jarak alamat pembeli
+                 disorot hijau, jadi terlihat tarif mana yang sedang berlaku. -->
             <div class="flex flex-col border border-cream-300 rounded-xl overflow-hidden">
               <div
                 v-for="(tier, i) in DELIVERY_FEE_TIERS"
                 :key="tier.label"
                 class="flex justify-between px-4 py-2.5 text-[13.5px] border-b border-[#F6EDE2] last:border-b-0 transition-colors"
                 :class="
-                  i === activeTierIndex
-                    ? 'bg-[#EDF6EF] text-[#3E7A4E] font-bold'
-                    : 'text-[#6E5A4D]'
+                  i === activeTierIndex ? 'bg-[#EDF6EF] text-[#3E7A4E] font-bold' : 'text-[#6E5A4D]'
                 "
               >
                 <span>{{ tier.label }}</span>
@@ -927,10 +893,10 @@ onMounted(fetchCart)
         </section>
       </div>
 
-      <!-- ===== KOLOM KANAN: RINGKASAN ===== -->
-      <aside
-        class="bg-white border border-cream-300 rounded-2xl p-6 lg:sticky lg:top-[92px]"
-      >
+      <!-- Ringkasan pesanan. lg:sticky membuatnya ikut turun mengikuti gulir di
+           layar lebar, jadi total dan tombol pesan selalu terlihat sementara
+           pembeli mengisi form di sebelah kiri. -->
+      <aside class="bg-white border border-cream-300 rounded-2xl p-6 lg:sticky lg:top-[92px]">
         <h2 class="font-display text-[21px] mb-4">{{ t('checkout.summaryTitle') }}</h2>
 
         <ul class="flex flex-col gap-3 mb-4">
@@ -954,6 +920,9 @@ onMounted(fetchCart)
             <span>{{ t('checkout.subtotal') }}</span>
             <strong class="text-cocoa-900">{{ formatRupiah(cart.subtotal) }}</strong>
           </div>
+          <!-- Baris ongkir punya tiga kemungkinan isi: nominalnya kalau sudah
+               dihitung, "di luar jangkauan" kalau alamatnya terlalu jauh, atau
+               ajakan menandai lokasi kalau titiknya belum dipilih. -->
           <div v-if="isDelivery" class="flex justify-between text-sm text-[#6E5A4D] py-1">
             <span>{{ t('checkout.shipping') }}</span>
             <strong :class="deliveryError ? 'text-brand-500' : 'text-cocoa-900'">
@@ -970,27 +939,18 @@ onMounted(fetchCart)
           </div>
         </div>
 
-        <!-- Sertakan email (opsional) -->
         <label
           class="flex items-start gap-2.5 rounded-xl bg-cream-50 border border-cream-300 p-4 mb-4 cursor-pointer"
         >
-          <input
-            v-model="includeEmail"
-            type="checkbox"
-            class="mt-0.5 w-4 h-4 accent-brand-500"
-          />
+          <input v-model="includeEmail" type="checkbox" class="mt-0.5 w-4 h-4 accent-brand-500" />
           <span class="text-[13px] text-[#6E5A4D] leading-relaxed">
             {{ t('checkout.includeEmail') }}
-            <strong
-              v-if="authStore.user?.email"
-              class="block mt-1 text-cocoa-900 break-all"
-            >
+            <strong v-if="authStore.user?.email" class="block mt-1 text-cocoa-900 break-all">
               {{ authStore.user.email }}
             </strong>
           </span>
         </label>
 
-        <!-- Important -->
         <div class="rounded-xl bg-cream-50 border border-cream-300 p-4 mb-4">
           <h3 class="text-sm font-extrabold mb-2">{{ t('checkout.importantTitle') }}</h3>
           <ul class="text-xs text-[#6E5A4D] space-y-1 list-disc list-inside">
@@ -1008,6 +968,8 @@ onMounted(fetchCart)
           {{ errorMessage }}
         </div>
 
+        <!-- Tombol ini membuka jendela konfirmasi, bukan langsung mengirim
+             pesanan. Dimatikan selama syarat di canSubmit belum terpenuhi. -->
         <button
           type="button"
           :disabled="!canSubmit || isSubmitting"
@@ -1022,7 +984,8 @@ onMounted(fetchCart)
       </aside>
     </div>
 
-    <!-- KONFIRMASI PESANAN (checkpoint terakhir sebelum order dibuat) -->
+    <!-- Jendela konfirmasi terakhir. Pesanan baru benar-benar dikirim ke server
+         setelah pembeli menyetujui isinya di sini. -->
     <OrderConfirmModal
       :open="isConfirmOpen"
       :is-submitting="isSubmitting"
@@ -1042,7 +1005,7 @@ onMounted(fetchCart)
   justify-content: center;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
-  background: #C0392B;
+  background: #c0392b;
   border: 2px solid #fff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }

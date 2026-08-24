@@ -15,7 +15,9 @@ import {
   breadSizeForVariant,
 } from '@/config/productOptions'
 
-// Label ukuran Bread (Personal/Family/Sharing) dari shape/size/sizeB item.
+// Menyusun tulisan ukuran untuk produk roti, karena bentuknya bermacam-macam:
+// ada yang dijual per kotak, ada yang persegi (butuh dua sisi), dan ada yang
+// bulat (cukup satu ukuran).
 const breadSizeText = (item) => {
   const s = breadSizeForVariant(item)
   if (!s) return item.size
@@ -28,7 +30,8 @@ const breadSizeText = (item) => {
   return `${s.label} · ${dim}`
 }
 
-// Batas bawah stepper untuk item goodiebag (min beli 10 box); 1 untuk item lain.
+// Cupcake goodiebag punya jumlah pesanan minimal (tidak bisa beli satuan),
+// sedangkan produk lain minimalnya 1.
 const minQtyForItem = (item) =>
   isGoodiebagCupcake(item.productCategory) ? goodiebagMinQty(item.productCategory) : 1
 
@@ -37,37 +40,29 @@ const authStore = useAuthStore()
 const cartStore = useCartStore()
 const router = useRouter()
 
-// ===== STATE =====
-// Seed dari cache store kalau ada, supaya halaman langsung tampil tanpa spinner.
+// Isi awal diambil dari store (yang dipakai badge keranjang di menu atas),
+// supaya isi keranjang langsung terlihat sambil data terbarunya diambil.
 const cart = ref({
   id: null,
   items: [...cartStore.items],
   subtotal: cartStore.subtotal,
 })
-// Spinner hanya ditampilkan kalau cart belum pernah diambil sama sekali.
 const isLoading = ref(!cartStore.loaded)
 const errorMessage = ref('')
 
-// id item yang sedang di-update quantity-nya (disable tombol +/- item itu)
+// Menyimpan id barang yang jumlahnya sedang diubah, supaya hanya tombol
+// milik barang itu yang dikunci, bukan seluruh keranjang.
 const updatingItemId = ref(null)
 
-// Ubah "SQUARE"/"ROUND" jadi "Square"/"Round" agar lebih rapi dibaca.
 const formatShape = (shape) =>
   shape ? shape.charAt(0).toUpperCase() + shape.slice(1).toLowerCase() : ''
 
-// state dialog hapus item
 const itemToDelete = ref(null)
 const isDeleting = ref(false)
 
-// ===== FETCH CART =====
 const fetchCart = async () => {
-  // Guest (belum login): jangan panggil API cart sama sekali.
-  // Kalau tetap di-hit, request akan gagal 401, lalu axios interceptor
-  // otomatis coba POST /auth/refresh-token untuk auto-refresh — dan karena
-  // guest memang belum pernah login (tidak ada cookie refresh token sama
-  // sekali), backend balikin pesan "Refresh token required" yang KELIRU
-  // kalau ditampilkan sebagai error di halaman cart. Untuk guest, cukup
-  // tampilkan langsung state cart kosong.
+  // Keranjang tersimpan di server per akun, jadi tanpa login isinya pasti
+  // kosong dan tidak perlu meminta apa pun.
   if (!authStore.isAuthenticated) {
     cart.value = { id: null, items: [], subtotal: 0 }
     cartStore.setFromItems([])
@@ -75,48 +70,40 @@ const fetchCart = async () => {
     return
   }
 
-  // Kalau cache sudah ada, refresh dilakukan diam-diam di background (tidak
-  // menampilkan spinner penuh yang membuat isi cart berkedip hilang-muncul).
   errorMessage.value = ''
   try {
     const { data } = await api.get('/carts')
     cart.value = data.data
     cartStore.setFromItems(cart.value.items)
   } catch (err) {
-    // Hanya tampilkan error kalau memang belum ada data yang bisa ditampilkan.
+    // Kalau isi keranjang dari store sudah tampil, kegagalan ini didiamkan
+    // supaya yang sudah terlihat tidak berubah jadi pesan error.
     if (!cartStore.loaded) {
-      errorMessage.value =
-        err.response?.data?.message || t('cart.loadFailed')
+      errorMessage.value = err.response?.data?.message || t('cart.loadFailed')
     }
   } finally {
     isLoading.value = false
   }
 }
 
-// ===== UPDATE QUANTITY =====
+// Menangani tombol + dan −. delta bernilai +1 atau −1.
 const changeQuantity = async (item, delta) => {
   const newQuantity = item.quantity + delta
   const minQty = minQtyForItem(item)
 
-  // Goodiebag: jangan turun di bawah minimal box lewat stepper. Untuk menghapus,
-  // pakai tombol hapus (Trash) — bukan mengurangi terus sampai 0.
+  // Produk dengan jumlah minimal tidak boleh dikurangi sampai di bawah batasnya.
   if (minQty > 1 && newQuantity < minQty) return
 
-  // Jumlah 1 dikurangi lagi = item langsung dihapus dari keranjang
-  // (tanpa dialog konfirmasi — mengurangi sampai 0 sudah aksi yang disengaja).
+  // Dikurangi sampai nol berarti barangnya dikeluarkan dari keranjang.
   if (newQuantity < 1) {
     updatingItemId.value = item.id
     try {
       await api.delete(`/carts/items/${item.id}`)
       cart.value.items = cart.value.items.filter((i) => i.id !== item.id)
-      cart.value.subtotal = cart.value.items.reduce(
-        (sum, i) => sum + i.lineTotal,
-        0
-      )
+      cart.value.subtotal = cart.value.items.reduce((sum, i) => sum + i.lineTotal, 0)
       cartStore.setFromItems(cart.value.items)
     } catch (err) {
-      errorMessage.value =
-        err.response?.data?.message || t('cart.removeFailed')
+      errorMessage.value = err.response?.data?.message || t('cart.removeFailed')
     } finally {
       updatingItemId.value = null
     }
@@ -126,23 +113,20 @@ const changeQuantity = async (item, delta) => {
   updatingItemId.value = item.id
   try {
     await api.patch(`/carts/items/${item.id}`, { quantity: newQuantity })
-    // update lokal supaya UI langsung berubah tanpa flicker loading penuh
+
+    // Setelah server menyetujui, angka di layar diperbarui: jumlah barang,
+    // harga barisnya, lalu subtotal dihitung ulang dari seluruh baris.
     item.quantity = newQuantity
     item.lineTotal = item.price * newQuantity
-    cart.value.subtotal = cart.value.items.reduce(
-      (sum, i) => sum + i.lineTotal,
-      0
-    )
+    cart.value.subtotal = cart.value.items.reduce((sum, i) => sum + i.lineTotal, 0)
     cartStore.setFromItems(cart.value.items)
   } catch (err) {
-    errorMessage.value =
-      err.response?.data?.message || t('cart.updateQtyFailed')
+    errorMessage.value = err.response?.data?.message || t('cart.updateQtyFailed')
   } finally {
     updatingItemId.value = null
   }
 }
 
-// ===== REMOVE ITEM =====
 const askRemoveItem = (item) => {
   itemToDelete.value = item
 }
@@ -153,13 +137,10 @@ const confirmRemoveItem = async () => {
   isDeleting.value = true
   try {
     await api.delete(`/carts/items/${itemToDelete.value.id}`)
-    cart.value.items = cart.value.items.filter(
-      (i) => i.id !== itemToDelete.value.id
-    )
-    cart.value.subtotal = cart.value.items.reduce(
-      (sum, i) => sum + i.lineTotal,
-      0
-    )
+    cart.value.items = cart.value.items.filter((i) => i.id !== itemToDelete.value.id)
+    cart.value.subtotal = cart.value.items.reduce((sum, i) => sum + i.lineTotal, 0)
+    // setFromItems menyamakan isi store, supaya angka pada ikon keranjang
+    // di menu atas ikut berubah tanpa perlu memuat ulang halaman.
     cartStore.setFromItems(cart.value.items)
     itemToDelete.value = null
   } catch (err) {
@@ -169,7 +150,6 @@ const confirmRemoveItem = async () => {
   }
 }
 
-// ===== CHECKOUT =====
 const goToCheckout = () => {
   router.push('/checkout')
 }
@@ -179,17 +159,14 @@ onMounted(fetchCart)
 
 <template>
   <div class="tc-page max-w-[1160px] mx-auto px-5 md:px-8 pt-12 pb-20">
-    <!-- LOADING -->
     <div v-if="isLoading" class="text-center text-cocoa-400 py-24">
       {{ t('cart.loading') }}
     </div>
 
-    <!-- ERROR (hanya bisa muncul untuk user yang sudah login) -->
     <div v-else-if="errorMessage" class="text-center text-brand-600 py-24">
       {{ errorMessage }}
     </div>
 
-    <!-- EMPTY STATE -->
     <template v-else-if="!cart.items || cart.items.length === 0">
       <h1 class="font-display text-[40px] mb-6">{{ t('cart.title') }}</h1>
       <div
@@ -207,7 +184,6 @@ onMounted(fetchCart)
       </div>
     </template>
 
-    <!-- CART DENGAN ISI -->
     <div v-else>
       <RouterLink
         to="/menu"
@@ -219,14 +195,12 @@ onMounted(fetchCart)
       <h1 class="font-display text-[40px] mb-6">{{ t('cart.title') }}</h1>
 
       <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start">
-        <!-- DAFTAR ITEM -->
         <div class="flex flex-col gap-4">
           <div
             v-for="item in cart.items"
             :key="item.id"
             class="flex gap-4 bg-white border border-cream-300 rounded-2xl p-4"
           >
-            <!-- Gambar produk -->
             <span
               class="relative shrink-0 self-start w-[84px] aspect-square rounded-[10px] overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_8px,#F0E3D6_8px_16px)]"
             >
@@ -238,7 +212,6 @@ onMounted(fetchCart)
               />
             </span>
 
-            <!-- Detail item -->
             <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-3">
                 <h2 class="font-display text-[19px] leading-snug mt-0.5">
@@ -254,6 +227,9 @@ onMounted(fetchCart)
                 </button>
               </div>
 
+              <!-- Rincian pilihan pembeli (rasa, isian, topping, dan seterusnya).
+                   Semuanya diberi v-if karena tiap tipe produk punya pilihan
+                   berbeda — yang tidak dipilih tidak ikut ditampilkan. -->
               <div class="flex flex-col gap-0.5 text-[13.5px] text-[#6E5A4D] mt-1">
                 <p v-if="item.flavor">
                   <span class="text-cocoa-400">{{ t('cart.flavor') }}</span>
@@ -271,6 +247,9 @@ onMounted(fetchCart)
                   <span class="text-cocoa-400">{{ t('cart.shape') }}</span>
                   <strong class="text-[#4A3A30] ml-1">{{ formatShape(item.shape) }}</strong>
                 </p>
+                <!-- Tiga cara menulis ukuran: roti punya bentuk sendiri,
+                     cupcake (TYPE6) dihitung per kotak, sisanya ditulis apa
+                     adanya. -->
                 <p v-if="isBreadCategory(item.productCategory)">
                   <span class="text-cocoa-400">{{ t('cart.size') }}</span>
                   <strong class="text-[#4A3A30] ml-1">{{ breadSizeText(item) }}</strong>
@@ -280,7 +259,11 @@ onMounted(fetchCart)
                     {{ item.productType === 'TYPE6' ? t('cart.box') : t('cart.size') }}
                   </span>
                   <strong class="text-[#4A3A30] ml-1">
-                    {{ item.productType === 'TYPE6' ? t('product.boxOf', { count: item.size }) : item.size }}
+                    {{
+                      item.productType === 'TYPE6'
+                        ? t('product.boxOf', { count: item.size })
+                        : item.size
+                    }}
                   </strong>
                 </p>
                 <p v-if="item.textOnCake" class="truncate">
@@ -290,11 +273,17 @@ onMounted(fetchCart)
               </div>
 
               <div class="flex items-center justify-between gap-3 mt-3 flex-wrap">
-                <!-- Stepper quantity -->
-                <div class="flex items-center border-[1.5px] border-[#E4D3C1] rounded-full bg-white">
+                <div
+                  class="flex items-center border-[1.5px] border-[#E4D3C1] rounded-full bg-white"
+                >
+                  <!-- Tombol kurang dimatikan saat sedang menyimpan, atau saat
+                       jumlahnya sudah menyentuh batas minimal produk itu. -->
                   <button
                     type="button"
-                    :disabled="updatingItemId === item.id || (minQtyForItem(item) > 1 && item.quantity <= minQtyForItem(item))"
+                    :disabled="
+                      updatingItemId === item.id ||
+                      (minQtyForItem(item) > 1 && item.quantity <= minQtyForItem(item))
+                    "
                     @click="changeQuantity(item, -1)"
                     class="w-[34px] h-[34px] text-[15px] text-brand-500 font-extrabold rounded-full hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
                     :aria-label="t('product.orderForm.decreaseQty')"
@@ -323,15 +312,14 @@ onMounted(fetchCart)
           </div>
         </div>
 
-        <!-- SUMMARY -->
-        <div
-          class="bg-white border border-cream-300 rounded-2xl p-6 lg:sticky lg:top-24"
-        >
+        <!-- Ringkasan belanja. lg:sticky membuat kotak ini ikut turun mengikuti
+           gulir di layar lebar, jadi tombol checkout selalu terlihat.
+           Ongkos kirim belum dihitung di sini karena baru diketahui setelah
+           pembeli menentukan alamat di halaman checkout. -->
+        <div class="bg-white border border-cream-300 rounded-2xl p-6 lg:sticky lg:top-24">
           <h2 class="font-display text-[21px] mb-4">{{ t('cart.summary') }}</h2>
 
-          <div
-            class="flex justify-between text-[14.5px] text-[#6E5A4D] py-2"
-          >
+          <div class="flex justify-between text-[14.5px] text-[#6E5A4D] py-2">
             <span>{{ t('cart.subtotal', { count: cart.items.length }) }}</span>
             <strong class="text-cocoa-900">{{ formatRupiah(cart.subtotal) }}</strong>
           </div>
@@ -361,11 +349,12 @@ onMounted(fetchCart)
       </div>
     </div>
 
-    <!-- DIALOG KONFIRMASI HAPUS -->
     <ConfirmDialog
       :open="!!itemToDelete"
       :title="t('cart.confirmRemoveTitle')"
-      :message="t('cart.confirmRemoveMessage', { name: itemToDelete?.productName || t('cart.thisItem') })"
+      :message="
+        t('cart.confirmRemoveMessage', { name: itemToDelete?.productName || t('cart.thisItem') })
+      "
       :confirm-text="t('common.delete')"
       :cancel-text="t('common.cancel')"
       :is-loading="isDeleting"

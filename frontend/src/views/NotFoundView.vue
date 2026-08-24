@@ -1,3 +1,6 @@
+<!-- Halaman yang tampil kalau alamat yang dibuka tidak dikenali. Isinya hanya
+     tulisan, jadi tidak butuh blok <script> sama sekali. Terjemahannya dipanggil
+     pakai $t (tersedia langsung di template) alih-alih useI18n(). -->
 <template>
   <div class="tc-page max-w-[560px] mx-auto px-8 py-24 text-center">
     <div class="font-display text-[90px] text-[#E9D5C3] leading-none">404</div>

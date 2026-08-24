@@ -10,7 +10,6 @@ const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
 
-// ===== STATE =====
 const orders = ref([])
 const isLoading = ref(true)
 const errorMessage = ref('')
@@ -18,7 +17,8 @@ const isLoggingOut = ref(false)
 
 const totalOrders = computed(() => orders.value.length)
 
-// ===== FETCH ORDER HISTORY =====
+// Mengambil riwayat pesanan. Tidak perlu mengirim id pengguna, karena server
+// sudah tahu siapa yang sedang login dan hanya membalas pesanan miliknya.
 const fetchOrders = async () => {
   isLoading.value = true
   errorMessage.value = ''
@@ -26,17 +26,17 @@ const fetchOrders = async () => {
     const { data } = await api.get('/orders')
     orders.value = data.data
   } catch (err) {
-    errorMessage.value =
-      err.response?.data?.message || t('profile.loadFailed')
+    errorMessage.value = err.response?.data?.message || t('profile.loadFailed')
   } finally {
     isLoading.value = false
   }
 }
 
-// ===== LOGOUT =====
 const handleLogout = async () => {
   isLoggingOut.value = true
   try {
+    // Setelah keluar, pengguna dibawa ke beranda karena halaman profil
+    // sudah tidak boleh diakses lagi.
     await authStore.logout()
     router.push('/')
   } finally {
@@ -44,6 +44,7 @@ const handleLogout = async () => {
   }
 }
 
+// Tanggal ditulis mengikuti bahasa yang sedang dipakai pengunjung.
 const formatDate = (dateString) =>
   new Date(dateString).toLocaleDateString(locale.value === 'en' ? 'en-US' : 'id-ID', {
     day: 'numeric',
@@ -56,9 +57,10 @@ onMounted(fetchOrders)
 
 <template>
   <div class="tc-page max-w-[900px] mx-auto px-5 md:px-8 pt-12 pb-20">
-    <!-- HEADER PROFIL -->
     <div class="flex items-center justify-between gap-4 flex-wrap mb-7">
       <div class="flex items-center gap-4">
+        <!-- Foto profil digantikan lingkaran berisi huruf pertama nama.
+             Tanda "?" dipakai kalau namanya belum ada. -->
         <span
           class="w-14 h-14 rounded-full bg-brand-500 text-white flex items-center justify-center text-[22px] font-extrabold"
         >
@@ -83,23 +85,19 @@ onMounted(fetchOrders)
       </button>
     </div>
 
-    <!-- RIWAYAT PESANAN -->
     <h2 class="font-display text-[23px] mb-4">
       {{ t('profile.orderHistory') }}
       <span class="text-cocoa-400 text-sm font-sans font-bold">({{ totalOrders }})</span>
     </h2>
 
-    <!-- LOADING -->
     <div v-if="isLoading" class="text-center text-cocoa-400 py-16">
       {{ t('profile.loading') }}
     </div>
 
-    <!-- ERROR -->
     <div v-else-if="errorMessage" class="text-center text-brand-600 py-16">
       {{ errorMessage }}
     </div>
 
-    <!-- KOSONG -->
     <div
       v-else-if="orders.length === 0"
       class="bg-white border border-dashed border-[#E4D3C1] rounded-2xl p-10 text-center text-cocoa-400"
@@ -110,14 +108,14 @@ onMounted(fetchOrders)
       </RouterLink>
     </div>
 
-    <!-- LIST ORDER -->
+    <!-- Daftar riwayat pesanan. Tiap kartu berisi tanggal, cara pengambilan,
+         rincian barang, dan totalnya. -->
     <div v-else class="flex flex-col gap-3.5">
       <div
         v-for="order in orders"
         :key="order.id"
         class="bg-white border border-cream-300 rounded-2xl px-6 py-5"
       >
-        <!-- Header: tanggal + badge tipe pemesanan -->
         <div class="flex justify-between items-center gap-3 flex-wrap mb-2.5">
           <p class="text-[13px] text-[#B7A18E] font-semibold">
             {{ t('profile.created', { date: formatDate(order.createdAt) }) }}
@@ -134,7 +132,6 @@ onMounted(fetchOrders)
           </span>
         </div>
 
-        <!-- Item pesanan -->
         <div class="flex flex-col gap-1.5 mb-3">
           <div
             v-for="item in order.items"
@@ -146,9 +143,7 @@ onMounted(fetchOrders)
           </div>
         </div>
 
-        <div
-          class="flex items-center justify-between border-t border-cream-200 pt-3 text-sm"
-        >
+        <div class="flex items-center justify-between border-t border-cream-200 pt-3 text-sm">
           <span class="font-bold">{{ t('profile.total') }}</span>
           <span class="font-extrabold text-brand-500">
             {{ formatRupiah(order.total) }}

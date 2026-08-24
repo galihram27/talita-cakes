@@ -20,6 +20,8 @@ usePageSeo({
   path: '/about',
 })
 
+// Tiga angka ringkasan (lama berdiri, jumlah kue, dsb). Angka dan
+// keterangannya sama-sama diambil dari file terjemahan.
 const stats = computed(() => [
   { num: t('about.stats.years'), label: t('about.stats.yearsDesc') },
   { num: t('about.stats.cakes'), label: t('about.stats.cakesDesc') },
@@ -29,12 +31,12 @@ const stats = computed(() => [
 
 <template>
   <div class="tc-page max-w-[1080px] mx-auto px-5 md:px-8 pt-14 pb-20">
-    <!-- HERO -->
     <div class="grid grid-cols-1 md:grid-cols-[1.15fr_0.85fr] gap-7 md:gap-11 items-center mb-14">
       <div>
         <h1 class="font-display text-[clamp(36px,5vw,46px)] leading-[1.08] mb-4">
           {{ t('about.heading1') }} <br />
-          {{ t('about.heading2') }} <span class="italic text-brand-500">{{ t('about.heading3') }}</span>
+          {{ t('about.heading2') }}
+          <span class="italic text-brand-500">{{ t('about.heading3') }}</span>
         </h1>
         <p class="font-display text-xl leading-normal text-cocoa-900 mb-4">
           {{ t('about.tagline') }}
@@ -46,6 +48,9 @@ const stats = computed(() => [
           {{ t('about.intro2') }}
         </p>
       </div>
+      <!-- Logo di dalam lingkaran putih, dengan lingkaran gradasi lebih besar
+           sebagai latar. Yang belakang murni hiasan, jadi isinya dibiarkan
+           kosong dan hanya diberi warna lewat CSS. -->
       <div class="relative flex items-center justify-center py-6">
         <div
           class="absolute inset-0 m-auto w-[300px] h-[300px] rounded-full bg-[radial-gradient(circle_at_50%_40%,#FBEFEC_0%,#F5E4DA_70%,transparent_100%)]"
@@ -53,19 +58,17 @@ const stats = computed(() => [
         <div
           class="relative w-[260px] h-[260px] rounded-full bg-white border border-cream-300 shadow-[0_18px_44px_rgba(185,58,60,0.12)] flex items-center justify-center"
         >
-          <img
-            :src="logo"
-            alt="Talita's Cake"
-            class="w-40 h-40 object-contain"
-          />
+          <img :src="logo" alt="Talita's Cake" class="w-40 h-40 object-contain" />
         </div>
       </div>
     </div>
 
-    <!-- STAT BAND -->
     <div
       class="grid grid-cols-1 sm:grid-cols-3 bg-white border border-cream-300 rounded-[20px] overflow-hidden mb-8 shadow-[0_6px_22px_rgba(51,38,31,0.05)]"
     >
+      <!-- Garis pemisah hanya dipasang di antara kotak, tidak setelah kotak
+           terakhir. Arahnya menyesuaikan: di HP menumpuk ke bawah (garis di
+           bawah), di layar lebar berjajar (garis di kanan). -->
       <div
         v-for="(st, i) in stats"
         :key="st.label"
@@ -77,7 +80,6 @@ const stats = computed(() => [
       </div>
     </div>
 
-    <!-- CERITA -->
     <div class="bg-[#FBF3EA] border border-cream-300 rounded-[20px] p-6 md:p-8 mb-11">
       <div class="text-[#6E5A4D] text-[15.5px] leading-[1.8] max-w-[760px] mx-auto">
         <p class="mb-3.5">
@@ -92,7 +94,9 @@ const stats = computed(() => [
       </div>
     </div>
 
-    <!-- KONTAK -->
+    <!-- Kartu kontak dan media sosial. Semua datanya berasal dari STORE_INFO,
+         dan tiap kartu diberi v-if supaya yang belum diisi tidak ikut tampil.
+         rel="noopener" dipasang sebagai pengaman untuk link ke situs luar. -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <a
         v-if="STORE_INFO.whatsappNumber"
@@ -107,9 +111,7 @@ const stats = computed(() => [
         <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
           WhatsApp
         </span>
-        <span class="font-bold text-[15px] leading-normal">
-          +{{ STORE_INFO.whatsappNumber }}
-        </span>
+        <span class="font-bold text-[15px] leading-normal"> +{{ STORE_INFO.whatsappNumber }} </span>
       </a>
       <a
         v-if="STORE_INFO.instagram"
@@ -124,9 +126,7 @@ const stats = computed(() => [
         <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
           Instagram
         </span>
-        <span class="font-bold text-[15px] leading-normal">
-          @{{ STORE_INFO.instagram }}
-        </span>
+        <span class="font-bold text-[15px] leading-normal"> @{{ STORE_INFO.instagram }} </span>
       </a>
       <a
         v-if="STORE_INFO.threads"
@@ -141,9 +141,7 @@ const stats = computed(() => [
         <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
           Threads
         </span>
-        <span class="font-bold text-[15px] leading-normal">
-          @{{ STORE_INFO.threads }}
-        </span>
+        <span class="font-bold text-[15px] leading-normal"> @{{ STORE_INFO.threads }} </span>
       </a>
       <a
         v-if="STORE_INFO.tiktok"
@@ -158,10 +156,10 @@ const stats = computed(() => [
         <span class="text-xs font-extrabold tracking-widest uppercase text-cocoa-400">
           TikTok
         </span>
-        <span class="font-bold text-[15px] leading-normal">
-          @{{ STORE_INFO.tiktok }}
-        </span>
+        <span class="font-bold text-[15px] leading-normal"> @{{ STORE_INFO.tiktok }} </span>
       </a>
+      <!-- Alamat toko memakai <div>, bukan <a>, karena tidak ada yang dituju
+           saat diklik — hanya keterangan. -->
       <div
         v-if="STORE_INFO.address"
         class="flex flex-col gap-2 bg-white border border-cream-300 rounded-2xl p-5 text-cocoa-900"
@@ -178,7 +176,6 @@ const stats = computed(() => [
       </div>
     </div>
 
-    <!-- REVIEWS -->
     <div class="mt-14">
       <GoogleReviews />
     </div>

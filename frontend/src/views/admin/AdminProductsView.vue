@@ -12,17 +12,18 @@ import Toast from '@/components/common/Toast.vue'
 
 const { t } = useI18n()
 
+// Pilihan filter tipe produk: "semua tipe" ditambah TYPE1 sampai TYPE6.
+// Isi labelnya menggabungkan nomor tipe dengan nama pendek di bawah.
 const TYPE_OPTIONS = computed(() => [
   { value: 'ALL', label: t('admin.products.allTypes') },
-  // sertakan nama singkat tipe (mis. "Type 1 · Shortcake Series") agar konsisten
-  // dengan kolom "Type" di tabel
   ...['TYPE1', 'TYPE2', 'TYPE3', 'TYPE4', 'TYPE5', 'TYPE6'].map((key, i) => ({
     value: key,
     label: `${t('admin.products.type', { num: i + 1 })} · ${TYPE_SHORT_NAMES[key]}`,
   })),
 ])
 
-// Nama singkat per tipe untuk kolom "Tipe" (mis. "Tipe 1 · Shortcake Series")
+// Nama tipe dan kategori di server cukup panjang, jadi di tabel admin
+// ditampilkan versi pendeknya lewat dua daftar terjemahan berikut.
 const TYPE_SHORT_NAMES = {
   TYPE1: 'Shortcake Series',
   TYPE2: 'Petite Cake',
@@ -32,7 +33,6 @@ const TYPE_SHORT_NAMES = {
   TYPE6: 'Cupcakes',
 }
 
-// Kategori panjang dari backend dipendekkan supaya tabel tetap rapi
 const CATEGORY_SHORT_NAMES = {
   'Signature Shortcake Series': 'Shortcake Series',
   'Simple Decor Petite Cake': 'Simple Decor',
@@ -48,9 +48,8 @@ const toastMessage = ref('')
 
 const searchQuery = ref('')
 const selectedType = ref('ALL')
-const selectedSort = ref('default') // default | az | priceAsc | priceDesc
+const selectedSort = ref('default')
 
-// Opsi pengurutan (memakai label yang sama dengan halaman Menu)
 const SORT_OPTIONS = computed(() => [
   { value: 'default', label: t('menu.sort.default') },
   { value: 'az', label: t('menu.sort.az') },
@@ -58,10 +57,12 @@ const SORT_OPTIONS = computed(() => [
   { value: 'priceDesc', label: t('menu.sort.priceDesc') },
 ])
 
-// modal add / edit / copy produk
+// Satu modal dipakai untuk tiga keperluan sekaligus, dibedakan oleh dua
+// penanda ini: tambah baru (editingProduct null), ubah produk, dan salin
+// produk (isi form diambil dari produk lama tapi disimpan sebagai produk baru).
 const isModalOpen = ref(false)
 const editingProduct = ref(null)
-const isCopyMode = ref(false) // true = form di-prefill dari produk lain untuk disalin
+const isCopyMode = ref(false)
 
 const openAddModal = () => {
   editingProduct.value = null
@@ -75,32 +76,28 @@ const openEditModal = (product) => {
   isModalOpen.value = true
 }
 
-// Salin produk: buka form dengan data produk terpilih, tapi membuat produk baru
 const openCopyModal = (product) => {
   editingProduct.value = product
   isCopyMode.value = true
   isModalOpen.value = true
 }
 
-// Data produk diambil dari cache store yang sama dengan halaman Menu
-// (stale-while-revalidate): kunjungan kedua langsung tampil tanpa loading.
 const productStore = useProductStore()
 const analyticsStore = useAnalyticsStore()
 
 const products = computed(() => productStore.products)
-// Loading hanya saat cache belum pernah terisi sama sekali
 const isLoading = computed(() => !productStore.hasLoaded && !errorMessage.value)
 
 const handleSaved = () => {
-  // salin & tambah sama-sama membuat produk baru; hanya edit yang memperbarui
   toastMessage.value = isCopyMode.value
     ? t('admin.products.copySuccess')
     : editingProduct.value
       ? t('admin.products.editSuccess')
       : t('admin.products.addSuccess')
-  // refresh cache bersama tanpa mengosongkannya — halaman Menu ikut ter-update
+  // Daftar produk dimuat ulang, dan data statistik ditandai kedaluwarsa
+  // karena jumlah produknya ikut berubah.
   productStore.refresh().catch(() => {})
-  analyticsStore.invalidate() // angka "Jumlah Produk" di dashboard ikut segar
+  analyticsStore.invalidate()
 }
 
 const fetchProducts = async () => {
@@ -114,14 +111,17 @@ const fetchProducts = async () => {
 
 onMounted(fetchProducts)
 
-// shape hanya relevan untuk TYPE1/TYPE2 (fixed oleh admin);
-// TYPE3/TYPE4 selalu punya Round & Square sehingga tidak ikut dicocokkan
+// Bentuk kue (bulat/persegi) hanya berlaku untuk produk TYPE1 dan TYPE2,
+// jadi pencarian berdasarkan bentuk hanya dicek pada kedua tipe itu.
 const matchShapeKeyword = (product, keyword) => {
   if (product.type !== 'TYPE1' && product.type !== 'TYPE2') return false
   const shape = product.variants?.[0]?.shape
   return !!shape && shape.toLowerCase().includes(keyword)
 }
 
+// Menyaring produk sesuai filter tipe dan kata kunci. Kata kunci dicocokkan ke
+// banyak kolom sekaligus (nama, deskripsi, rasa, kategori, bentuk) supaya admin
+// bisa mencari dengan kata apa saja yang diingatnya.
 const filteredProducts = computed(() => {
   const keyword = searchQuery.value.trim().toLowerCase()
 
@@ -139,67 +139,73 @@ const filteredProducts = computed(() => {
   })
 })
 
-// harga termurah (sebelum diskon) untuk pengurutan harga
+// Satu produk bisa punya beberapa ukuran dengan harga berbeda. Untuk
+// pengurutan dipakai harga termurahnya sebagai patokan.
 const sortPriceOf = (product) => {
   const prices = product.variants?.map((v) => Number(v.price)) ?? []
   return prices.length ? Math.min(...prices) : 0
 }
 
 const sortedProducts = computed(() => {
+  // Disalin dulu pakai [...] karena sort() mengubah array aslinya, sedangkan
+  // hasil filteredProducts tidak boleh ikut berubah.
   const list = [...filteredProducts.value]
   switch (selectedSort.value) {
     case 'az':
+      // localeCompare mengurutkan huruf dengan benar, dan sensitivity 'base'
+      // membuat huruf besar/kecil tidak dianggap berbeda.
       return list.sort((a, b) =>
-        (a.name ?? '').localeCompare(b.name ?? '', undefined, { sensitivity: 'base' }),
+        (a.name ?? '').localeCompare(b.name ?? '', undefined, { sensitivity: 'base' })
       )
     case 'priceAsc':
       return list.sort((a, b) => sortPriceOf(a) - sortPriceOf(b))
     case 'priceDesc':
       return list.sort((a, b) => sortPriceOf(b) - sortPriceOf(a))
     default:
-      return list // urutan default = urutan store (terbaru dulu)
+      return list
   }
 })
 
 const typeCell = (product) => {
   const num = product.type?.replace('TYPE', '')
   const shortName = TYPE_SHORT_NAMES[product.type]
-  return shortName
-    ? `${t('admin.products.type', { num })} · ${shortName}`
-    : product.type
+  return shortName ? `${t('admin.products.type', { num })} · ${shortName}` : product.type
 }
 
-const categoryCell = (product) =>
-  CATEGORY_SHORT_NAMES[product.category] || product.category || '—'
+const categoryCell = (product) => CATEGORY_SHORT_NAMES[product.category] || product.category || '—'
 
-// Harga termurah setelah diskon (rumus sama dengan ProductCard)
+// Menyiapkan tulisan harga untuk tabel. Yang ditampilkan harga termurah setelah
+// dipotong diskon, dan hasilnya juga memberi tahu apakah harganya beragam
+// supaya di tabel bisa ditambahi tanda "+" (contoh: Rp 150.000+).
 const priceLabel = (product) => {
   const prices = product.variants?.map((v) => Number(v.price)) ?? []
   if (prices.length === 0) return { value: '—', hasRange: false }
 
   const discount = Number(product.discount ?? 0)
+  // Dikalikan dan dibagi 100 untuk membulatkan sampai dua angka di belakang koma.
   const applyDiscount = (price) =>
     discount > 0 ? Math.round((price - (price * discount) / 100) * 100) / 100 : price
 
   const min = applyDiscount(Math.min(...prices))
   const value = `Rp ${min.toLocaleString('id-ID')}`
-  const hasRange =
-    prices.length > 1 && Math.max(...prices) !== Math.min(...prices)
+  const hasRange = prices.length > 1 && Math.max(...prices) !== Math.min(...prices)
 
   return { value, hasRange }
 }
 
-// ===== TOGGLE FEATURED (pajang di section "Our Cake Samples" di Home) =====
-// id produk yang flag-nya sedang diproses (disable tombolnya sementara)
+// Menandai produk sebagai favorit yang tampil di beranda.
 const togglingFeaturedId = ref(null)
 
 const toggleFeatured = async (product) => {
+  // Hanya satu penandaan boleh berjalan dalam satu waktu.
   if (togglingFeaturedId.value) return
   const next = !product.featured
   togglingFeaturedId.value = product.id
   try {
     await updateProduct(product.id, { featured: next })
-    // update cache seketika supaya bintang langsung berubah tanpa nunggu refetch
+
+    // Ubah juga data di store supaya bintangnya langsung berubah di layar
+    // tanpa menunggu seluruh daftar dimuat ulang.
     const target = productStore.products.find((p) => p.id === product.id)
     if (target) target.featured = next
     productStore.refresh().catch(() => {})
@@ -213,13 +219,14 @@ const toggleFeatured = async (product) => {
   }
 }
 
-// konfirmasi hapus produk via pop-up (bukan confirm bawaan browser)
 const productToDelete = ref(null)
 
 const askDelete = (product) => {
   productToDelete.value = product
 }
 
+// Dialog tidak boleh ditutup selama penghapusan masih berjalan, supaya
+// prosesnya tidak terputus di tengah jalan.
 const cancelDelete = () => {
   if (deletingId.value) return
   productToDelete.value = null
@@ -232,7 +239,9 @@ const confirmDelete = async () => {
   deletingId.value = product.id
   try {
     await deleteProduct(product.id)
-    // hapus langsung dari cache supaya UI update seketika, lalu sinkronkan
+
+    // Buang dari daftar di layar dulu agar hilangnya terasa langsung,
+    // baru data disamakan lagi dengan server lewat refresh.
     productStore.products = productStore.products.filter((p) => p.id !== product.id)
     productStore.refresh().catch(() => {})
     analyticsStore.invalidate()
@@ -247,12 +256,10 @@ const confirmDelete = async () => {
 
 <template>
   <div>
-    <!-- HEADER -->
     <div class="mb-8">
       <h1 class="text-4xl">{{ t('admin.products.title') }}</h1>
     </div>
 
-    <!-- SEARCH & FILTER -->
     <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
       <div class="relative w-full sm:w-80">
         <Search class="w-4 h-4 text-cocoa-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -303,15 +310,14 @@ const confirmDelete = async () => {
       </button>
     </div>
 
-    <!-- LOADING -->
-    <div v-if="isLoading" class="text-center text-cocoa-400 py-24">{{ t('admin.products.loading') }}</div>
+    <div v-if="isLoading" class="text-center text-cocoa-400 py-24">
+      {{ t('admin.products.loading') }}
+    </div>
 
-    <!-- ERROR -->
     <div v-else-if="errorMessage" class="text-center text-brand-600 py-24">
       {{ errorMessage }}
     </div>
 
-    <!-- EMPTY -->
     <div
       v-else-if="sortedProducts.length === 0"
       class="text-center text-cocoa-400 py-24 bg-white rounded-2xl border border-dashed border-cream-300"
@@ -319,11 +325,12 @@ const confirmDelete = async () => {
       {{ t('admin.products.empty') }}
     </div>
 
-    <!-- TABEL PRODUK -->
     <div
       v-else
       class="bg-white rounded-2xl shadow-[0_2px_10px_-4px_rgba(51,38,31,0.12)] overflow-hidden"
     >
+      <!-- overflow-x-auto membuat tabel bisa digeser ke samping di layar sempit,
+           jadi kolomnya tidak perlu dipaksa mengecil. -->
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -335,7 +342,11 @@ const confirmDelete = async () => {
               <th class="px-4 py-3.5">{{ t('admin.products.typeCol') }}</th>
               <th class="px-4 py-3.5">{{ t('admin.products.category') }}</th>
               <th class="px-4 py-3.5">{{ t('admin.products.price') }}</th>
-              <th class="px-4 py-3.5"><span class="sr-only">{{ t('admin.products.actions') }}</span></th>
+              <!-- Judul kolom tombol sengaja tidak terlihat, tapi tetap ditulis
+                   dengan sr-only supaya terbaca oleh pembaca layar. -->
+              <th class="px-4 py-3.5">
+                <span class="sr-only">{{ t('admin.products.actions') }}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -360,6 +371,8 @@ const confirmDelete = async () => {
               <td class="px-4 py-4">
                 <div class="flex items-center gap-2 min-w-[140px]">
                   <span class="font-bold text-cocoa-900">{{ product.name }}</span>
+                  <!-- Dua label kecil di samping nama: potongan harga (kalau ada)
+                       dan tanda produk favorit yang tampil di beranda. -->
                   <span
                     v-if="Number(product.discount) > 0"
                     class="shrink-0 rounded-full bg-brand-100 text-brand-600 px-2 py-0.5 text-xs font-bold"
@@ -382,21 +395,31 @@ const confirmDelete = async () => {
                 {{ categoryCell(product) }}
               </td>
               <td class="px-4 py-4 font-extrabold text-brand-600 whitespace-nowrap">
-                <span v-if="priceLabel(product).hasRange" class="text-cocoa-400 font-semibold">{{ t('admin.products.from') }}</span>{{ priceLabel(product).value }}
+                <span v-if="priceLabel(product).hasRange" class="text-cocoa-400 font-semibold">{{
+                  t('admin.products.from')
+                }}</span
+                >{{ priceLabel(product).value }}
               </td>
               <td class="px-4 py-4">
+                <!-- Empat tombol aksi per baris: jadikan favorit, salin, ubah,
+                   dan hapus. Semuanya diberi aria-label karena isinya hanya
+                   ikon tanpa tulisan. -->
                 <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
                   <button
                     type="button"
                     :disabled="togglingFeaturedId === product.id"
                     @click="toggleFeatured(product)"
                     class="p-1.5 rounded-lg border transition-colors disabled:opacity-50"
-                    :class="product.featured
-                      ? 'border-amber-300 text-amber-500 bg-amber-50 hover:bg-amber-100'
-                      : 'border-cream-300 text-cocoa-400 hover:text-amber-500 hover:bg-amber-50'"
-                    :aria-label="product.featured
-                      ? t('admin.products.unfeatureAria', { name: product.name })
-                      : t('admin.products.featureAria', { name: product.name })"
+                    :class="
+                      product.featured
+                        ? 'border-amber-300 text-amber-500 bg-amber-50 hover:bg-amber-100'
+                        : 'border-cream-300 text-cocoa-400 hover:text-amber-500 hover:bg-amber-50'
+                    "
+                    :aria-label="
+                      product.featured
+                        ? t('admin.products.unfeatureAria', { name: product.name })
+                        : t('admin.products.featureAria', { name: product.name })
+                    "
                     :aria-pressed="!!product.featured"
                   >
                     <Star class="w-4 h-4" :fill="product.featured ? 'currentColor' : 'none'" />
@@ -434,7 +457,6 @@ const confirmDelete = async () => {
       </div>
     </div>
 
-    <!-- ADD / EDIT PRODUCT MODAL -->
     <ProductFormModal
       :open="isModalOpen"
       :product="editingProduct"
@@ -443,7 +465,6 @@ const confirmDelete = async () => {
       @saved="handleSaved"
     />
 
-    <!-- DELETE CONFIRMATION -->
     <ConfirmDialog
       :open="!!productToDelete"
       :title="t('admin.products.deleteTitle')"
@@ -456,7 +477,6 @@ const confirmDelete = async () => {
       @cancel="cancelDelete"
     />
 
-    <!-- SUCCESS TOAST -->
     <Toast v-model:message="toastMessage" />
   </div>
 </template>

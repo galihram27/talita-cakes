@@ -9,6 +9,8 @@ const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 
+// Semua isian form pendaftaran. Password dan konfirmasinya punya penanda
+// "show" sendiri-sendiri supaya tombol matanya bisa ditekan terpisah.
 const name = ref('')
 const email = ref('')
 const phone = ref('')
@@ -21,7 +23,9 @@ const acceptedTerms = ref(false)
 const errorMessage = ref('')
 const isSubmitting = ref(false)
 
-// error per-field, ditandai "touched" setelah user meninggalkan input (blur)
+// Karena inputnya banyak, penanda "sudah disentuh" digabung dalam satu objek
+// daripada membuat lima variabel terpisah. Gunanya sama seperti di halaman
+// login: error baru muncul setelah pengunjung meninggalkan input itu.
 const touched = ref({
   name: false,
   email: false,
@@ -30,10 +34,13 @@ const touched = ref({
   confirmPassword: false,
 })
 
+// Pola pengecekan format email dan nomor HP Indonesia. Nomor harus diawali
+// +62 atau 0, lalu 8, dan panjangnya masih masuk akal sebagai nomor ponsel.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-// No. HP Indonesia: diawali 0 atau +62, 9–15 digit
 const PHONE_REGEX = /^(\+62|0)8[1-9][0-9]{6,12}$/
 
+// Tiap input punya computed error sendiri. Isinya string kosong kalau tidak ada
+// masalah, jadi di template cukup dicek pakai v-if.
 const nameError = computed(() => {
   if (!touched.value.name) return ''
   if (!name.value.trim()) return t('auth.register.nameRequired')
@@ -63,6 +70,7 @@ const passwordError = computed(() => {
   return ''
 })
 
+// Konfirmasi password dibandingkan langsung dengan password di atasnya.
 const confirmPasswordError = computed(() => {
   if (!touched.value.confirmPassword) return ''
   if (!confirmPassword.value) return t('auth.register.confirmRequired')
@@ -73,7 +81,7 @@ const confirmPasswordError = computed(() => {
 const handleSubmit = async () => {
   errorMessage.value = ''
 
-  // tandai semua field sebagai touched supaya error langsung tampil saat submit
+  // Tandai semua input sudah disentuh supaya seluruh error langsung terlihat.
   touched.value = {
     name: true,
     email: true,
@@ -82,6 +90,7 @@ const handleSubmit = async () => {
     confirmPassword: true,
   }
 
+  // Berhenti kalau ada satu saja input yang masih bermasalah.
   if (
     nameError.value ||
     emailError.value ||
@@ -92,6 +101,8 @@ const handleSubmit = async () => {
     return
   }
 
+  // Centang syarat & ketentuan dicek terpisah karena bukan input teks, jadi
+  // pesannya ditaruh di kotak error umum, bukan di bawah input tertentu.
   if (!acceptedTerms.value) {
     errorMessage.value = t('auth.register.mustAcceptTerms')
     return
@@ -108,12 +119,13 @@ const handleSubmit = async () => {
       acceptedTerms: acceptedTerms.value,
     })
 
-    // register sukses -> user diarahkan ke halaman verifikasi OTP
+    // Setelah daftar, akun belum aktif. Pengunjung dibawa ke halaman verifikasi
+    // sambil membawa emailnya lewat query, jadi tidak perlu mengetik ulang.
     router.push({ path: '/verify-email', query: { email: email.value } })
   } catch (err) {
+    // Kasus email sudah terdaftar diterjemahkan sendiri supaya pesannya
+    // tetap mengikuti bahasa yang sedang dipilih pengunjung.
     const serverMessage = err.response?.data?.message
-    // Email sudah dipakai (pesan backend berbahasa Indonesia) -> tampilkan
-    // versi terlokalisasi sesuai bahasa aktif, bukan pesan mentah backend.
     if (serverMessage === 'Email sudah terdaftar') {
       errorMessage.value = t('auth.register.emailTaken')
     } else {
@@ -126,27 +138,24 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="tc-page min-h-screen bg-[#FDF2F7] flex flex-col items-center justify-start px-5 pt-12 pb-20">
-    <!-- LOGO -->
+  <div
+    class="tc-page min-h-screen bg-[#FDF2F7] flex flex-col items-center justify-start px-5 pt-12 pb-20"
+  >
     <RouterLink to="/" class="flex flex-col items-center gap-3 mb-6">
-      <img
-        :src="logo"
-        alt="Logo Talita's Cake & Cupcakes"
-        class="h-20 w-20 object-contain"
-      />
-      <span class="font-display text-2xl text-cocoa-900">
-        Talita's Cake &amp; Cupcakes
-      </span>
+      <img :src="logo" alt="Logo Talita's Cake & Cupcakes" class="h-20 w-20 object-contain" />
+      <span class="font-display text-2xl text-cocoa-900"> Talita's Cake &amp; Cupcakes </span>
     </RouterLink>
 
-    <!-- CARD -->
     <div class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
       <h1 class="font-display text-[28px] text-center mb-6">{{ t('auth.register.title') }}</h1>
 
+      <!-- Pola tiap input sama: label, input dengan v-model dan @blur, lalu
+           satu <p> berisi pesan error yang hanya muncul kalau ada masalah. -->
       <form @submit.prevent="handleSubmit" class="flex flex-col gap-3.5">
-        <!-- NAME -->
         <div>
-          <label for="name" class="block font-extrabold text-[13.5px] mb-1.5">{{ t('auth.register.name') }}</label>
+          <label for="name" class="block font-extrabold text-[13.5px] mb-1.5">{{
+            t('auth.register.name')
+          }}</label>
           <input
             id="name"
             v-model="name"
@@ -165,9 +174,10 @@ const handleSubmit = async () => {
           </p>
         </div>
 
-        <!-- EMAIL -->
         <div>
-          <label for="email" class="block font-extrabold text-[13.5px] mb-1.5">{{ t('auth.login.email') }}</label>
+          <label for="email" class="block font-extrabold text-[13.5px] mb-1.5">{{
+            t('auth.login.email')
+          }}</label>
           <input
             id="email"
             v-model="email"
@@ -186,7 +196,6 @@ const handleSubmit = async () => {
           </p>
         </div>
 
-        <!-- PHONE -->
         <div>
           <label for="phone" class="block font-extrabold text-[13.5px] mb-1.5">
             {{ t('auth.register.phone') }}
@@ -209,9 +218,10 @@ const handleSubmit = async () => {
           </p>
         </div>
 
-        <!-- PASSWORD -->
         <div>
-          <label for="password" class="block font-extrabold text-[13.5px] mb-1.5">{{ t('auth.login.password') }}</label>
+          <label for="password" class="block font-extrabold text-[13.5px] mb-1.5">{{
+            t('auth.login.password')
+          }}</label>
           <div class="relative">
             <input
               id="password"
@@ -229,16 +239,42 @@ const handleSubmit = async () => {
             <button
               type="button"
               @click="showPassword = !showPassword"
-              :aria-label="showPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')"
+              :aria-label="
+                showPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')
+              "
               :aria-pressed="showPassword"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#B7A18E] hover:text-cocoa-900"
             >
-              <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                v-if="!showPassword"
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
                 <circle cx="12" cy="12" r="3" />
               </svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
+                />
                 <path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
                 <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
                 <line x1="2" y1="2" x2="22" y2="22" />
@@ -250,7 +286,6 @@ const handleSubmit = async () => {
           </p>
         </div>
 
-        <!-- CONFIRM PASSWORD -->
         <div>
           <label for="confirmPassword" class="block font-extrabold text-[13.5px] mb-1.5">
             {{ t('auth.register.confirmPassword') }}
@@ -272,16 +307,42 @@ const handleSubmit = async () => {
             <button
               type="button"
               @click="showConfirmPassword = !showConfirmPassword"
-              :aria-label="showConfirmPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')"
+              :aria-label="
+                showConfirmPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')
+              "
               :aria-pressed="showConfirmPassword"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#B7A18E] hover:text-cocoa-900"
             >
-              <svg v-if="!showConfirmPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                v-if="!showConfirmPassword"
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
                 <circle cx="12" cy="12" r="3" />
               </svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
+                />
                 <path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
                 <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
                 <line x1="2" y1="2" x2="22" y2="22" />
@@ -293,15 +354,14 @@ const handleSubmit = async () => {
           </p>
         </div>
 
-        <!-- TERMS -->
+        <!-- Persetujuan syarat & ketentuan. Dibungkus <label> supaya tulisannya
+             ikut bisa diklik. Link di dalamnya diberi @click.stop agar saat
+             dibuka tidak sekaligus mencentang kotaknya, dan target="_blank"
+             supaya isian form tidak hilang saat halaman lain dibuka. -->
         <label
           class="flex items-start gap-2.5 text-[13px] text-[#6E5A4D] leading-relaxed cursor-pointer"
         >
-          <input
-            v-model="acceptedTerms"
-            type="checkbox"
-            class="mt-0.5 w-4 h-4 accent-brand-500"
-          />
+          <input v-model="acceptedTerms" type="checkbox" class="mt-0.5 w-4 h-4 accent-brand-500" />
           <span>
             {{ t('auth.register.terms1') }}
             <RouterLink
@@ -309,19 +369,20 @@ const handleSubmit = async () => {
               target="_blank"
               @click.stop
               class="text-brand-500 font-bold hover:underline"
-            >{{ t('auth.register.termsConditions') }}</RouterLink>
+              >{{ t('auth.register.termsConditions') }}</RouterLink
+            >
             {{ t('auth.register.terms2') }}
             <RouterLink
               :to="{ name: 'privacy' }"
               target="_blank"
               @click.stop
               class="text-brand-500 font-bold hover:underline"
-            >{{ t('auth.register.privacyPolicy') }}</RouterLink>
+              >{{ t('auth.register.privacyPolicy') }}</RouterLink
+            >
             {{ t('auth.register.terms3') }}
           </span>
         </label>
 
-        <!-- ERROR -->
         <div
           v-if="errorMessage"
           class="bg-[#FBE9E7] border border-[#F0C9C4] text-brand-500 rounded-[10px] px-3.5 py-2.5 text-[13px] font-bold"
@@ -329,7 +390,6 @@ const handleSubmit = async () => {
           {{ errorMessage }}
         </div>
 
-        <!-- SUBMIT -->
         <button
           type="submit"
           :disabled="isSubmitting"
@@ -339,7 +399,6 @@ const handleSubmit = async () => {
         </button>
       </form>
 
-      <!-- LOGIN LINK -->
       <p class="border-t border-cream-200 mt-5 pt-4 text-center text-sm text-[#6E5A4D]">
         {{ t('auth.register.haveAccount') }}
         <RouterLink to="/login" class="font-extrabold text-brand-500 hover:opacity-70">

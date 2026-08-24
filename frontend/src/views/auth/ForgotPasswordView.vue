@@ -8,7 +8,9 @@ import logo from '@/assets/images/logo.png'
 const { t } = useI18n()
 const router = useRouter()
 
-// step: 'email' (kirim OTP) -> 'otp' (isi kode)
+// Halaman ini punya dua tampilan yang bergantian dalam satu file: mengisi email
+// ('email'), lalu memasukkan kode OTP ('otp'). Nilai step inilah yang menentukan
+// form mana yang ditampilkan, jadi tidak perlu dibuat dua halaman terpisah.
 const step = ref('email')
 
 const email = ref('')
@@ -17,7 +19,9 @@ const errorMessage = ref('')
 const infoMessage = ref('')
 const isSubmitting = ref(false)
 
-// Cooldown kirim ulang OTP (samakan dengan cooldown backend: 60 detik)
+// Hitung mundur agar tombol "kirim ulang" tidak bisa ditekan terus-menerus.
+// Timer-nya disimpan di variabel biasa, bukan ref, karena nilainya tidak
+// perlu ditampilkan di layar — yang ditampilkan hanya angka resendCooldown.
 const resendCooldown = ref(0)
 let cooldownTimer = null
 
@@ -29,9 +33,11 @@ const startResendCooldown = () => {
   }, 1000)
 }
 
+// Timer wajib dimatikan saat halaman ditinggalkan, kalau tidak dia akan terus
+// berjalan di belakang layar meski komponennya sudah tidak dipakai.
 onUnmounted(() => clearInterval(cooldownTimer))
 
-// STEP 1: kirim OTP ke email
+// Langkah 1: minta server mengirim kode OTP ke email, lalu pindah ke form OTP.
 const handleSendOtp = async () => {
   errorMessage.value = ''
   infoMessage.value = ''
@@ -54,8 +60,10 @@ const handleSendOtp = async () => {
   }
 }
 
-// Kirim ulang OTP (dari step 2)
+// Kirim ulang kode. Isinya mirip handleSendOtp, bedanya tidak berpindah step
+// karena pengunjung memang sudah berada di form OTP.
 const handleResendOtp = async () => {
+  // Pengaman tambahan selain tombol yang sudah dinonaktifkan di template.
   if (resendCooldown.value > 0 || isSubmitting.value) return
   errorMessage.value = ''
   infoMessage.value = ''
@@ -72,7 +80,8 @@ const handleResendOtp = async () => {
   }
 }
 
-// STEP 2: verifikasi OTP, lalu lanjut ke halaman atur password baru
+// Langkah 2: kirim kode OTP untuk dicek server. Kalau cocok, lanjut ke halaman
+// ganti password baru.
 const handleVerifyOtp = async () => {
   errorMessage.value = ''
   infoMessage.value = ''
@@ -89,7 +98,9 @@ const handleVerifyOtp = async () => {
       code: code.value,
     })
 
-    // Bawa email + code lewat history state (tidak muncul di URL)
+    // Email dan kode dikirim lewat state, bukan query di alamat URL, supaya
+    // keduanya tidak terlihat di address bar dan tidak ikut tersimpan
+    // di riwayat browser.
     router.push({
       name: 'reset-password',
       state: { email: email.value, code: code.value },
@@ -103,22 +114,16 @@ const handleVerifyOtp = async () => {
 </script>
 
 <template>
-  <div class="tc-page min-h-screen bg-[#FDF2F7] flex flex-col items-center justify-start px-5 pt-12 pb-20">
-    <!-- LOGO -->
+  <div
+    class="tc-page min-h-screen bg-[#FDF2F7] flex flex-col items-center justify-start px-5 pt-12 pb-20"
+  >
     <RouterLink to="/" class="flex flex-col items-center gap-3 mb-6">
-      <img
-        :src="logo"
-        alt="Logo Talita's Cake & Cupcakes"
-        class="h-20 w-20 object-contain"
-      />
-      <span class="font-display text-2xl text-cocoa-900">
-        Talita's Cake &amp; Cupcakes
-      </span>
+      <img :src="logo" alt="Logo Talita's Cake & Cupcakes" class="h-20 w-20 object-contain" />
+      <span class="font-display text-2xl text-cocoa-900"> Talita's Cake &amp; Cupcakes </span>
     </RouterLink>
 
-    <!-- CARD -->
     <div class="w-full max-w-[440px] bg-white border border-cream-300 rounded-[20px] p-8 pb-7">
-      <!-- STEP 1: EMAIL -->
+      <!-- Form langkah 1: minta email. Muncul selama step masih 'email'. -->
       <form v-if="step === 'email'" @submit.prevent="handleSendOtp" class="flex flex-col gap-3.5">
         <div>
           <h1 class="font-display text-[28px] mb-1.5">{{ t('auth.forgot.title') }}</h1>
@@ -128,7 +133,9 @@ const handleVerifyOtp = async () => {
         </div>
 
         <div>
-          <label for="email" class="block font-extrabold text-[13.5px] mb-1.5">{{ t('auth.login.email') }}</label>
+          <label for="email" class="block font-extrabold text-[13.5px] mb-1.5">{{
+            t('auth.login.email')
+          }}</label>
           <input
             id="email"
             v-model="email"
@@ -162,7 +169,8 @@ const handleVerifyOtp = async () => {
         </RouterLink>
       </form>
 
-      <!-- STEP 2: OTP -->
+      <!-- Form langkah 2: isi kode OTP. Ditulis pakai v-else, jadi otomatis
+           menggantikan form di atas begitu step berubah jadi 'otp'. -->
       <form v-else @submit.prevent="handleVerifyOtp" class="flex flex-col gap-3.5">
         <div>
           <h1 class="font-display text-[28px] mb-1.5">{{ t('auth.forgot.otpTitle') }}</h1>
@@ -173,6 +181,9 @@ const handleVerifyOtp = async () => {
           </p>
         </div>
 
+        <!-- inputmode="numeric" memunculkan papan ketik angka di HP, maxlength
+             membatasi 6 digit, dan autocomplete="one-time-code" membuat kode
+             dari SMS/email bisa diisi otomatis. -->
         <input
           id="code"
           v-model="code"
@@ -205,15 +216,27 @@ const handleVerifyOtp = async () => {
           {{ isSubmitting ? t('auth.forgot.verifying') : t('auth.forgot.verify') }}
         </button>
 
+        <!-- Tombol kirim ulang. Selama hitung mundur belum habis tombolnya mati
+             dan tulisannya menampilkan sisa detik. -->
         <button
           type="button"
           @click="handleResendOtp"
           :disabled="resendCooldown > 0 || isSubmitting"
           class="text-brand-500 font-bold text-[13.5px] p-1 hover:opacity-70 disabled:text-cocoa-400 disabled:cursor-not-allowed"
         >
-          {{ resendCooldown > 0 ? t('auth.forgot.resendWithCooldown', { s: resendCooldown }) : t('auth.forgot.resend') }}
+          {{
+            resendCooldown > 0
+              ? t('auth.forgot.resendWithCooldown', { s: resendCooldown })
+              : t('auth.forgot.resend')
+          }}
         </button>
 
+        <!-- Kembali ke langkah 1 kalau emailnya ternyata salah ketik.
+             Pesan lama ikut dikosongkan supaya tidak tertinggal di layar.
+             CATATAN: @click di bawah harus tetap satu baris dengan titik koma.
+             Kalau dipecah jadi beberapa baris (mis. oleh Prettier), Vue gagal
+             membacanya dan proses build ikut gagal. -->
+        <!-- prettier-ignore -->
         <button
           type="button"
           @click="step = 'email'; errorMessage = ''; infoMessage = ''"

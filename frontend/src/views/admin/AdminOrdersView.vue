@@ -6,8 +6,6 @@ import { useAdminOrdersStore } from '@/stores/adminOrders.store'
 import { formatRupiah } from '@/utils/formatCurrency'
 import Toast from '@/components/common/Toast.vue'
 
-// Data order diambil dari cache store (stale-while-revalidate):
-// kunjungan kedua langsung tampil tanpa loading, refresh jalan di background.
 const { t, locale } = useI18n()
 const adminOrdersStore = useAdminOrdersStore()
 
@@ -17,11 +15,12 @@ const selectedStatus = ref('ALL')
 const toastMessage = ref('')
 const statusError = ref('')
 
-// Harus sama persis dengan enum OrderStatus di prisma schema / updateOrderStatusSchema
+// Daftar status pesanan ditulis satu kali di sini, lalu dipakai ulang untuk
+// isi dropdown filter maupun dropdown ubah status di tiap kartu pesanan.
 const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED']
 
-// Pilihan filter status; memakai kamus label yang sama dengan badge & dropdown
-// status di tiap kartu, supaya penamaannya tidak pernah berbeda.
+// Pilihan filter = "semua status" ditambah keempat status di atas. Pakai
+// computed supaya tulisannya ikut berganti saat bahasa diubah.
 const STATUS_FILTER_OPTIONS = computed(() => [
   { value: 'ALL', label: t('admin.orders.allStatuses') },
   ...ORDER_STATUSES.map((status) => ({
@@ -30,6 +29,8 @@ const STATUS_FILTER_OPTIONS = computed(() => [
   })),
 ])
 
+// Warna label tiap status. Disimpan sebagai objek supaya di template cukup
+// memanggil statusClass(status) tanpa menulis if/else berulang.
 const STATUS_CLASSES = {
   PENDING: 'bg-amber-100 text-amber-700',
   CONFIRMED: 'bg-blue-100 text-blue-700',
@@ -39,7 +40,6 @@ const STATUS_CLASSES = {
 
 const statusClass = (status) => STATUS_CLASSES[status] || 'bg-cream-100 text-cocoa-500'
 
-// Loading hanya saat cache belum pernah terisi sama sekali
 const isLoading = computed(() => !adminOrdersStore.hasLoaded && !errorMessage.value)
 
 onMounted(async () => {
@@ -50,18 +50,24 @@ onMounted(async () => {
   }
 })
 
-// Filter client-side: status pesanan + pencarian nama pemesan, kontak,
-// atau nama produk di dalam order
+// Menyaring pesanan sesuai isi kotak pencarian dan filter status. Penyaringan
+// dilakukan di browser dari data yang sudah diambil, jadi hasilnya langsung
+// berubah saat mengetik tanpa perlu memanggil server lagi.
 const filteredOrders = computed(() => {
+  // Kata kunci dan data dibandingkan dalam huruf kecil semua supaya
+  // pencarian tidak terpengaruh besar kecilnya huruf.
   const keyword = searchQuery.value.trim().toLowerCase()
 
   return adminOrdersStore.orders.filter((order) => {
-    const matchesStatus =
-      selectedStatus.value === 'ALL' || order.status === selectedStatus.value
+    // Cek status dulu karena paling murah; kalau tidak cocok langsung dibuang.
+    const matchesStatus = selectedStatus.value === 'ALL' || order.status === selectedStatus.value
     if (!matchesStatus) return false
 
+    // Kotak pencarian kosong berarti semua pesanan lolos.
     if (!keyword) return true
 
+    // Pesanan dianggap cocok kalau kata kunci ada di data pemesan
+    // (nama/email/HP) atau di salah satu nama produk yang dipesan.
     const matchesUser =
       order.user?.name?.toLowerCase().includes(keyword) ||
       order.user?.email?.toLowerCase().includes(keyword) ||
@@ -75,12 +81,14 @@ const filteredOrders = computed(() => {
   })
 })
 
-// Order yang statusnya sedang dikirim ke server — dipakai untuk disable select
-// supaya admin tidak menembak dua perubahan sekaligus di kartu yang sama.
+// Menyimpan id pesanan yang statusnya sedang diubah. Karena pesanannya banyak,
+// yang dikunci cukup dropdown milik pesanan itu saja, bukan semuanya.
 const updatingOrderId = ref(null)
 
 const handleStatusChange = async (order, event) => {
   const nextStatus = event.target.value
+
+  // Kalau admin memilih status yang sama, tidak perlu menghubungi server.
   if (nextStatus === order.status) return
 
   statusError.value = ''
@@ -92,13 +100,14 @@ const handleStatusChange = async (order, event) => {
       status: t(`admin.orders.status.${nextStatus}`),
     })
   } catch (err) {
-    // store sudah rollback nilai lamanya; cukup beri tahu adminnya
     statusError.value = err.response?.data?.message || t('admin.orders.statusUpdateFailed')
   } finally {
     updatingOrderId.value = null
   }
 }
 
+// Mengubah tanggal dari server jadi tulisan yang enak dibaca, mengikuti
+// bahasa yang sedang dipakai (contoh: 27 Juli 2026 / July 27, 2026).
 const formatDate = (dateString) =>
   new Date(dateString).toLocaleDateString(locale.value === 'en' ? 'en-US' : 'id-ID', {
     day: 'numeric',
@@ -109,10 +118,8 @@ const formatDate = (dateString) =>
 
 <template>
   <div>
-    <!-- HEADER -->
     <h1 class="text-4xl mb-8">{{ t('admin.orders.title') }}</h1>
 
-    <!-- SEARCH -->
     <div class="flex items-center gap-4 mb-6">
       <div class="relative flex-1 max-w-md">
         <Search class="w-4 h-4 text-cocoa-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -123,7 +130,6 @@ const formatDate = (dateString) =>
           class="w-full rounded-full border border-cream-300 bg-white pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-400"
         />
       </div>
-      <!-- FILTER STATUS -->
       <div class="relative shrink-0">
         <select
           v-model="selectedStatus"
@@ -139,22 +145,27 @@ const formatDate = (dateString) =>
         />
       </div>
 
-      <p class="text-sm font-semibold text-cocoa-400 shrink-0">{{ t('admin.orders.orderCount', { count: filteredOrders.length }) }}</p>
+      <p class="text-sm font-semibold text-cocoa-400 shrink-0">
+        {{ t('admin.orders.orderCount', { count: filteredOrders.length }) }}
+      </p>
     </div>
 
-    <!-- LOADING -->
-    <div v-if="isLoading" class="text-center text-cocoa-400 py-24">{{ t('admin.orders.loading') }}</div>
+    <!-- Empat kemungkinan tampilan, dipilih berurutan lewat v-if/v-else-if:
+         sedang memuat, gagal memuat, tidak ada hasil, atau daftar pesanan. -->
+    <div v-if="isLoading" class="text-center text-cocoa-400 py-24">
+      {{ t('admin.orders.loading') }}
+    </div>
 
-    <!-- ERROR -->
     <div v-else-if="errorMessage" class="text-center text-brand-600 py-24">
       {{ errorMessage }}
     </div>
 
-    <!-- EMPTY -->
     <div
       v-else-if="filteredOrders.length === 0"
       class="text-center text-cocoa-400 py-24 bg-white rounded-2xl border border-dashed border-cream-300"
     >
+      <!-- Pesannya dibedakan: kalau filter sedang aktif berarti "tidak ada yang
+           cocok", kalau tidak berarti memang belum ada pesanan sama sekali. -->
       {{
         searchQuery || selectedStatus !== 'ALL'
           ? t('admin.orders.noMatch')
@@ -162,7 +173,6 @@ const formatDate = (dateString) =>
       }}
     </div>
 
-    <!-- ORDER LIST -->
     <template v-else>
       <p v-if="statusError" class="text-sm text-brand-600 mb-4">{{ statusError }}</p>
 
@@ -172,7 +182,6 @@ const formatDate = (dateString) =>
           :key="order.id"
           class="bg-white rounded-2xl shadow-[0_2px_10px_-4px_rgba(51,38,31,0.12)] p-6"
         >
-          <!-- Header: tanggal + pemesan + badge tipe pemesanan -->
           <div class="flex items-center justify-between gap-4 mb-4">
             <div class="min-w-0">
               <p class="text-sm text-cocoa-400">{{ formatDate(order.createdAt) }}</p>
@@ -190,10 +199,16 @@ const formatDate = (dateString) =>
                     : 'bg-cream-100 text-cocoa-500'
                 "
               >
-                {{ order.fulfillmentType === 'DELIVERY' ? t('admin.orders.delivery') : t('admin.orders.pickup') }}
+                {{
+                  order.fulfillmentType === 'DELIVERY'
+                    ? t('admin.orders.delivery')
+                    : t('admin.orders.pickup')
+                }}
               </span>
 
-              <!-- UBAH STATUS -->
+              <!-- Dropdown ubah status. Pakai :value + @change, bukan v-model,
+                   supaya tampilan tidak terlanjur berubah sebelum server
+                   memastikan perubahannya berhasil disimpan. -->
               <div class="relative">
                 <select
                   :value="order.status"
@@ -214,7 +229,6 @@ const formatDate = (dateString) =>
             </div>
           </div>
 
-          <!-- Item pesanan -->
           <div class="space-y-2">
             <div
               v-for="item in order.items"
@@ -236,7 +250,6 @@ const formatDate = (dateString) =>
       </div>
     </template>
 
-    <!-- SUCCESS TOAST -->
     <Toast v-model:message="toastMessage" />
   </div>
 </template>

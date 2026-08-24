@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon --exec tsx src/server.js",
     "start": "node src/server.js",
-    "build": "prisma generate && prisma migrate deploy"
+    "build": "prisma generate && prisma migrate deploy",
+    "db:backup": "node scripts/db-backup.js"
   },
   "keywords": [],
   "author": "",
