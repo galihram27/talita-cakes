@@ -2,23 +2,31 @@
 import prisma from "../../lib/prisma.js";
 
 /**
+ * Query tabel pesanan.
+ *
+ * Hampir semua query menyertakan `items` beserta product & variant-nya, karena
+ * pesanan praktis tidak ada gunanya tanpa daftar isinya — sekalian menghindari
+ * query susulan per item (N+1).
+ */
+
+/**
  * Membuat order baru sekaligus seluruh item-nya dalam 1 transaksi.
  * data.items berupa array OrderItem yang sudah di-snapshot
  * (price, productName, dll sudah final, ditentukan di service layer).
  */
 export const createOrderWithItems = async (data) => {
-  return await prisma.order.create({
-    data,
-    include: {
-      items: {
-        include: {
-          product: true,
-          variant: true,
-        },
+   return await prisma.order.create({
+      data,
+      include: {
+         items: {
+            include: {
+               product: true,
+               variant: true,
+            },
+         },
+         user: true,
       },
-      user: true,
-    },
-  });
+   });
 };
 
 /**
@@ -26,18 +34,18 @@ export const createOrderWithItems = async (data) => {
  * Dipakai baik untuk user (cek kepemilikan) maupun admin (detail order).
  */
 export const findOrderById = async (id) => {
-  return await prisma.order.findUnique({
-    where: { id },
-    include: {
-      items: {
-        include: {
-          product: true,
-          variant: true,
-        },
+   return await prisma.order.findUnique({
+      where: { id },
+      include: {
+         items: {
+            include: {
+               product: true,
+               variant: true,
+            },
+         },
+         user: true,
       },
-      user: true,
-    },
-  });
+   });
 };
 
 /**
@@ -45,18 +53,18 @@ export const findOrderById = async (id) => {
  * Dipakai untuk halaman profile -> riwayat pesanan.
  */
 export const findOrdersByUserId = async (userId) => {
-  return await prisma.order.findMany({
-    where: { userId },
-    include: {
-      items: {
-        include: {
-          product: true,
-          variant: true,
-        },
+   return await prisma.order.findMany({
+      where: { userId },
+      include: {
+         items: {
+            include: {
+               product: true,
+               variant: true,
+            },
+         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+   });
 };
 
 /**
@@ -64,29 +72,29 @@ export const findOrdersByUserId = async (userId) => {
  * Bisa difilter berdasarkan status (misal: mau lihat yang PENDING saja).
  */
 export const findAllOrders = async (status) => {
-  return await prisma.order.findMany({
-    where: status ? { status } : undefined,
-    include: {
-      items: {
-        include: {
-          product: true,
-          variant: true,
-        },
+   return await prisma.order.findMany({
+      where: status ? { status } : undefined,
+      include: {
+         items: {
+            include: {
+               product: true,
+               variant: true,
+            },
+         },
+         user: true,
       },
-      user: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+   });
 };
 
 /**
  * Update status order (dipakai admin lewat tombol Konfirmasi/Batal/Selesai).
  */
 export const updateOrderStatus = async (id, status) => {
-  return await prisma.order.update({
-    where: { id },
-    data: { status },
-  });
+   return await prisma.order.update({
+      where: { id },
+      data: { status },
+   });
 };
 
 /**
@@ -95,10 +103,10 @@ export const updateOrderStatus = async (id, status) => {
  * di-generate SETELAH order tersimpan (butuh order.id untuk referensi).
  */
 export const updateWhatsappMessage = async (id, whatsappMessage) => {
-  return await prisma.order.update({
-    where: { id },
-    data: { whatsappMessage },
-  });
+   return await prisma.order.update({
+      where: { id },
+      data: { whatsappMessage },
+   });
 };
 
 /**
@@ -106,9 +114,9 @@ export const updateWhatsappMessage = async (id, whatsappMessage) => {
  * Disediakan untuk kebutuhan administratif/cleanup data jika diperlukan.
  */
 export const deleteOrder = async (id) => {
-  return await prisma.order.delete({
-    where: { id },
-  });
+   return await prisma.order.delete({
+      where: { id },
+   });
 };
 
 /**
@@ -116,7 +124,7 @@ export const deleteOrder = async (id) => {
  * di halaman histori profile kalau datanya nanti banyak.
  */
 export const countOrdersByUserId = async (userId) => {
-  return await prisma.order.count({
-    where: { userId },
-  });
+   return await prisma.order.count({
+      where: { userId },
+   });
 };

@@ -10,27 +10,29 @@
 
 const DEBOUNCE_MS = Number(process.env.DEPLOY_HOOK_DEBOUNCE_MS) || 120000; // default 2 menit
 
+// timer: penanda ada rebuild yang sudah dijadwalkan dalam window ini.
+// pending: penanda masih ada perubahan yang belum ikut ter-build.
 let timer = null;
 let pending = false;
 
-export const triggerRebuild = (reason = 'content changed') => {
-  const url = process.env.DEPLOY_HOOK_URL;
-  if (!url) return; // fitur mati kalau tidak dikonfigurasi
+export const triggerRebuild = (reason = "content changed") => {
+   const url = process.env.DEPLOY_HOOK_URL;
+   if (!url) return; // fitur mati kalau tidak dikonfigurasi
 
-  pending = true;
-  // Sudah ada rebuild terjadwal dalam window ini → cukup tandai pending,
-  // jangan reset timer (throttle: maksimal 1 build per DEBOUNCE_MS).
-  if (timer) return;
+   pending = true;
+   // Sudah ada rebuild terjadwal dalam window ini → cukup tandai pending,
+   // jangan reset timer (throttle: maksimal 1 build per DEBOUNCE_MS).
+   if (timer) return;
 
-  timer = setTimeout(async () => {
-    timer = null;
-    if (!pending) return;
-    pending = false;
-    try {
-      await fetch(url, { method: 'POST' });
-      console.log(`[deploy] rebuild hook dipicu (${reason})`);
-    } catch (err) {
-      console.warn(`[deploy] gagal memicu rebuild: ${err.message}`);
-    }
-  }, DEBOUNCE_MS);
+   timer = setTimeout(async () => {
+      timer = null;
+      if (!pending) return;
+      pending = false;
+      try {
+         await fetch(url, { method: "POST" });
+         console.log(`[deploy] rebuild hook dipicu (${reason})`);
+      } catch (err) {
+         console.warn(`[deploy] gagal memicu rebuild: ${err.message}`);
+      }
+   }, DEBOUNCE_MS);
 };

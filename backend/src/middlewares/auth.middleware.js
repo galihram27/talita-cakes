@@ -1,5 +1,16 @@
 import jwt from "jsonwebtoken";
 
+/**
+ * Penjaga endpoint yang wajib login.
+ *
+ * Membaca access token dari header `Authorization: Bearer <token>`, lalu
+ * menaruh isinya di `req.user` supaya controller & service tidak perlu
+ * membongkar token lagi.
+ *
+ * Cukup memverifikasi tanda tangan token — tidak query DB. Karena itu
+ * pengecekan akses jadi murah, dengan konsekuensi: perubahan role baru
+ * berlaku setelah access token lamanya kedaluwarsa (maks 1 jam).
+ */
 export const authMiddleware = (req, res, next) => {
    try {
       const authHeader = req.headers.authorization;
@@ -12,11 +23,13 @@ export const authMiddleware = (req, res, next) => {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      req.user = decoded; // { userId, role }
+      req.user = decoded; // { userId, role } — isi payload dari utils/token.js
 
       next();
    } catch (err) {
-      return res.status(401).json({ message: 'Token tidak valid atau kedaluwarsa' });
+      return res
+         .status(401)
+         .json({ message: "Token tidak valid atau kedaluwarsa" });
    }
 };
 
@@ -30,7 +43,10 @@ export const optionalAuthMiddleware = (req, res, next) => {
 
    if (authHeader?.startsWith("Bearer ")) {
       try {
-         req.user = jwt.verify(authHeader.split(" ")[1], process.env.JWT_SECRET);
+         req.user = jwt.verify(
+            authHeader.split(" ")[1],
+            process.env.JWT_SECRET
+         );
       } catch {
          // token busuk / kedaluwarsa -> perlakukan sebagai tamu, jangan blokir
       }

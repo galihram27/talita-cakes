@@ -34,7 +34,11 @@ let newVisitorsPerIpToday = new Map();
 const toDayKey = (date) =>
    `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 
-export const recordVisit = async (visitorId, userId = null, clientIp = null) => {
+export const recordVisit = async (
+   visitorId,
+   userId = null,
+   clientIp = null
+) => {
    if (!visitorId) return;
 
    const today = new Date();
@@ -86,7 +90,10 @@ const normalizeDateRange = (from, to) => {
 
    // kalau cuma salah satu yang diisi, ini ambigu -> tolak biar jelas
    if (!from || !to) {
-      throw new AppError("Parameter 'from' dan 'to' harus diisi bersamaan", 422);
+      throw new AppError(
+         "Parameter 'from' dan 'to' harus diisi bersamaan",
+         422
+      );
    }
 
    const startDate = new Date(from);
@@ -107,29 +114,45 @@ const normalizeDateRange = (from, to) => {
 };
 
 /**
+ * Pilih query yang tepat dari 4 kemungkinan kombinasi:
+ * ada/tidaknya rentang tanggal x dikelompokkan per hari/bulan.
+ */
+const fetchRows = async (range, groupBy, queries) => {
+   if (!range) {
+      return groupBy === "month" ? queries.allByMonth() : queries.allByDate();
+   }
+
+   return groupBy === "month"
+      ? queries.rangeByMonth(range.startDate, range.endDate)
+      : queries.rangeByDate(range.startDate, range.endDate);
+};
+
+/**
+ * Samakan bentuk hasil query jadi { date, count }.
+ * Perlu karena sumbernya campur: groupBy Prisma memberi { date, _count },
+ * sedangkan raw query per bulan memberi { month, count } (count-nya BigInt).
+ */
+const toChartPoints = (rows) =>
+   rows.map((row) => ({
+      date: row.date ?? row.month,
+      count: Number(row._count?.visitorId ?? row.count),
+   }));
+
+/**
  * Ambil data visitor untuk grafik.
  * Kalau from/to tidak diisi, ambil SEMUA data sejak awal (tanpa filter tanggal).
  */
 export const getVisitorStats = async (from, to, groupBy = "day") => {
    const range = normalizeDateRange(from, to);
 
-   let rows;
-   if (!range) {
-      rows =
-         groupBy === "month"
-            ? await analyticsRepository.countVisitorsGroupedByMonth()
-            : await analyticsRepository.countVisitorsGroupedByDate();
-   } else {
-      rows =
-         groupBy === "month"
-            ? await analyticsRepository.countVisitorsByMonthRange(range.startDate, range.endDate)
-            : await analyticsRepository.countVisitorsByDateRange(range.startDate, range.endDate);
-   }
+   const rows = await fetchRows(range, groupBy, {
+      allByDate: analyticsRepository.countVisitorsGroupedByDate,
+      allByMonth: analyticsRepository.countVisitorsGroupedByMonth,
+      rangeByDate: analyticsRepository.countVisitorsByDateRange,
+      rangeByMonth: analyticsRepository.countVisitorsByMonthRange,
+   });
 
-   return rows.map((row) => ({
-      date: row.date ?? row.month,
-      count: Number(row._count?.visitorId ?? row.count),
-   }));
+   return toChartPoints(rows);
 };
 
 /**
@@ -139,23 +162,14 @@ export const getVisitorStats = async (from, to, groupBy = "day") => {
 export const getOrderStats = async (from, to, groupBy = "day") => {
    const range = normalizeDateRange(from, to);
 
-   let rows;
-   if (!range) {
-      rows =
-         groupBy === "month"
-            ? await analyticsRepository.countOrdersGroupedByMonth()
-            : await analyticsRepository.countOrdersGroupedByDate();
-   } else {
-      rows =
-         groupBy === "month"
-            ? await analyticsRepository.countOrdersByMonthRange(range.startDate, range.endDate)
-            : await analyticsRepository.countOrdersByDateRange(range.startDate, range.endDate);
-   }
+   const rows = await fetchRows(range, groupBy, {
+      allByDate: analyticsRepository.countOrdersGroupedByDate,
+      allByMonth: analyticsRepository.countOrdersGroupedByMonth,
+      rangeByDate: analyticsRepository.countOrdersByDateRange,
+      rangeByMonth: analyticsRepository.countOrdersByMonthRange,
+   });
 
-   return rows.map((row) => ({
-      date: row.date ?? row.month,
-      count: Number(row.count),
-   }));
+   return toChartPoints(rows);
 };
 
 /**

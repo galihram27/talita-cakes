@@ -1,14 +1,21 @@
 import { z } from "zod";
 
+/**
+ * Validasi body & query endpoint galeri.
+ * Isi tags baru dirapikan jadi array di gallery.service.js — di sini cukup
+ * dipastikan bentuknya salah satu dari dua yang diterima.
+ */
+
 // Tags bisa dikirim string "a,b,c" ATAU array ["a","b","c"]
-const tagsSchema = z
-   .union([z.string(), z.array(z.string())])
-   .optional();
+const tagsSchema = z.union([z.string(), z.array(z.string())]).optional();
 
 // CREATE GALLERY VALIDATION
 export const createGallerySchema = z.object({
    title: z.string().min(1, "Title is required"),
-   imageUrl: z.string().min(1, "Image URL is required").url("Invalid image URL"),
+   imageUrl: z
+      .string()
+      .min(1, "Image URL is required")
+      .url("Invalid image URL"),
    description: z.string().optional(),
    tags: tagsSchema,
    order: z.coerce.number().int().optional(),
@@ -19,7 +26,11 @@ export const createGallerySchema = z.object({
 export const updateGallerySchema = z
    .object({
       title: z.string().min(1, "Title is required").optional(),
-      imageUrl: z.string().min(1, "Image URL is required").url("Invalid image URL").optional(),
+      imageUrl: z
+         .string()
+         .min(1, "Image URL is required")
+         .url("Invalid image URL")
+         .optional(),
       description: z.string().optional(),
       tags: tagsSchema,
       order: z.coerce.number().int().optional(),

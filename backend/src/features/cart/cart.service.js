@@ -18,6 +18,26 @@ import {
    isBreadCategory,
 } from "../../features/product/product.constant.js";
 
+/**
+ * Aturan bisnis keranjang.
+ *
+ * Bagian tersulit di file ini adalah menentukan "satu baris keranjang itu
+ * sebenarnya apa", karena tiap tipe produk punya pilihan yang berbeda:
+ *
+ * - TYPE1        : varian tunggal, tidak ada pilihan apa pun
+ * - TYPE2        : varian tunggal + pilih rasa + gambar referensi dekorasi
+ * - TYPE3        : pilih varian (bentuk & ukuran)
+ * - TYPE4        : pilih varian + rasa + gambar referensi dekorasi
+ * - TYPE5        : roti/pastry — sebagian pilih ukuran, sebagian pilih
+ *                  filling & topping yang harganya dari tabel kombinasi
+ * - TYPE6        : cupcake — pilih isi box; rasanya fix, pilih satu, atau
+ *                  pilih beberapa sekaligus (goodiebag), tergantung kategori
+ *
+ * Karena itu alurnya selalu: ambil produk dari DB -> resolveItemDetails()
+ * memutuskan varian, rasa, dan HARGA final -> baru disimpan. Harga tidak
+ * pernah diambil dari request client.
+ */
+
 const PRODUCT_TYPE = {
    TYPE1: "TYPE1",
    TYPE2: "TYPE2",
@@ -26,6 +46,10 @@ const PRODUCT_TYPE = {
    TYPE5: "TYPE5",
    TYPE6: "TYPE6",
 };
+
+// =========================
+// HELPER PENENTU HARGA & PILIHAN
+// =========================
 
 /**
  * Hitung harga final per-unit setelah discount.
@@ -125,10 +149,70 @@ const comboPriceFor = (product, fillingName, toppingNames) => {
    const combos = product.comboPrices;
    if (!Array.isArray(combos) || combos.length === 0 || !fillingName) return 0;
    return toppingNames.reduce((sum, top) => {
-      const row = combos.find((c) => c.filling === fillingName && c.topping === top);
+      const row = combos.find(
+         (c) => c.filling === fillingName && c.topping === top
+      );
       return sum + (row ? Number(row.price) || 0 : 0);
    }, 0);
 };
+
+// flavor pilihan user wajib untuk TYPE2 & TYPE4; daftar rasa yang valid
+// berbeda per tipe (lihat FLAVORS_BY_TYPE).
+const validateCustomFlavor = (flavor, productType) => {
+   const allowed = FLAVORS_BY_TYPE[productType] ?? [];
+   if (!flavor) {
+      throw new AppError("flavor wajib diisi untuk tipe produk ini", 422);
+   }
+   if (!allowed.includes(flavor)) {
+      throw new AppError(
+         `flavor tidak valid, pilih salah satu: ${allowed.join(", ")}`,
+         422
+      );
+   }
+};
+
+/**
+ * Ambil varian yang dipilih user lalu pastikan varian itu memang milik produk
+ * yang bersangkutan — tanpa cek ini, client bisa memasangkan variantId murah
+ * ke produk mahal.
+ */
+const requireVariantOfProduct = async (
+   product,
+   variantId,
+   { missingMessage, notFoundMessage }
+) => {
+   if (!variantId) {
+      throw new AppError(missingMessage, 422);
+   }
+
+   const variant = await productRepository.findVariantById(variantId);
+   if (!variant || variant.productId !== product.id) {
+      throw new AppError(notFoundMessage, 404);
+   }
+
+   return variant;
+};
+
+// Pesan error dipisah per konteks supaya user paham yang diminta itu apa
+// (ukuran, isi box, atau varian), bukan istilah teknis "variantId".
+const VARIANT_MESSAGES = {
+   size: {
+      missingMessage: "variantId (ukuran) wajib dipilih",
+      notFoundMessage: "Ukuran tidak ditemukan untuk produk ini",
+   },
+   variant: {
+      missingMessage: "variantId wajib diisi untuk tipe produk ini",
+      notFoundMessage: "Variant tidak ditemukan untuk produk ini",
+   },
+   box: {
+      missingMessage: "variantId (isi box) wajib dipilih",
+      notFoundMessage: "Isi box tidak ditemukan untuk produk ini",
+   },
+};
+
+// =========================
+// PENENTU ISI SATU BARIS KERANJANG
+// =========================
 
 /**
  * Validasi & resolve variant + price berdasarkan ProductType.
@@ -138,33 +222,17 @@ const comboPriceFor = (product, fillingName, toppingNames) => {
 const resolveItemDetails = async (product, payload) => {
    const { type, discount } = product;
 
-   // flavor pilihan user wajib untuk TYPE2 & TYPE4; daftar rasa yang valid
-   // berbeda per tipe (lihat FLAVORS_BY_TYPE).
-   const validateCustomFlavor = (flavor, productType) => {
-      const allowed = FLAVORS_BY_TYPE[productType] ?? [];
-      if (!flavor) {
-         throw new AppError("flavor wajib diisi untuk tipe produk ini", 422);
-      }
-      if (!allowed.includes(flavor)) {
-         throw new AppError(
-            `flavor tidak valid, pilih salah satu: ${allowed.join(", ")}`,
-            422
-         );
-      }
-   };
-
    // TYPE 5 sub-kategori size-pilihan (Basque): user memilih size (variant).
    if (
       type === PRODUCT_TYPE.TYPE5 &&
       isType5SizeSubcategory(product.subcategory)
    ) {
-      if (!payload.variantId) {
-         throw new AppError("variantId (ukuran) wajib dipilih", 422);
-      }
-      const variant = await productRepository.findVariantById(payload.variantId);
-      if (!variant || variant.productId !== product.id) {
-         throw new AppError("Ukuran tidak ditemukan untuk produk ini", 404);
-      }
+      const variant = await requireVariantOfProduct(
+         product,
+         payload.variantId,
+         VARIANT_MESSAGES.size
+      );
+
       return {
          variantId: variant.id,
          flavor: null,
@@ -186,14 +254,14 @@ const resolveItemDetails = async (product, payload) => {
 
       let variant;
       if (isBread) {
-         if (!payload.variantId) {
-            throw new AppError("variantId (ukuran) wajib dipilih", 422);
-         }
-         variant = await productRepository.findVariantById(payload.variantId);
-         if (!variant || variant.productId !== product.id) {
-            throw new AppError("Ukuran tidak ditemukan untuk produk ini", 404);
-         }
+         variant = await requireVariantOfProduct(
+            product,
+            payload.variantId,
+            VARIANT_MESSAGES.size
+         );
       } else {
+         // Produk varian tunggal: tidak ada yang perlu dipilih user,
+         // ambil saja satu-satunya varian milik produk ini.
          variant = await productRepository.findSingleVariantByProductId(
             product.id
          );
@@ -209,18 +277,18 @@ const resolveItemDetails = async (product, payload) => {
 
       // TYPE 5 CINROLLS VAN DEPOK: user memilih 1 filling + beberapa topping.
       // Harga = harga dasar + Σ harga kombinasi (filling × tiap topping).
-      const { fillingLabel } =
-         type === PRODUCT_TYPE.TYPE5
-            ? resolveFilling(product, payload)
-            : { fillingLabel: null };
-      const { toppingLabel, toppingNames } =
-         type === PRODUCT_TYPE.TYPE5
-            ? resolveTopping(product, payload)
-            : { toppingLabel: null, toppingNames: [] };
-      const comboAdd =
-         type === PRODUCT_TYPE.TYPE5
-            ? comboPriceFor(product, fillingLabel, toppingNames)
-            : 0;
+      // TYPE1 & TYPE2 tidak punya pilihan ini, jadi semuanya dikosongkan.
+      const isType5 = type === PRODUCT_TYPE.TYPE5;
+
+      const { fillingLabel } = isType5
+         ? resolveFilling(product, payload)
+         : { fillingLabel: null };
+      const { toppingLabel, toppingNames } = isType5
+         ? resolveTopping(product, payload)
+         : { toppingLabel: null, toppingNames: [] };
+      const comboAdd = isType5
+         ? comboPriceFor(product, fillingLabel, toppingNames)
+         : 0;
 
       return {
          // Bread menyimpan variantId agar keranjang menampilkan ukuran terpilih;
@@ -236,16 +304,11 @@ const resolveItemDetails = async (product, payload) => {
 
    // TYPE 3 & TYPE 4: user memilih shape + size lewat variant
    if (type === PRODUCT_TYPE.TYPE3 || type === PRODUCT_TYPE.TYPE4) {
-      if (!payload.variantId) {
-         throw new AppError("variantId wajib diisi untuk tipe produk ini", 422);
-      }
-
-      const variant = await productRepository.findVariantById(
-         payload.variantId
+      const variant = await requireVariantOfProduct(
+         product,
+         payload.variantId,
+         VARIANT_MESSAGES.variant
       );
-      if (!variant || variant.productId !== product.id) {
-         throw new AppError("Variant tidak ditemukan untuk produk ini", 404);
-      }
 
       // TYPE 4: user juga pilih flavor + dekorasi (custom image)
       if (type === PRODUCT_TYPE.TYPE4) {
@@ -264,14 +327,11 @@ const resolveItemDetails = async (product, payload) => {
    // tergantung kategori — American Butter sudah fix dari admin, kategori lain
    // user memilih rasa (daftarnya beda per kategori) + unggah referensi dekor.
    if (type === PRODUCT_TYPE.TYPE6) {
-      if (!payload.variantId) {
-         throw new AppError("variantId (isi box) wajib dipilih", 422);
-      }
-
-      const variant = await productRepository.findVariantById(payload.variantId);
-      if (!variant || variant.productId !== product.id) {
-         throw new AppError("Isi box tidak ditemukan untuk produk ini", 404);
-      }
+      const variant = await requireVariantOfProduct(
+         product,
+         payload.variantId,
+         VARIANT_MESSAGES.box
+      );
 
       // Goodiebag: user memilih beberapa rasa (1-4) dari daftar rasa milik
       // sub-kategori produk. Disimpan tergabung di kolom flavor. Dekorasi
@@ -293,10 +353,7 @@ const resolveItemDetails = async (product, payload) => {
          }
          const invalid = flavors.filter((f) => !allowed.includes(f));
          if (invalid.length > 0) {
-            throw new AppError(
-               `Rasa tidak valid: ${invalid.join(", ")}`,
-               422
-            );
+            throw new AppError(`Rasa tidak valid: ${invalid.join(", ")}`, 422);
          }
 
          return {
@@ -333,6 +390,10 @@ const resolveItemDetails = async (product, payload) => {
 
    throw new AppError("Tipe produk tidak dikenali", 422);
 };
+
+// =========================
+// OPERASI KERANJANG (dipanggil controller)
+// =========================
 
 /**
  * Tambah item ke cart. Kalau item identik (productId + variantId + flavor)
@@ -445,7 +506,13 @@ export const getCartByUserId = async (userId) => {
    };
 };
 
+/**
+ * Ubah jumlah item. Quantity 0 diperlakukan sebagai "hapus item" supaya
+ * frontend cukup memakai satu endpoint saat tombol minus ditekan terus.
+ * Mengembalikan null kalau itemnya jadi terhapus.
+ */
 export const updateItemQuantity = async (userId, itemId, quantity) => {
+   // Cek kepemilikan: item hanya boleh diubah oleh pemilik keranjangnya
    const item = await cartRepository.findCartItemById(itemId);
    if (!item || item.cart.userId !== userId) {
       throw new AppError("Item keranjang tidak ditemukan", 404);
@@ -467,6 +534,8 @@ export const updateItemQuantity = async (userId, itemId, quantity) => {
    return cartRepository.updateCartItemQuantity(itemId, quantity);
 };
 
+// Hapus satu item. Item milik user lain dibalas 404 (bukan 403) supaya
+// keberadaan item orang lain tidak ikut terbocorkan.
 export const removeItem = async (userId, itemId) => {
    const item = await cartRepository.findCartItemById(itemId);
    if (!item || item.cart.userId !== userId) {
@@ -476,6 +545,7 @@ export const removeItem = async (userId, itemId) => {
    return cartRepository.deleteCartItem(itemId);
 };
 
+// Kosongkan keranjang. Cart-nya sendiri tidak ikut dihapus, hanya isinya.
 export const clearCart = async (userId) => {
    const cart = await cartRepository.findCartByUserId(userId);
    if (!cart) return;

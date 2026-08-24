@@ -1,5 +1,12 @@
 // src/features/order/order.helper.js
 
+/**
+ * Aturan bisnis toko yang berupa angka & rumus sederhana.
+ * Dipisah ke file sendiri supaya bisa dipakai bersama oleh order.validation.js
+ * dan order.service.js, dan supaya angkanya gampang dicari saat mau diubah.
+ */
+
+// Jeda minimal antara hari pemesanan dan tanggal kue diambil/dikirim
 export const MIN_DAYS_BEFORE_CAKE_DATE = 3;
 
 // Batas maksimal radius pengiriman. Di luar ini user diarahkan
@@ -12,16 +19,16 @@ export const MAX_DELIVERY_DISTANCE_KM = 25;
  * jam 23:59 H-3 tidak dirugikan dibanding yang pesan jam 00:01.
  */
 export const isRequestCakeDateValid = (date) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+   const today = new Date();
+   today.setHours(0, 0, 0, 0);
 
-  const minDate = new Date(today);
-  minDate.setDate(minDate.getDate() + MIN_DAYS_BEFORE_CAKE_DATE);
+   const minDate = new Date(today);
+   minDate.setDate(minDate.getDate() + MIN_DAYS_BEFORE_CAKE_DATE);
 
-  const target = new Date(date);
-  target.setHours(0, 0, 0, 0);
+   const target = new Date(date);
+   target.setHours(0, 0, 0, 0);
 
-  return target.getTime() >= minDate.getTime();
+   return target.getTime() >= minDate.getTime();
 };
 
 /**
@@ -34,12 +41,12 @@ export const isRequestCakeDateValid = (date) => {
  *   > 25 km   -> null (di luar jangkauan, hubungi toko)
  */
 export const calculateDeliveryFee = (distanceKm) => {
-  if (!distanceKm || distanceKm <= 0) return 0;
-  if (distanceKm > MAX_DELIVERY_DISTANCE_KM) return null;
+   if (!distanceKm || distanceKm <= 0) return 0;
+   if (distanceKm > MAX_DELIVERY_DISTANCE_KM) return null;
 
-  if (distanceKm < 5) return 30000;
-  if (distanceKm <= 10) return 45000;
-  if (distanceKm <= 15) return 55000;
-  if (distanceKm <= 20) return 65000;
-  return 75000;
+   if (distanceKm < 5) return 30000;
+   if (distanceKm <= 10) return 45000;
+   if (distanceKm <= 15) return 55000;
+   if (distanceKm <= 20) return 65000;
+   return 75000;
 };

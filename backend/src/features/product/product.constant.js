@@ -1,5 +1,18 @@
 // src/features/product/product.constant.js
 
+/**
+ * Katalog aturan produk: kategori, sub-kategori, daftar rasa, ukuran bread,
+ * pilihan filling & topping, sampai konfigurasi cupcake per kategori.
+ *
+ * File ini adalah sumber kebenaran untuk "produk apa saja yang boleh ada dan
+ * pilihan apa yang menempel padanya". Dipakai bersama oleh validasi produk,
+ * service produk, dan service keranjang.
+ *
+ * PENTING: isinya dicerminkan di frontend/src/config/productOptions.js.
+ * Kalau menambah kategori atau rasa baru, ubah kedua file itu bersamaan —
+ * kalau tidak, form admin dan validasi backend jadi tidak sinkron.
+ */
+
 // daftar kategori yang valid per product type
 // (mirror ke frontend/src/config/productOptions.js -> PRODUCT_CATEGORIES)
 export const PRODUCT_CATEGORIES = {
@@ -53,7 +66,8 @@ export const TYPE5_SUBCATEGORIES = {
 
 // Gabungan semua sub-kategori TYPE5 — dipakai validasi saat update partial
 // yang mungkin mengirim subcategory tanpa category.
-export const ALL_TYPE5_SUBCATEGORIES = Object.values(TYPE5_SUBCATEGORIES).flat();
+export const ALL_TYPE5_SUBCATEGORIES =
+   Object.values(TYPE5_SUBCATEGORIES).flat();
 
 // Sub-kategori TYPE5 yang size-nya DIPILIH USER (harga per size), bukan size
 // tunggal input admin. Tiap size punya harga sendiri; user memilih size saat
@@ -76,8 +90,20 @@ export const BREAD_CATEGORY = "Bread";
 export const isBreadCategory = (category) => category === BREAD_CATEGORY;
 
 export const BREAD_SIZES = [
-   { key: "PERSONAL", label: "Personal Size", shape: "SQUARE", size: 22, sizeB: 10 },
-   { key: "FAMILY", label: "Family Size", shape: "ROUND", size: 25, sizeB: null },
+   {
+      key: "PERSONAL",
+      label: "Personal Size",
+      shape: "SQUARE",
+      size: 22,
+      sizeB: 10,
+   },
+   {
+      key: "FAMILY",
+      label: "Family Size",
+      shape: "ROUND",
+      size: 25,
+      sizeB: null,
+   },
    { key: "SHARING", label: "Sharing Size", shape: null, size: 9, sizeB: null },
 ];
 
@@ -252,7 +278,8 @@ export const goodiebagMinQty = (category) =>
    TYPE6_CATEGORY_CONFIG[category]?.minQty ?? 1;
 
 // Daftar sub-kategori goodiebag (level-2).
-export const goodiebagSubcategories = () => Object.keys(GOODIEBAG_SUBCATEGORIES);
+export const goodiebagSubcategories = () =>
+   Object.keys(GOODIEBAG_SUBCATEGORIES);
 
 // Rasa yang tersedia untuk satu sub-kategori goodiebag.
 export const goodiebagFlavorsForSubcategory = (subcategory) =>

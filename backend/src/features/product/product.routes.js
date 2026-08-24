@@ -16,14 +16,23 @@ import {
    productIdParamSchema,
 } from "./product.validation.js";
 
+/**
+ * Endpoint produk (prefix /api/products).
+ *
+ * Route baca terbuka untuk umum; route tulis dipasangi authMiddleware +
+ * requireRole("ADMIN"). Urutan pendaftaran penting: route dengan path tetap
+ * ("/count", "/search") harus di atas "/:id".
+ */
 const router = Router();
 
+// ===== PUBLIC =====
 router.get("/", getAllProductsHandler);
 // harus di atas "/:id" supaya "count" tidak tertangkap sebagai id produk
 router.get("/count", getProductCountHandler);
 router.get("/search", searchProductsHandler);
 router.get("/:id", validate(productIdParamSchema, "params"), getProductHandler);
 
+// ===== ADMIN =====
 router.post(
    "/",
    authMiddleware,
@@ -32,8 +41,9 @@ router.post(
    createProductHandler
 );
 
-// updateProductHandler: validasi params via middleware,
-// validasi body TETAP di service (lihat penjelasan di bawah)
+// updateProductHandler: params divalidasi middleware, tapi body TIDAK —
+// skema body-nya tergantung `type` produk yang baru diketahui setelah query DB,
+// jadi validasinya dikerjakan di product.service.js.
 router.patch(
    "/:id",
    authMiddleware,

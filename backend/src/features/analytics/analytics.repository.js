@@ -1,6 +1,18 @@
 // src/features/analytics/analytics.repository.js
 import prisma from "../../lib/prisma.js";
 
+/**
+ * Semua query analytics. Isinya cuma baca-tulis DB, tanpa aturan bisnis.
+ *
+ * Pola penamaannya konsisten:
+ * - countXGroupedByDate/Month  -> semua data sejak awal (tanpa filter tanggal)
+ * - countXByDateRange/MonthRange -> dibatasi rentang from–to
+ * - countAllX                  -> satu angka total, buat kartu ringkasan
+ *
+ * Sebagian pakai $queryRaw karena Prisma groupBy belum bisa memotong
+ * (truncate) tanggal ke hari/bulan.
+ */
+
 // =========================
 // VISITOR LOG
 // =========================
@@ -21,8 +33,6 @@ export const upsertVisitorLog = async (visitorId, date, userId) => {
    });
 };
 
-// tambahan di analytics.repository.js
-
 /**
  * Hitung total unique visitor sepanjang waktu (tanpa filter tanggal).
  * Dipakai untuk kebutuhan "total visitor sejak rilis".
@@ -36,13 +46,6 @@ export const countAllVisitors = async () => {
       SELECT COUNT(DISTINCT "visitorId")::int AS count FROM visitor_logs
    `;
    return count;
-};
-
-/**
- * Hitung total order sepanjang waktu (tanpa filter tanggal).
- */
-export const countAllOrders = async () => {
-   return prisma.order.count();
 };
 
 /**
@@ -64,30 +67,6 @@ export const countVisitorsGroupedByMonth = async () => {
       SELECT DATE_TRUNC('month', "date") AS month, COUNT(*)::int AS count
       FROM visitor_logs
       GROUP BY DATE_TRUNC('month', "date")
-      ORDER BY month ASC
-   `;
-};
-
-/**
- * Order per tanggal TANPA batas rentang.
- */
-export const countOrdersGroupedByDate = async () => {
-   return prisma.$queryRaw`
-      SELECT DATE("createdAt") AS date, COUNT(*)::int AS count
-      FROM orders
-      GROUP BY DATE("createdAt")
-      ORDER BY date ASC
-   `;
-};
-
-/**
- * Order per bulan TANPA batas rentang.
- */
-export const countOrdersGroupedByMonth = async () => {
-   return prisma.$queryRaw`
-      SELECT DATE_TRUNC('month', "createdAt") AS month, COUNT(*)::int AS count
-      FROM orders
-      GROUP BY DATE_TRUNC('month', "createdAt")
       ORDER BY month ASC
    `;
 };
@@ -125,6 +104,37 @@ export const countVisitorsByMonthRange = async (startDate, endDate) => {
 // =========================
 // ORDER ANALYTICS
 // =========================
+
+/**
+ * Hitung total order sepanjang waktu (tanpa filter tanggal).
+ */
+export const countAllOrders = async () => {
+   return prisma.order.count();
+};
+
+/**
+ * Order per tanggal TANPA batas rentang.
+ */
+export const countOrdersGroupedByDate = async () => {
+   return prisma.$queryRaw`
+      SELECT DATE("createdAt") AS date, COUNT(*)::int AS count
+      FROM orders
+      GROUP BY DATE("createdAt")
+      ORDER BY date ASC
+   `;
+};
+
+/**
+ * Order per bulan TANPA batas rentang.
+ */
+export const countOrdersGroupedByMonth = async () => {
+   return prisma.$queryRaw`
+      SELECT DATE_TRUNC('month', "createdAt") AS month, COUNT(*)::int AS count
+      FROM orders
+      GROUP BY DATE_TRUNC('month', "createdAt")
+      ORDER BY month ASC
+   `;
+};
 
 /**
  * Hitung jumlah order per tanggal dalam rentang waktu tertentu.

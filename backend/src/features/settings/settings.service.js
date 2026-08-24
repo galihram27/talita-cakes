@@ -3,6 +3,17 @@ import { findSetting, upsertSetting } from "./settings.repository.js";
 import { cached, cacheDeleteByPrefix } from "../../lib/cache.js";
 import { triggerRebuild } from "../../utils/deployHook.js";
 
+/**
+ * Aturan bisnis pengaturan situs.
+ *
+ * Dua hal penting yang diurus di sini:
+ * 1. Key yang boleh dipakai dibatasi whitelist, jadi endpoint ini tidak bisa
+ *    dipakai membuat setting sembarangan.
+ * 2. Hasil baca di-cache, dan setiap kali nilainya diubah cache dibuang lalu
+ *    build ulang frontend dipicu — karena nilainya ikut ter-render ke halaman
+ *    statis, bukan diambil saat halaman dibuka.
+ */
+
 const SETTINGS_CACHE_PREFIX = "setting:";
 
 // Whitelist key yang boleh dibaca/diubah lewat API. Mencegah pembuatan

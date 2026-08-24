@@ -16,6 +16,13 @@ import {
    getGalleriesQuerySchema,
 } from "./gallery.validation.js";
 
+/**
+ * Endpoint galeri (prefix /api/galleries).
+ *
+ * Route publik ditulis lebih dulu, lalu route admin yang masing-masing
+ * dipasangi authMiddleware + requireRole. Route "/:id" sengaja diletakkan
+ * setelah "/" agar tidak menyerobot URL lain.
+ */
 const router = Router();
 
 // =========================

@@ -10,7 +10,11 @@
 // - Cache ini per-instance & hilang saat server restart. Untuk skala saat ini
 //   sudah cukup; kalau nanti multi-instance, pertimbangkan Redis.
 
-const store = new Map(); // key -> { value, expiresAt }
+// Isi cache: key -> { value, expiresAt }.
+// Entry kedaluwarsa tidak dibersihkan oleh timer, melainkan dibuang saat
+// kebetulan dibaca (lihat cacheGet) — cukup karena jumlah key-nya terbatas
+// dan sudah dikelompokkan per prefix.
+const store = new Map();
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 menit
 

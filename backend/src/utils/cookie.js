@@ -1,6 +1,11 @@
 // Helper untuk set & clear refresh token cookie.
 // Dipusatkan di sini biar opsi cookie (httpOnly, secure, sameSite) konsisten
 // di semua tempat yang butuh (login, register, refresh, logout).
+//
+// PENTING: opsi saat menghapus cookie harus PERSIS sama dengan saat membuatnya
+// (terutama `path`), kalau tidak browser menganggapnya cookie berbeda dan
+// cookie lama tetap tertinggal. Itu sebabnya CROSS_SITE_COOKIE dipakai ulang
+// di kedua fungsi di bawah.
 
 const REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 const REFRESH_TOKEN_PATH = "/api/auth/refresh-token"; //? sesuaikan dengan prefix route auth kamu kalau berbeda

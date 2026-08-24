@@ -1,3 +1,14 @@
+/**
+ * Aturan ukuran kue untuk produk bervarian grid (TYPE3 & TYPE4).
+ *
+ * Intinya satu: admin tidak boleh mengisi ukuran setengah-setengah. Kalau
+ * memilih mulai dari 18cm, maka 18/20/22/…/30 harus terisi semua — supaya
+ * di halaman produk tidak ada ukuran yang bolong di tengah.
+ *
+ * ROUND boleh mulai 16, 18, atau 20; SQUARE mulai 18 atau 20. Keduanya
+ * naik kelipatan 2 sampai 30cm.
+ */
+
 export const ROUND_MIN_OPTIONS = [16, 18, 20];
 export const SQUARE_MIN_OPTIONS = [18, 20];
 export const MAX_SIZE = 30;
@@ -5,43 +16,45 @@ export const MAX_SIZE = 30;
 // generate range size dari minSize sampai 30, kelipatan 2
 // contoh: generateSizeRange(18) -> [18, 20, 22, 24, 26, 28, 30]
 export const generateSizeRange = (minSize) => {
-  const sizes = [];
-  for (let s = minSize; s <= MAX_SIZE; s += 2) {
-    sizes.push(s);
-  }
-  return sizes;
+   const sizes = [];
+   for (let s = minSize; s <= MAX_SIZE; s += 2) {
+      sizes.push(s);
+   }
+   return sizes;
 };
 
 // validasi size untuk TYPE1 (input manual, bebas asal angka bulat positif)
 export const isValidManualSize = (size) => {
-  return Number.isInteger(size) && size > 0;
+   return Number.isInteger(size) && size > 0;
 };
 
 // validasi size individual tetap dipakai untuk pengecekan dasar (genap & dalam rentang)
 export const isValidSize = (shape, size) => {
-  if (shape === 'ROUND') {
-    return size >= 16 && size <= MAX_SIZE && size % 2 === 0;
-  }
-  if (shape === 'SQUARE') {
-    return size >= 18 && size <= MAX_SIZE && size % 2 === 0;
-  }
-  return false;
+   if (shape === "ROUND") {
+      return size >= 16 && size <= MAX_SIZE && size % 2 === 0;
+   }
+   if (shape === "SQUARE") {
+      return size >= 18 && size <= MAX_SIZE && size % 2 === 0;
+   }
+   return false;
 };
 
+// Cek produk menyediakan kedua bentuk sekaligus
 export const hasRoundAndSquare = (variants) => {
-  const hasRound = variants.some((v) => v.shape === 'ROUND');
-  const hasSquare = variants.some((v) => v.shape === 'SQUARE');
-  return hasRound && hasSquare;
+   const hasRound = variants.some((v) => v.shape === "ROUND");
+   const hasSquare = variants.some((v) => v.shape === "SQUARE");
+   return hasRound && hasSquare;
 };
 
+// Cek ada kombinasi bentuk+ukuran yang terisi dua kali
 export const hasDuplicateVariant = (variants) => {
-  const seen = new Set();
-  for (const v of variants) {
-    const key = `${v.shape}-${v.size}`;
-    if (seen.has(key)) return true;
-    seen.add(key);
-  }
-  return false;
+   const seen = new Set();
+   for (const v of variants) {
+      const key = `${v.shape}-${v.size}`;
+      if (seen.has(key)) return true;
+      seen.add(key);
+   }
+   return false;
 };
 
 /**
@@ -53,48 +66,53 @@ export const hasDuplicateVariant = (variants) => {
  * @returns {{ valid: boolean, message?: string }}
  */
 export const validateSizeCompleteness = (shape, sizes) => {
-  const minOptions = shape === 'ROUND' ? ROUND_MIN_OPTIONS : SQUARE_MIN_OPTIONS;
+   const minOptions =
+      shape === "ROUND" ? ROUND_MIN_OPTIONS : SQUARE_MIN_OPTIONS;
 
-  const sortedSizes = [...sizes].sort((a, b) => a - b);
-  const minSize = sortedSizes[0];
+   const sortedSizes = [...sizes].sort((a, b) => a - b);
+   const minSize = sortedSizes[0];
 
-  if (!minOptions.includes(minSize)) {
-    return {
-      valid: false,
-      message: `Size awal untuk ${shape} harus salah satu dari: ${minOptions.join(', ')}`,
-    };
-  }
+   if (!minOptions.includes(minSize)) {
+      return {
+         valid: false,
+         message: `Size awal untuk ${shape} harus salah satu dari: ${minOptions.join(", ")}`,
+      };
+   }
 
-  const expectedSizes = generateSizeRange(minSize);
+   const expectedSizes = generateSizeRange(minSize);
 
-  const isComplete =
-    expectedSizes.length === sortedSizes.length &&
-    expectedSizes.every((size, idx) => size === sortedSizes[idx]);
+   const isComplete =
+      expectedSizes.length === sortedSizes.length &&
+      expectedSizes.every((size, idx) => size === sortedSizes[idx]);
 
-  if (!isComplete) {
-    return {
-      valid: false,
-      message: `${shape} wajib diisi lengkap dari ${minSize}cm sampai ${MAX_SIZE}cm (kelipatan 2): ${expectedSizes.join(', ')}`,
-    };
-  }
+   if (!isComplete) {
+      return {
+         valid: false,
+         message: `${shape} wajib diisi lengkap dari ${minSize}cm sampai ${MAX_SIZE}cm (kelipatan 2): ${expectedSizes.join(", ")}`,
+      };
+   }
 
-  return { valid: true };
+   return { valid: true };
 };
 
 // validasi semua variant (gabungan ROUND & SQUARE) sekaligus
 export const validateAllVariantsCompleteness = (variants) => {
-  const roundSizes = variants.filter((v) => v.shape === 'ROUND').map((v) => v.size);
-  const squareSizes = variants.filter((v) => v.shape === 'SQUARE').map((v) => v.size);
+   const roundSizes = variants
+      .filter((v) => v.shape === "ROUND")
+      .map((v) => v.size);
+   const squareSizes = variants
+      .filter((v) => v.shape === "SQUARE")
+      .map((v) => v.size);
 
-  if (roundSizes.length > 0) {
-    const result = validateSizeCompleteness('ROUND', roundSizes);
-    if (!result.valid) return result;
-  }
+   if (roundSizes.length > 0) {
+      const result = validateSizeCompleteness("ROUND", roundSizes);
+      if (!result.valid) return result;
+   }
 
-  if (squareSizes.length > 0) {
-    const result = validateSizeCompleteness('SQUARE', squareSizes);
-    if (!result.valid) return result;
-  }
+   if (squareSizes.length > 0) {
+      const result = validateSizeCompleteness("SQUARE", squareSizes);
+      if (!result.valid) return result;
+   }
 
-  return { valid: true };
+   return { valid: true };
 };

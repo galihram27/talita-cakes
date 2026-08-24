@@ -9,6 +9,13 @@ import uploadRoutes from "../features/upload/upload.routes.js";
 import reviewRoutes from "../features/review/review.routes.js";
 import settingsRoutes from "../features/settings/settings.routes.js";
 
+/**
+ * Titik kumpul seluruh route fitur.
+ *
+ * Router ini dipasang di app.js dengan prefix /api, jadi alamat lengkapnya
+ * jadi /api/auth, /api/products, dan seterusnya. Menambah fitur baru cukup
+ * dengan menambah satu baris di sini.
+ */
 const router = Router();
 
 router.use("/auth", authRoutes);

@@ -1,12 +1,31 @@
 import prisma from "../../lib/prisma.js";
 
+/**
+ * Query tabel galeri. Murni akses DB — validasi, cache, dan normalisasi tags
+ * ditangani gallery.service.js.
+ */
+
 // =========================
 // READ
 // =========================
 
-// Ambil semua gallery dengan filter pencarian & sorting by order
-// Dipakai untuk halaman gallery (user) dan halaman admin
-export const findAllGalleries = async ({ search = "", skip = 0, take = 10 } = {}) => {
+/**
+ * Ambil daftar galeri, diurutkan sesuai kolom `order` yang diatur admin.
+ *
+ * Ada dua jalur:
+ * - Tanpa kata kunci -> query Prisma biasa.
+ * - Dengan kata kunci -> raw SQL, karena pencarian juga harus menjangkau isi
+ *   array `tags`. `unnest` memecah array jadi baris agar tiap tag bisa
+ *   dicocokkan, dan DISTINCT mencegah satu foto muncul berkali-kali kalau
+ *   beberapa tag-nya sama-sama cocok.
+ *
+ * Dipakai halaman galeri publik maupun halaman admin.
+ */
+export const findAllGalleries = async ({
+   search = "",
+   skip = 0,
+   take = 10,
+} = {}) => {
    if (!search) {
       const [data, total] = await Promise.all([
          prisma.gallery.findMany({ orderBy: { order: "asc" }, skip, take }),
@@ -64,12 +83,17 @@ export const createGallery = async (data) => {
    });
 };
 
+/**
+ * Update sebagian field. Field disalin satu per satu dan hanya kalau memang
+ * dikirim, supaya field yang tidak disebut di body tidak ikut ditimpa null.
+ */
 export const updateGallery = async (id, data) => {
    const updateData = {};
 
    if (data.title !== undefined) updateData.title = data.title;
    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
-   if (data.description !== undefined) updateData.description = data.description;
+   if (data.description !== undefined)
+      updateData.description = data.description;
    if (data.tags !== undefined) updateData.tags = data.tags;
    if (data.order !== undefined) updateData.order = data.order;
 

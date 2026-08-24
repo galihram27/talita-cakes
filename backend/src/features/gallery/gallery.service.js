@@ -9,6 +9,16 @@ import {
 import { cached, cacheDeleteByPrefix } from "../../lib/cache.js";
 import { triggerRebuild } from "../../utils/deployHook.js";
 
+/**
+ * Aturan bisnis galeri (foto hasil produksi yang ditampilkan di halaman /gallery).
+ *
+ * Isinya CRUD biasa, dengan dua hal tambahan:
+ * - Hasil baca di-cache, dan setiap perubahan membersihkan cache sekaligus
+ *   memicu build ulang frontend karena halaman galeri di-prerender.
+ * - `tags` boleh dikirim sebagai array atau teks "a,b,c", jadi selalu
+ *   dinormalisasi dulu sebelum masuk DB.
+ */
+
 // Prefix untuk semua key cache gallery (list per kombinasi search/page/limit
 // + detail per id). Sekali invalidasi membersihkan semuanya.
 const GALLERY_CACHE_PREFIX = "gallery:";
@@ -19,11 +29,32 @@ const invalidateGalleryCache = () => {
    triggerRebuild("gallery changed");
 };
 
+/**
+ * Normalisasi tags: terima string "a,b,c" atau array ["a","b","c"],
+ * selalu mengembalikan array bersih (tanpa spasi berlebih & nilai kosong).
+ */
+const normalizeTags = (tags) => {
+   if (!tags) return [];
+   if (Array.isArray(tags)) return tags.map((t) => t.trim()).filter(Boolean);
+   if (typeof tags === "string") {
+      return tags
+         .split(",")
+         .map((t) => t.trim())
+         .filter(Boolean);
+   }
+   return [];
+};
+
 // =========================
 // GET ALL (user & admin)
 // Support: ?search=&page=&limit=
 // =========================
-export const getAllGalleries = async ({ search = "", page = 1, limit = 10 } = {}) => {
+export const getAllGalleries = async ({
+   search = "",
+   page = 1,
+   limit = 10,
+} = {}) => {
+   // Batasi limit supaya satu request tidak bisa menarik seluruh tabel
    const take = Math.min(Number(limit) || 10, 100); // max 100 per page
    const currentPage = Math.max(Number(page) || 1, 1);
    const skip = (currentPage - 1) * take;
@@ -102,16 +133,4 @@ export const deleteGalleryItem = async (id) => {
 
    await deleteGallery(id);
    invalidateGalleryCache();
-};
-
-// =========================
-// HELPER
-// =========================
-
-// Normalisasi tags: terima string "a,b,c" atau array ["a","b","c"], selalu return array bersih
-const normalizeTags = (tags) => {
-   if (!tags) return [];
-   if (Array.isArray(tags)) return tags.map((t) => t.trim()).filter(Boolean);
-   if (typeof tags === "string") return tags.split(",").map((t) => t.trim()).filter(Boolean);
-   return [];
 };

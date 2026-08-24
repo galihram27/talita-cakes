@@ -8,11 +8,22 @@ const PLACES_API_BASE = "https://places.googleapis.com/v1/places";
 // agar tidak memanggil API (berbayar) di setiap request.
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 jam
 
+// Cache sederhana di memory. Hilang tiap server restart, dan itu tidak masalah:
+// paling banter satu request pertama memanggil Google lagi.
 let cache = {
    data: null,
    expiresAt: 0,
 };
 
+/**
+ * Ambil rating & review Google Maps toko, lalu susun ulang jadi bentuk yang
+ * ringkas untuk frontend.
+ *
+ * Urutan penanganannya:
+ * 1. Kredensial belum diisi -> 503 (fitur memang belum dinyalakan).
+ * 2. Cache masih segar      -> pakai cache, tidak memanggil Google.
+ * 3. Google error           -> pakai cache lama kalau ada, baru menyerah.
+ */
 export const getGoogleReviews = async () => {
    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
    const placeId = process.env.GOOGLE_PLACE_ID;
@@ -49,6 +60,9 @@ export const getGoogleReviews = async () => {
 
    const place = await response.json();
 
+   // Bentuk respons Google bersarang dalam ({ text: { text } }, dst) dan banyak
+   // field opsional, jadi diratakan di sini supaya frontend tidak perlu tahu
+   // struktur aslinya.
    const result = {
       placeName: place.displayName?.text ?? null,
       rating: place.rating ?? null,
