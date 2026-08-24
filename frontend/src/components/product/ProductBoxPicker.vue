@@ -2,26 +2,32 @@
 import { useI18n } from 'vue-i18n'
 import { formatRupiah } from '@/utils/formatCurrency'
 
-// Pemilih isi box untuk TYPE6 (cupcakes).
-// Varian cupcake memakai ProductVariant.size sebagai JUMLAH PCS dalam box,
-// bukan diameter cake — karena itu tidak memakai ProductVariantPicker
-// yang berbasis shape (Round/Square).
+/**
+ * Pemilih isi box untuk cupcake (TYPE6).
+ *
+ * Dibuat terpisah dari ProductVariantPicker karena artinya berbeda: di sini
+ * kolom `size` berarti JUMLAH CUPCAKE dalam satu box, bukan diameter kue,
+ * dan tidak ada pilihan bentuk sama sekali.
+ */
 const props = defineProps({
   variants: { type: Array, required: true },
   discount: { type: [Number, String], default: 0 },
-  variantId: { type: String, default: null }, // v-model
+  variantId: { type: String, default: null }, // dipakai lewat v-model
 })
 
 defineEmits(['update:variantId'])
 const { t } = useI18n()
 
+// Diskon disimpan dalam persen. Angka ini hanya untuk ditampilkan —
+// harga yang sesungguhnya tetap dihitung ulang oleh server saat memesan.
 const applyDiscount = (price) => {
   const base = Number(price)
   const discount = Number(props.discount ?? 0)
   return Math.round((base - (base * discount) / 100) * 100) / 100
 }
 
-// urut dari isi paling sedikit supaya pilihan terbaca menaik
+// Urutkan dari isi paling sedikit. Disalin dulu dengan [...] karena sort()
+// mengubah array aslinya, dan itu milik komponen induk.
 const sortedVariants = () => [...props.variants].sort((a, b) => a.size - b.size)
 </script>
 

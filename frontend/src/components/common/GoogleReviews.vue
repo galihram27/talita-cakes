@@ -4,29 +4,36 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 
-// grid = tampil 3 review per baris (dipakai di Home).
-// Default (carousel) = satu baris dengan scroll + tombol navigasi (About).
-// narrow = persempit lebar carousel agar ±3 review pertama langsung terlihat.
+/**
+ * Ulasan pelanggan dari Google Maps.
+ *
+ * Punya dua tampilan, dipilih lewat prop `grid`:
+ * - tanpa `grid` (bawaan): satu baris yang bisa digeser ke samping,
+ *   dilengkapi tombol panah — dipakai di halaman About
+ * - dengan `grid`: tersusun tiga kolom ke bawah — dipakai di halaman Home
+ */
 defineProps({
   grid: { type: Boolean, default: false },
+  // Persempit lebar barisnya, supaya tiga ulasan pertama langsung kelihatan
   narrow: { type: Boolean, default: false },
-  // divider = garis pemisah di atas section reviews (dimatikan di Home).
+  // Garis pemisah di atas bagian ini; dimatikan di Home karena sudah ada pemisah lain
   divider: { type: Boolean, default: true },
 })
 
 const scroller = ref(null)
 
+// Geser sejauh satu kartu, bukan sejauh layar, supaya kartu berikutnya
+// berhenti rapi di tepi. Angka 24 itu jarak antar kartu.
 const scrollBy = (direction) => {
   const el = scroller.value
   if (!el) return
-  // Geser sejauh satu kartu (+ jarak antar kartu)
   const card = el.querySelector('article')
   const amount = card ? card.offsetWidth + 24 : el.clientWidth * 0.8
   el.scrollBy({ left: direction * amount, behavior: 'smooth' })
 }
 
-// Tombol navigasi tampil saat pointer di area review, lalu menghilang
-// beberapa detik setelah pointer keluar.
+// Tombol panah hanya muncul saat kursor berada di area ulasan, lalu menghilang
+// sendiri dua detik setelah kursor pergi — biar tidak menutupi isi kartu.
 const controlsVisible = ref(false)
 let hideTimer = null
 
@@ -46,9 +53,14 @@ onBeforeUnmount(() => {
   if (hideTimer) clearTimeout(hideTimer)
 })
 
-// Ulasan asli pelanggan dari Google Maps, disalin manual.
-// Tautan "Lihat Semua Ulasan" mengarah ke halaman Google Maps toko
-// agar pengunjung bisa memverifikasi langsung ke sumbernya.
+/**
+ * Ulasan asli pelanggan, disalin manual dari Google Maps.
+ *
+ * Datanya ditulis di sini, bukan diambil dari server, jadi menambah ulasan
+ * baru berarti menyunting berkas ini. Tombol "Lihat Semua Ulasan" mengarah ke
+ * halaman Google Maps toko supaya pengunjung bisa memeriksa sendiri
+ * keasliannya.
+ */
 const data = {
   rating: 5.0,
   totalReviews: 5,
@@ -94,101 +106,112 @@ const data = {
     <hr v-if="divider" class="border-gray-200" />
 
     <section class="mx-auto px-6 py-16" :class="narrow ? 'max-w-5xl' : 'max-w-7xl'">
-    <div class="mb-10">
-      <h2 class="text-3xl font-extrabold">{{ t('reviews.title') }}</h2>
-      <p class="mt-3 max-w-3xl text-gray-600 leading-relaxed">
-        {{ t('reviews.subtitle') }}
-      </p>
-    </div>
-
-    <div
-      class="relative"
-      @mouseenter="showControls"
-      @mouseleave="scheduleHide"
-    >
-      <template v-if="!grid">
-        <button
-          type="button"
-          aria-label="Sebelumnya"
-          class="hidden sm:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-11 h-11 rounded-full bg-white border border-gray-300 text-gray-600 items-center justify-center shadow-md hover:bg-brand-600 hover:text-white hover:border-brand-600 transition-opacity duration-300"
-          :class="controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-          @click="scrollBy(-1)"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          aria-label="Berikutnya"
-          class="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-11 h-11 rounded-full bg-white border border-gray-300 text-gray-600 items-center justify-center shadow-md hover:bg-brand-600 hover:text-white hover:border-brand-600 transition-opacity duration-300"
-          :class="controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-          @click="scrollBy(1)"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      </template>
+      <!-- Judul bagian -->
+      <div class="mb-10">
+        <h2 class="text-3xl font-extrabold">{{ t('reviews.title') }}</h2>
+        <p class="mt-3 max-w-3xl text-gray-600 leading-relaxed">
+          {{ t('reviews.subtitle') }}
+        </p>
+      </div>
 
       <div
-        ref="scroller"
-        :class="grid
-          ? 'grid gap-6 sm:grid-cols-2 lg:grid-cols-3'
-          : 'flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory reviews-scroll'"
+        class="relative"
+        @mouseenter="showControls"
+        @mouseleave="scheduleHide"
       >
-      <article
-        v-for="(review, index) in data.reviews"
-        :key="index"
-        class="rounded-2xl border border-gray-200 bg-[#FFF6FA] p-6 flex flex-col"
-        :class="grid ? '' : 'shrink-0 snap-start w-[85%] sm:w-80'"
-      >
-        <div class="flex items-center gap-3 mb-3">
-          <div
-            class="w-10 h-10 rounded-full bg-brand-50 text-brand-600 font-extrabold flex items-center justify-center"
+        <!-- Tombol panah kiri-kanan, hanya untuk tampilan geser dan hanya di
+             layar besar. Di layar sentuh tidak perlu — cukup diusap. -->
+        <template v-if="!grid">
+          <button
+            type="button"
+            aria-label="Sebelumnya"
+            class="hidden sm:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-11 h-11 rounded-full bg-white border border-gray-300 text-gray-600 items-center justify-center shadow-md hover:bg-brand-600 hover:text-white hover:border-brand-600 transition-opacity duration-300"
+            :class="controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+            @click="scrollBy(-1)"
           >
-            {{ review.author.charAt(0).toUpperCase() }}
-          </div>
-          <div>
-            <p class="font-bold text-sm">{{ review.author }}</p>
-            <p class="text-xs text-gray-500">{{ review.relativeTime }}</p>
-          </div>
-        </div>
-
-        <div class="flex text-amber-400 mb-3">
-          <svg
-            v-for="i in 5"
-            :key="i"
-            class="w-4 h-4"
-            :class="i <= review.rating ? 'fill-current' : 'fill-gray-200'"
-            viewBox="0 0 20 20"
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="Berikutnya"
+            class="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-11 h-11 rounded-full bg-white border border-gray-300 text-gray-600 items-center justify-center shadow-md hover:bg-brand-600 hover:text-white hover:border-brand-600 transition-opacity duration-300"
+            :class="controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+            @click="scrollBy(1)"
           >
-            <path d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z" />
-          </svg>
-        </div>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </template>
 
-        <p class="text-sm text-gray-600 leading-relaxed line-clamp-3">
-          {{ review.text }}
-        </p>
-      </article>
+        <!-- Wadah kartu: tiga kolom ke bawah, atau satu baris yang digeser -->
+        <div
+          ref="scroller"
+          :class="grid
+            ? 'grid gap-6 sm:grid-cols-2 lg:grid-cols-3'
+            : 'flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory reviews-scroll'"
+        >
+          <article
+            v-for="(review, index) in data.reviews"
+            :key="index"
+            class="rounded-2xl border border-gray-200 bg-[#FFF6FA] p-6 flex flex-col"
+            :class="grid ? '' : 'shrink-0 snap-start w-[85%] sm:w-80'"
+          >
+            <!-- Nama pengulas. Fotonya diganti lingkaran berisi huruf awal
+                 namanya, jadi tidak perlu memuat gambar dari Google. -->
+            <div class="flex items-center gap-3 mb-3">
+              <div
+                class="w-10 h-10 rounded-full bg-brand-50 text-brand-600 font-extrabold flex items-center justify-center"
+              >
+                {{ review.author.charAt(0).toUpperCase() }}
+              </div>
+              <div>
+                <p class="font-bold text-sm">{{ review.author }}</p>
+                <p class="text-xs text-gray-500">{{ review.relativeTime }}</p>
+              </div>
+            </div>
+
+            <!-- Lima bintang; yang melebihi nilai ulasan dibuat abu-abu -->
+            <div class="flex text-amber-400 mb-3">
+              <svg
+                v-for="i in 5"
+                :key="i"
+                class="w-4 h-4"
+                :class="i <= review.rating ? 'fill-current' : 'fill-gray-200'"
+                viewBox="0 0 20 20"
+              >
+                <path d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z" />
+              </svg>
+            </div>
+
+            <!-- Dipotong tiga baris supaya tinggi semua kartu seragam -->
+            <p class="text-sm text-gray-600 leading-relaxed line-clamp-3">
+              {{ review.text }}
+            </p>
+          </article>
+        </div>
       </div>
-    </div>
 
-    <div v-if="data.googleMapsUrl" class="flex justify-center mt-10">
-      <a
-        :href="data.googleMapsUrl"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="rounded-full border border-brand-600 text-brand-600 px-6 py-3 text-sm font-semibold inline-flex items-center gap-2 hover:bg-brand-600 hover:text-white transition"
-      >
-        {{ t('reviews.viewAll') }}
-      </a>
-    </div>
+      <!-- Tautan ke Google Maps toko, biar ulasannya bisa dicek langsung -->
+      <div v-if="data.googleMapsUrl" class="flex justify-center mt-10">
+        <a
+          :href="data.googleMapsUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="rounded-full border border-brand-600 text-brand-600 px-6 py-3 text-sm font-semibold inline-flex items-center gap-2 hover:bg-brand-600 hover:text-white transition"
+        >
+          {{ t('reviews.viewAll') }}
+        </a>
+      </div>
     </section>
   </div>
 </template>
 
 <style scoped>
+/* Batang geser dibuat mengikuti warna merah muda toko. Butuh dua penulisan
+   karena Firefox dan browser berbasis Chrome memakai aturan yang berbeda. */
 .reviews-scroll {
   scrollbar-width: thin;
   scrollbar-color: #e78fa6 rgba(185, 58, 60, 0.08);

@@ -2,34 +2,51 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatRupiah } from '@/utils/formatCurrency'
+import { sizeLabel } from '@/config/productOptions'
+
+/**
+ * Pemilih bentuk & ukuran untuk kue yang punya banyak varian (TYPE3 & TYPE4).
+ *
+ * Pemilihannya bertingkat: pilih bentuk dulu, lalu ukuran yang tersedia untuk
+ * bentuk itu. Ganti bentuk berarti pilihan ukuran sebelumnya batal.
+ */
 
 const { t } = useI18n()
-import { sizeLabel } from '@/config/productOptions'
 
 const props = defineProps({
   variants: { type: Array, required: true },
   discount: { type: [Number, String], default: 0 },
-  variantId: { type: String, default: null }, // v-model
+  variantId: { type: String, default: null }, // dipakai lewat v-model
 })
 
-// update:shape dipakai induk untuk menggeser galeri ke foto bentuk terpilih.
-// Bentuk dikabarkan terpisah dari variantId karena saat bentuk baru dipilih,
-// ukuran ikut direset (variantId sempat null) — galeri tetap harus berpindah.
+/**
+ * `update:shape` dipakai komponen induk untuk menggeser galeri foto ke foto
+ * bentuk yang dipilih.
+ *
+ * Bentuk dikabarkan terpisah dari `variantId` karena begitu bentuk diganti,
+ * ukurannya ikut dibatalkan sehingga variantId sempat kosong — padahal galeri
+ * tetap harus berpindah saat itu juga.
+ */
 const emit = defineEmits(['update:variantId', 'update:shape'])
 
 const selectedShape = ref('ROUND')
 
+// Bentuk yang benar-benar dijual untuk produk ini. Urutannya dipaksa
+// bulat dulu baru kotak, biar konsisten di semua produk.
 const availableShapes = computed(() => {
   const shapes = new Set(props.variants.map((v) => v.shape))
   return ['ROUND', 'SQUARE'].filter((s) => shapes.has(s))
 })
 
+// Ukuran untuk bentuk yang sedang dipilih, diurutkan dari yang terkecil
 const sizesForSelectedShape = computed(() => {
   return props.variants
     .filter((v) => v.shape === selectedShape.value)
     .sort((a, b) => a.size - b.size)
 })
 
+// Diskon dalam persen. Hanya untuk ditampilkan — harga sebenarnya
+// dihitung ulang server saat memesan.
 const applyDiscount = (price) => {
   const base = Number(price)
   const discount = Number(props.discount ?? 0)
@@ -39,19 +56,21 @@ const applyDiscount = (price) => {
 const selectShape = (shape) => {
   selectedShape.value = shape
   emit('update:shape', shape)
-  emit('update:variantId', null) // reset pilihan size setiap ganti shape
+  // Ukuran yang tadi dipilih belum tentu ada di bentuk baru, jadi dibatalkan
+  emit('update:variantId', null)
 }
 
 const selectVariant = (id) => emit('update:variantId', id)
 
-// set default shape begitu variants tersedia (mis. setelah fetch produk selesai)
+// Tentukan bentuk awal begitu data produk sampai. Bulat jadi pilihan utama;
+// kalau produknya hanya kotak, ya kotak.
 watch(
   () => props.variants,
   (variants) => {
     if (!variants || variants.length === 0) return
     const shapes = new Set(variants.map((v) => v.shape))
     selectedShape.value = shapes.has('ROUND') ? 'ROUND' : 'SQUARE'
-    // kabarkan bentuk awal juga, supaya galeri langsung selaras sejak muat
+    // Kabarkan juga bentuk awalnya, supaya galeri sudah selaras sejak halaman terbuka
     emit('update:shape', selectedShape.value)
   },
   { immediate: true }
@@ -60,8 +79,8 @@ watch(
 
 <template>
   <div class="mb-6 max-w-md">
-    <!-- Bentuk hanya ditampilkan kalau ada lebih dari satu pilihan. Produk
-         bentuk-tunggal (mis. Basque, ROUND saja) langsung ke pilihan size. -->
+    <!-- Pilihan bentuk disembunyikan kalau cuma ada satu — tidak ada gunanya
+         menyuruh memilih sesuatu yang tidak ada alternatifnya -->
     <template v-if="availableShapes.length > 1">
       <p class="text-[15px] font-extrabold mb-2.5">
         {{ t('product.chooseShape') }} <span class="text-brand-500">*</span>
@@ -88,6 +107,7 @@ watch(
       </div>
     </template>
 
+    <!-- Pilihan ukuran, isinya berganti mengikuti bentuk yang dipilih -->
     <p class="text-[15px] font-extrabold mb-2.5" :class="availableShapes.length > 1 ? 'mt-5' : ''">
       {{ t('product.chooseSize') }} <span class="text-brand-500">*</span>
     </p>

@@ -14,8 +14,14 @@ const cartStore = useCartStore()
 const productStore = useProductStore()
 const galleryStore = useGalleryStore()
 
-// Default SEO untuk semua halaman. Tiap view menimpa title/description/og
-// spesifiknya sendiri lewat useSeoMeta. titleTemplate menyisipkan nama situs.
+/**
+ * Komponen akar aplikasi. Dua tugasnya: memasang pengaturan bawaan untuk
+ * mesin pencari, dan menyiapkan data awal begitu aplikasi terbuka.
+ */
+
+// Nilai bawaan yang berlaku di semua halaman. Tiap halaman boleh menimpanya
+// dengan judul & keterangannya sendiri. `titleTemplate` yang menempelkan nama
+// toko ke judul, jadi halaman cukup menulis judul singkatnya saja.
 useHead({
   titleTemplate: (title) => (title ? `${title} - ${SITE_NAME}` : SITE_NAME),
   htmlAttrs: { lang: 'id' },
@@ -27,26 +33,34 @@ useHead({
   ],
 })
 
+/**
+ * Persiapan awal, urutannya disengaja.
+ *
+ * Pemulihan sesi ditunggu lebih dulu karena dua langkah setelahnya bergantung
+ * padanya: keranjang hanya ada untuk yang sudah login, dan pencatatan
+ * kunjungan perlu tahu siapa pengunjungnya supaya bisa dikaitkan ke akunnya.
+ *
+ * Sisanya berjalan bersamaan tanpa ditunggu — semuanya persiapan di latar
+ * belakang, jadi kegagalannya tidak perlu mengganggu halaman.
+ */
 onMounted(async () => {
   await authStore.restoreSession()
-  // setelah sesi dipulihkan, isi jumlah item cart untuk badge di Navbar
-  cartStore.refresh()
 
-  // lapor kunjungan sekali per sesi tab. Sengaja setelah restoreSession
-  // supaya kunjungan user yang login bisa dikaitkan ke akunnya.
+  cartStore.refresh()
   reportVisit()
 
-  // prefetch katalog & gallery diam-diam selagi user di Home, supaya saat
-  // pindah ke Menu/Gallery cache sudah panas → tampil tanpa loading
+  // Katalog & galeri diambil lebih dulu selagi pengunjung membaca beranda,
+  // supaya halaman Menu dan Galeri langsung terisi saat dibuka
   productStore.ensureLoaded().catch(() => {})
   galleryStore.ensureLoaded().catch(() => {})
 })
 </script>
 
 <template>
-  <!-- Konten selalu dirender (juga saat prerender SSG) supaya HTML tidak kosong
-       dan bisa dibaca crawler. Pemulihan sesi berjalan di onMounted (client);
-       proteksi rute privat ditangani navigation guard di router. -->
+  <!-- Isi halaman selalu digambar, termasuk saat dibangun jadi HTML — jadi
+       berkas HTML-nya tidak pernah kosong dan bisa dibaca mesin pencari.
+       Halaman yang perlu dijaga tetap aman, karena penjagaannya dilakukan
+       router, bukan dengan cara menyembunyikan isinya di sini. -->
   <router-view />
   <WhatsAppButton />
 </template>

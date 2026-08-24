@@ -5,7 +5,10 @@ import { Ruler } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
-// kartu info shape & size untuk produk dengan variant fixed (TYPE1 & TYPE2)
+/**
+ * Dua kartu kecil berisi bentuk & ukuran, untuk produk yang ukurannya sudah
+ * tetap (TYPE1 & TYPE2) sehingga pembeli tidak perlu memilih apa pun.
+ */
 const props = defineProps({
   shape: { type: String, default: 'ROUND' },
   size: { type: [Number, String], default: null },
@@ -13,6 +16,7 @@ const props = defineProps({
 
 const isRound = computed(() => props.shape === 'ROUND')
 
+// Kue kotak ditulis "20 × 20 cm", bulat cukup "20 cm"
 const isSquareSize = computed(() => props.size != null && !isRound.value)
 
 const sizeText = computed(() => {
@@ -23,7 +27,8 @@ const sizeText = computed(() => {
 
 <template>
   <div class="grid grid-cols-2 gap-3 mb-6 max-w-md">
-    <!-- SHAPE -->
+    <!-- Bentuk. Ikonnya digambar dari sebuah kotak yang disulap jadi
+         lingkaran lewat border-radius, jadi tidak perlu ikon terpisah. -->
     <div
       class="flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
     >
@@ -43,7 +48,7 @@ const sizeText = computed(() => {
       </div>
     </div>
 
-    <!-- SIZE -->
+    <!-- Ukuran -->
     <div
       class="flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5"
     >

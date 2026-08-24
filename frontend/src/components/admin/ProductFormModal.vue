@@ -29,11 +29,31 @@ import { uploadImage } from '@/services/upload.service'
 import { useProductStore } from '@/stores/product.store'
 import PriceInput from '@/components/admin/PriceInput.vue'
 
+/**
+ * Form tambah/ubah produk — komponen terbesar di panel admin.
+ *
+ * Panjang karena satu form ini melayani enam tipe produk yang cara isinya
+ * berbeda-beda:
+ *   TYPE1, TYPE2  satu ukuran & satu harga, diketik langsung
+ *   TYPE3, TYPE4  tabel harga: admin pilih ukuran terkecil, sisanya muncul
+ *                 otomatis sampai 30cm, untuk bentuk bulat & kotak
+ *   TYPE5         tiga kemungkinan tergantung kategori — ukuran bernama
+ *                 (roti), pilihan ukuran (Basque), atau satu harga saja
+ *   TYPE6         harga per isi box; goodiebag cukup satu harga
+ *
+ * Karena itu isinya berpola tetap: sekelompok `usesXxx` computed yang
+ * menentukan bagian mana yang ditampilkan, lalu `buildXxxVariants()` yang
+ * mengubah isian admin jadi bentuk yang dimengerti backend.
+ *
+ * Aturan yang berlaku di semua tipe: hanya ukuran/box yang diberi harga di
+ * atas 0 yang dikirim sebagai varian — yang dikosongkan dianggap tidak dijual.
+ */
+
 const props = defineProps({
   open: { type: Boolean, default: false },
-  // null = mode "Add", object produk = mode "Edit"
+  // Kosong = tambah produk baru, terisi = ubah produk itu
   product: { type: Object, default: null },
-  // true = mode "Copy": form di-prefill dari `product` tapi tetap MEMBUAT produk baru
+  // Mode salin: form diisi dari `product`, tapi yang dibuat produk BARU
   copy: { type: Boolean, default: false },
 })
 
@@ -41,10 +61,11 @@ const emit = defineEmits(['close', 'saved'])
 const { t } = useI18n()
 const productStore = useProductStore()
 
-// Copy memakai data produk untuk prefill tapi bukan mode edit (membuat produk baru)
+// Menyalin bukan mengubah — meski sama-sama berangkat dari produk yang ada
 const isEdit = computed(() => !!props.product && !props.copy)
 
-// label tipe & bentuk mengikuti bahasa aktif (nilai tetap sinkron dengan backend)
+// Label ikut bahasa yang sedang aktif, tapi nilainya tetap kode yang
+// dikenal backend ("TYPE1", "ROUND")
 const PRODUCT_TYPE_OPTIONS = computed(() =>
   [1, 2, 3, 4, 5, 6].map((num) => ({
     value: `TYPE${num}`,
@@ -56,80 +77,80 @@ const SHAPE_OPTIONS = computed(() => [
   { value: 'SQUARE', label: t('admin.productForm.square') },
 ])
 
-// ===== STATE FORM =====
+// ===== ISI FORM =====
+// Bagian yang sama untuk semua tipe produk
 const form = reactive({
   type: 'TYPE1',
   name: '',
   description: '',
   descriptionEn: '',
-  images: [], // banyak foto per produk; foto pertama = cover
+  images: [], // urutannya berarti: foto pertama jadi sampul
   category: '',
-  subcategory: '', // hanya TYPE5 (non-cake)
+  subcategory: '',
   flavor: '',
   discount: 0,
 })
 
-// TYPE1 & TYPE2: satu variant manual fixed (size diisi manual oleh admin)
+// --- Di bawah ini isian yang hanya dipakai sebagian tipe ---
+
+// TYPE1 & TYPE2: satu ukuran & satu harga, semuanya diketik admin
 const type1 = reactive({ shape: 'ROUND', size: null, price: null })
 
-// TYPE5 (non-cake): harga tunggal + shape & size (admin input).
-// ROUND -> pakai size; SQUARE -> pakai size (dimensi 1) & sizeB (dimensi 2).
+// TYPE5 biasa: satu harga. Bulat cukup satu ukuran, kotak butuh dua
+// (panjang x lebar), karena itu ada `sizeB`.
 const nonCakePrice = ref(null)
 const nonCake = reactive({ shape: 'ROUND', size: null, sizeB: null })
-// TYPE5 sub-kategori size-pilihan (Basque): harga per size -> { [size]: price }
+// TYPE5 Basque: admin isi harga tiap ukuran -> { 14: 90000, 16: 120000, ... }
 const nonCakeSizePrices = reactive({})
 
-// TYPE5 Bread: harga per ukuran bernama -> { PERSONAL, FAMILY, SHARING }
+// TYPE5 roti: harga per ukuran bernama -> { PERSONAL: 45000, FAMILY: ... }
 const breadSizePrices = reactive({})
-// Foto khusus per ukuran bread (dipilih dari form.images). Saat user memilih
-// ukuran di halaman produk, galeri bergeser ke foto ini. -> { PERSONAL, FAMILY }
+// Foto khusus tiap ukuran roti. Saat pembeli mengganti ukuran di halaman
+// produk, galerinya ikut berpindah ke foto ini.
 const breadSizeImages = reactive({})
 
-// TYPE5 CINROLLS VAN DEPOK: konfigurasi pilihan FILLING (pilih satu, tanpa harga).
-// Harga ada di comboRows (per kombinasi filling + topping).
-// enabled: apakah produk memakai filling. options: [{ name }].
-// defaultIndex: opsi yang dipakai otomatis kalau user tidak memilih.
+// TYPE5 Cinrolls: pilihan filling. Admin hanya mendaftar namanya — harganya
+// tidak di sini, melainkan di comboRows (harga ditentukan oleh pasangan
+// filling + topping). `defaultIndex` dipakai kalau pembeli tidak memilih.
 const filling = reactive({
   enabled: false,
   defaultIndex: 0,
   options: [],
 })
 
-// Konfigurasi TOPPING (wajib pilih min 1, boleh beberapa, tanpa harga).
-// enabled: apakah produk memakai topping. options: [{ name }].
-// maxSelect: batas jumlah topping yang boleh dipilih user.
+// Pilihan topping. Sama seperti filling: hanya daftar nama, tanpa harga.
+// `maxSelect` membatasi berapa banyak yang boleh dipilih pembeli.
 const topping = reactive({
   enabled: false,
   maxSelect: 1,
   options: [],
 })
 
-// Harga TAMBAHAN per kombinasi (filling + topping) — daftar manual.
+// Tabel harga tambahan per pasangan filling + topping.
 // Tiap baris: { filling, topping, price }.
 const comboRows = reactive({ list: [] })
 
-// TYPE6 (cupcakes): harga per isi box -> { [isiBox]: price }
+// TYPE6: harga per isi box -> { 4: 60000, 6: 85000, ... }
 const boxPrices = reactive({})
-// TYPE6 goodiebag: harga tunggal per box (tanpa pilihan isi box)
+// TYPE6 goodiebag: tidak ada pilihan isi box, cukup satu harga
 const goodiebagPrice = ref(null)
-// TYPE6: foto yang mewakili tiap isi box -> { [isiBox]: url }.
-// Diambil dari foto yang sudah diunggah (form.images), bukan unggahan terpisah.
+// Foto yang mewakili tiap isi box. Dipilih dari foto yang SUDAH diunggah,
+// bukan diunggah terpisah.
 const boxImages = reactive({})
 
-// TYPE3 / TYPE4: min size per shape + harga per size
+// TYPE3 & TYPE4: admin memilih ukuran terkecil, lalu mengisi harga tiap ukuran
 const roundMinSize = ref(null)
 const squareMinSize = ref(null)
-const roundPrices = reactive({}) // { [size]: price }
+const roundPrices = reactive({}) // { 18: 350000, 20: 420000, ... }
 const squarePrices = reactive({})
-// TYPE3 / TYPE4: satu foto per BENTUK -> { ROUND: url, SQUARE: url }.
-// Foto ini nanti dilekatkan ke semua ukuran milik bentuk tsb.
+// Satu foto mewakili satu bentuk, nanti dilekatkan ke semua ukuran bentuk itu
 const shapeImages = reactive({ ROUND: '', SQUARE: '' })
 
 const fileInputRef = ref(null)
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 
-// daftar size aktif berdasarkan min size yang dipilih
+// Begitu ukuran terkecil dipilih, sisanya muncul sendiri (kelipatan 2 sampai 30)
 const roundSizes = computed(() =>
   roundMinSize.value ? generateSizeRange(roundMinSize.value) : []
 )
@@ -137,17 +158,18 @@ const squareSizes = computed(() =>
   squareMinSize.value ? generateSizeRange(squareMinSize.value) : []
 )
 
-// ===== COPY HARGA DARI PRODUK LAIN (TYPE3/TYPE4) =====
-// Copy per bentuk: satu dropdown untuk Round, satu untuk Square. Sumber: produk
-// bervariasi (punya variant bentuk terkait) dari TYPE3/TYPE4 — lintas tipe
-// diizinkan — selain produk yang sedang diedit. Copy hanya mengisi HARGA untuk
-// ukuran yang sedang aktif; ukuran min & diskon tidak ikut diubah.
+// ===== SALIN HARGA DARI PRODUK LAIN (TYPE3 & TYPE4) =====
+// Pereda pekerjaan berulang: mengisi belasan harga satu per satu itu melelahkan,
+// jadi admin bisa menyalinnya dari produk lain lalu tinggal menyesuaikan.
+// Penyalinan dilakukan per bentuk (bulat dan kotak terpisah), dan HANYA mengisi
+// harga — ukuran terkecil serta diskon tidak ikut berubah.
 const copySource = reactive({ ROUND: '', SQUARE: '' })
 const copyNotice = reactive({ ROUND: '', SQUARE: '' })
 const shapePrices = { ROUND: roundPrices, SQUARE: squarePrices }
 const shapeSizes = { ROUND: roundSizes, SQUARE: squareSizes }
 
-// produk yang punya minimal satu variant dengan bentuk tsb (kandidat sumber)
+// Calon sumber salinan: produk TYPE3/TYPE4 lain yang punya bentuk ini.
+// Produk yang sedang dibuka dikecualikan supaya tidak menyalin dari dirinya sendiri.
 const copyableProductsByShape = (shape) =>
   productStore.products.filter(
     (p) =>
@@ -159,16 +181,19 @@ const copyableProductsByShape = (shape) =>
 const roundSourceOptions = computed(() => copyableProductsByShape('ROUND'))
 const squareSourceOptions = computed(() => copyableProductsByShape('SQUARE'))
 
-// baru boleh copy kalau grid ukuran bentuk tsb sudah muncul (ukuran min dipilih)
+// Belum ada gunanya menyalin kalau daftar ukurannya belum muncul
 const canCopyPrice = (shape) => shapeSizes[shape].value.length > 0
 
 const applyCopiedPrices = (shape) => {
   copyNotice[shape] = ''
   const source = copyableProductsByShape(shape).find((p) => p.id === copySource[shape])
-  // reset pilihan supaya memilih produk yang sama lagi tetap memicu copy ulang
+  // Kosongkan pilihan dropdown, supaya memilih produk yang sama lagi
+  // tetap dianggap perubahan dan penyalinan berjalan ulang
   copySource[shape] = ''
   if (!source) return
 
+  // Hanya ukuran yang sama-sama dimiliki yang tersalin. Ukuran yang tidak ada
+  // di produk sumber dibiarkan kosong, bukan diisi nol.
   const variants = source.variants ?? []
   const prices = shapePrices[shape]
   let matched = 0
@@ -185,28 +210,29 @@ const applyCopiedPrices = (shape) => {
     : t('admin.productForm.copyPriceNoMatch', { name: source.name })
 }
 
-// pilihan kategori mengikuti type yang sedang dipilih
+// ===== PILIHAN YANG SALING BERGANTUNG =====
+// Tipe menentukan kategori, kategori menentukan sub-kategori, dan seterusnya.
+
 const categoryOptions = computed(() => PRODUCT_CATEGORIES[form.type] ?? [])
 
-// Pilihan sub-kategori: TYPE5 (non-cake) per kategori, atau Goodiebag (TYPE6).
+// Tidak semua kategori punya sub-kategori — hanya TYPE5 dan goodiebag TYPE6
 const subcategoryOptions = computed(() => {
   if (form.type === 'TYPE5') return TYPE5_SUBCATEGORIES[form.category] ?? []
   if (form.type === 'TYPE6' && isGoodiebagCupcake(form.category)) return goodiebagSubcategories()
   return []
 })
 
-// Apakah kategori terpilih memakai sub-kategori? (TYPE5 tertentu / Goodiebag)
 const hasSubcategory = computed(() => subcategoryOptions.value.length > 0)
 
-// TYPE5 sub-kategori dengan pilihan size (Basque): admin isi harga per size,
-// bukan shape+size tunggal.
+// Basque: pembeli memilih ukuran, jadi admin mengisi harga tiap ukuran —
+// bukan satu harga seperti TYPE5 lainnya
 const nonCakeSizeConfig = computed(() =>
   form.type === 'TYPE5' ? type5SizeConfig(form.subcategory) : null
 )
 const usesNonCakeSize = computed(() => usesNonCake.value && !!nonCakeSizeConfig.value)
 const nonCakeSizes = computed(() => nonCakeSizeConfig.value?.sizes ?? [])
 
-// reset category kalau type diganti dan category lama tidak valid untuk type baru
+// Ganti tipe -> kategori lama biasanya tidak berlaku lagi, jadi dikosongkan
 watch(
   () => form.type,
   () => {
@@ -216,7 +242,7 @@ watch(
   }
 )
 
-// reset subcategory kalau kategori diganti dan subcategory lama tidak lagi valid
+// Ganti kategori -> bersihkan isian yang jadi tidak berlaku
 watch(
   () => form.category,
   () => {
@@ -224,9 +250,9 @@ watch(
       form.subcategory = ''
     }
 
-    // TYPE6: tiap kategori punya pilihan isi box berbeda (mis. Paper Topper
-    // tidak punya box 4). Buang harga box yang tidak lagi tersedia supaya
-    // tidak ikut terkirim sebagai varian yang ditolak server.
+    // Tiap kategori cupcake punya pilihan isi box sendiri (mis. Paper Topper
+    // tidak menyediakan box isi 4). Harga box yang sudah tidak tersedia harus
+    // dibuang — kalau tertinggal, ia ikut terkirim dan ditolak server.
     if (usesCupcake.value) {
       const allowed = cupcakeBoxes.value
       Object.keys(boxPrices).forEach((size) => {
@@ -239,23 +265,25 @@ watch(
   }
 )
 
-// TYPE6 (cupcakes): pilihan isi box tergantung kategori yang dipilih
+// ===== PENENTU BAGIAN FORM MANA YANG MUNCUL =====
+// Sekumpulan penanda yang dipakai template untuk memilih bagian yang ditampilkan.
+
 const usesCupcake = computed(() => form.type === 'TYPE6')
 const cupcakeBoxes = computed(() =>
   usesCupcake.value ? cupcakeBoxesForCategory(form.category) : []
 )
-// American Butter rasanya ditentukan admin; kategori cupcake lain user yang pilih
+// American Butter rasanya ditetapkan admin; cupcake lain pembeli yang memilih
 const cupcakeFlavorIsFixed = computed(
   () => usesCupcake.value && isFixedFlavorCupcake(form.category)
 )
-// Goodiebag: harga tunggal per box, tanpa grid isi box
+// Goodiebag dijual per paket, jadi tidak ada pilihan isi box
 const usesGoodiebag = computed(
   () => usesCupcake.value && isGoodiebagCupcake(form.category)
 )
 const goodiebagMin = computed(() => goodiebagMinQty(form.category))
 
-// flavor fixed untuk TYPE1, TYPE3, TYPE5, dan kategori cupcake ber-rasa-fix
-// (TYPE2 & TYPE4: user pilih sendiri saat order)
+// Kolom rasa hanya muncul untuk produk yang rasanya ditetapkan admin.
+// TYPE2 & TYPE4 tidak, karena pembeli memilih rasanya sendiri saat memesan.
 const showFlavor = computed(
   () =>
     form.type === 'TYPE1' ||
@@ -263,15 +291,15 @@ const showFlavor = computed(
     form.type === 'TYPE5' ||
     cupcakeFlavorIsFixed.value
 )
-// TYPE1 & TYPE2: satu variant fixed; TYPE3 & TYPE4: grid variant per shape+size
+// Satu ukuran & satu harga
 const usesSingleVariant = computed(() => form.type === 'TYPE1' || form.type === 'TYPE2')
+// Tabel harga per bentuk & ukuran
 const usesVariantGrid = computed(() => form.type === 'TYPE3' || form.type === 'TYPE4')
-// TYPE5 (non-cake): harga tunggal tanpa shape/size
 const usesNonCake = computed(() => form.type === 'TYPE5')
-// TYPE5 Bread: user memilih ukuran bernama (harga per ukuran diisi admin)
+// Roti: ukurannya sudah bernama & berdimensi tetap, admin cukup mengisi harga
 const usesBread = computed(() => form.type === 'TYPE5' && isBreadCategory(form.category))
 
-// daftar ukuran Bread + deskripsi dimensi tetap (untuk label di form)
+// Label ukuran roti, mis. "Personal Size — 22×10 cm"
 const breadSizeList = computed(() =>
   BREAD_SIZES.map((s) => ({
     ...s,
@@ -284,17 +312,18 @@ const breadSizeList = computed(() =>
   }))
 )
 
-// ukuran Bread yang diberi harga > 0 -> jadi varian { key, price }
+// Ukuran roti yang diberi harga -> jadi varian. Yang dikosongkan tidak dijual.
 const buildBreadSizeVariants = () =>
   BREAD_SIZES.filter((s) => Number(breadSizePrices[s.key]) > 0).map((s) => ({
     key: s.key,
     price: Number(breadSizePrices[s.key]),
-    // foto opsional; hanya dikirim kalau admin memilihnya
+    // Foto sifatnya opsional, jadi hanya disertakan kalau admin memilihnya
     ...(breadSizeImages[s.key] ? { image: breadSizeImages[s.key] } : {}),
   }))
 
-// ===== FILLING & TOPPING (CINROLLS VAN DEPOK) =====
-// Sub-kategori yang memakai pilihan filling/topping (admin bisa mengaktifkannya).
+// ===== FILLING & TOPPING =====
+// Khusus Cinrolls. Admin mendaftar nama-nama pilihannya, lalu menentukan
+// harga per pasangan filling + topping di tabel kombinasi.
 const usesFillingSubcat = computed(
   () => form.type === 'TYPE5' && usesFilling(form.subcategory)
 )
@@ -311,7 +340,8 @@ const addFillingOption = () => {
 }
 const removeFillingOption = (index) => {
   filling.options.splice(index, 1)
-  // jaga defaultIndex tetap valid setelah penghapusan
+  // Pilihan bawaan bisa jadi menunjuk baris yang barusan dihapus — geser
+  // kembali ke baris terakhir yang masih ada
   if (filling.defaultIndex >= filling.options.length) {
     filling.defaultIndex = Math.max(0, filling.options.length - 1)
   }
@@ -320,7 +350,8 @@ const removeFillingOption = (index) => {
 const canAddToppingOption = computed(
   () => topping.options.length < MAX_TOPPING_OPTIONS
 )
-// batas jumlah pilihan user tidak boleh melebihi jumlah opsi maupun MAX_TOPPING_SELECT
+// Batas pilihan pembeli tidak boleh melebihi jumlah topping yang tersedia,
+// dan tidak boleh melewati plafon yang ditetapkan sistem
 const toppingMaxSelectCeiling = computed(() =>
   Math.min(topping.options.length || 1, MAX_TOPPING_SELECT)
 )
@@ -330,20 +361,24 @@ const addToppingOption = () => {
 }
 const removeToppingOption = (index) => {
   topping.options.splice(index, 1)
+  // Menghapus opsi bisa membuat batas pilihan jadi lebih besar dari
+  // jumlah topping yang tersisa
   if (topping.maxSelect > toppingMaxSelectCeiling.value) {
     topping.maxSelect = toppingMaxSelectCeiling.value
   }
 }
 
-// ===== HARGA KOMBINASI (filling + topping) =====
-// Dropdown baris kombinasi memakai nama opsi filling/topping yang sudah diisi.
+// ===== TABEL HARGA KOMBINASI =====
+// Dropdown di tabel ini mengambil nama dari daftar filling & topping di atas,
+// jadi admin tidak bisa mengetik nama yang tidak terdaftar. Nama kosong
+// disaring supaya baris yang belum diisi tidak ikut muncul sebagai pilihan.
 const fillingNameOptions = computed(() =>
   filling.options.map((o) => (o.name ?? '').trim()).filter((n) => n)
 )
 const toppingNameOptions = computed(() =>
   topping.options.map((o) => (o.name ?? '').trim()).filter((n) => n)
 )
-// baris kombinasi hanya relevan kalau kedua daftar opsi terisi
+// Tabel kombinasi baru masuk akal kalau kedua daftar sudah terisi
 const canBuildCombos = computed(
   () => fillingNameOptions.value.length > 0 && toppingNameOptions.value.length > 0
 )
@@ -362,7 +397,12 @@ const modalTitle = computed(() => {
     : t('admin.productForm.addTitle')
 })
 
-// ===== RESET / PREFILL saat modal dibuka =====
+// ===== ISI ULANG FORM SAAT MODAL DIBUKA =====
+// Semua isian dibersihkan lebih dulu, baru diisi dari produk yang dibuka
+// (kalau ada). Tanpa pembersihan menyeluruh ini, sisa isian produk yang
+// dibuka sebelumnya bisa tertinggal dan ikut terkirim.
+
+// Objek reaktif tidak boleh diganti dengan objek baru — isinya yang dihapus
 const clearPriceMap = (map) => Object.keys(map).forEach((k) => delete map[k])
 
 const resetForm = () => {
@@ -407,12 +447,14 @@ const resetForm = () => {
   }
 
   const p = props.product
-  // produk lama mungkin cuma punya `image`; jadikan foto pertama galeri
+  // Produk lama dibuat sebelum ada galeri, jadi hanya punya satu foto di
+  // `image`. Foto itu diperlakukan sebagai foto pertama galeri.
   const prefillImages =
     Array.isArray(p.images) && p.images.length ? [...p.images] : p.image ? [p.image] : []
   Object.assign(form, {
     type: p.type,
-    // saat menyalin, beri akhiran "(Copy)" supaya nama tidak identik & mudah dikenali
+    // Saat menyalin, namanya diberi akhiran "(Copy)" supaya tidak kembar
+    // dengan produk aslinya dan admin ingat mana yang baru
     name: props.copy ? `${p.name ?? ''} (Copy)`.trim() : p.name ?? '',
     description: p.description ?? '',
     descriptionEn: p.descriptionEn ?? '',
@@ -423,6 +465,8 @@ const resetForm = () => {
     discount: Number(p.discount ?? 0),
   })
 
+  // Sisanya dibaca dari daftar varian, yang bentuknya beda-beda per tipe.
+  // Tiap cabang di bawah menerjemahkan varian itu balik jadi isian form.
   const variants = p.variants ?? []
 
   if (p.type === 'TYPE1' || p.type === 'TYPE2') {
@@ -436,7 +480,7 @@ const resetForm = () => {
   }
 
   if (p.type === 'TYPE5') {
-    // CINROLLS VAN DEPOK: muat config filling & topping kalau ada
+    // Cinrolls: muat daftar filling, topping, dan tabel harga kombinasinya
     if (usesFilling(p.subcategory) && p.filling?.options?.length) {
       Object.assign(filling, {
         enabled: true,
@@ -458,7 +502,7 @@ const resetForm = () => {
         price: Number(c.price) || 0,
       }))
     }
-    // Bread: harga per ukuran bernama (cocokkan variant -> key)
+    // Roti: varian dicocokkan balik ke ukuran bernama lewat dimensinya
     if (isBreadCategory(p.category)) {
       variants.forEach((v) => {
         const s = breadSizeForVariant(v)
@@ -469,14 +513,14 @@ const resetForm = () => {
       })
       return
     }
-    // Sub-kategori size-pilihan (Basque): harga per size
+    // Basque: satu varian per ukuran
     if (type5SizeConfig(p.subcategory)) {
       variants.forEach((v) => {
         nonCakeSizePrices[v.size] = Number(v.price)
       })
       return
     }
-    // TYPE5 biasa: 1 variant harga tunggal + shape & size
+    // TYPE5 biasa: cuma ada satu varian
     const v = variants[0]
     nonCakePrice.value = v ? Number(v.price) : null
     Object.assign(nonCake, {
@@ -488,12 +532,13 @@ const resetForm = () => {
   }
 
   if (p.type === 'TYPE6') {
-    // Goodiebag: satu varian harga tunggal (size null), tanpa isi box
+    // Goodiebag: hanya satu varian, tanpa ukuran
     if (isGoodiebagCupcake(p.category)) {
       goodiebagPrice.value = variants[0] ? Number(variants[0].price) : null
       return
     }
-    // TYPE6: tiap variant = satu isi box; `size` menyimpan jumlah pcs
+    // Cupcake biasa: satu varian per isi box. Kolom `size` di sini berarti
+    // jumlah cupcake, bukan diameter seperti pada produk kue.
     variants.forEach((v) => {
       boxPrices[v.size] = Number(v.price)
       if (v.image) boxImages[v.size] = v.image
@@ -501,14 +546,15 @@ const resetForm = () => {
     return
   }
 
-  // TYPE3 / TYPE4: turunkan min size + isi harga dari variant yang ada
+  // TYPE3 & TYPE4: ukuran terkecil disimpulkan dari varian yang ada,
+  // karena yang tersimpan di DB hanyalah daftar ukurannya
   const round = variants.filter((v) => v.shape === 'ROUND')
   const square = variants.filter((v) => v.shape === 'SQUARE')
 
   if (round.length) {
     roundMinSize.value = Math.min(...round.map((v) => v.size))
     round.forEach((v) => (roundPrices[v.size] = Number(v.price)))
-    // foto bentuk sama untuk semua ukuran; ambil yang pertama punya
+    // Semua ukuran satu bentuk memakai foto yang sama, jadi ambil satu saja
     shapeImages.ROUND = round.find((v) => v.image)?.image ?? ''
   }
   if (square.length) {
@@ -526,16 +572,18 @@ watch(
   { immediate: true }
 )
 
-// ===== IMAGE UPLOAD (ke Cloudinary via /uploads/images) =====
-// Simpan URL Cloudinary, BUKAN base64 — base64 membengkakkan DB & bikin
-// fetch products lambat. Mendukung banyak foto: setiap file yang dipilih
-// di-upload lalu URL-nya ditambahkan ke form.images.
+// ===== UNGGAH FOTO =====
+// File dikirim ke Cloudinary, yang disimpan ke DB hanya URL-nya. Gambar
+// sengaja tidak disimpan sebagai base64 di dalam DB karena ukurannya besar
+// dan bikin daftar produk lambat dimuat.
+// Bisa pilih beberapa file sekaligus; semuanya diunggah bersamaan.
 const isUploading = ref(false)
 
 const openFilePicker = () => fileInputRef.value?.click()
 
 const handleFileChange = async (e) => {
   const files = Array.from(e.target.files ?? [])
+  // Kosongkan input file supaya memilih file yang sama dua kali tetap terbaca
   e.target.value = ''
   if (!files.length) return
 
@@ -554,8 +602,9 @@ const handleFileChange = async (e) => {
 
 const removeImage = (index) => {
   const [removed] = form.images.splice(index, 1)
-  // Lepas foto ini dari isi box mana pun yang memakainya. Tanpa ini, varian
-  // akan menunjuk URL yang sudah tidak ada di galeri dan server menolaknya.
+  // Foto yang dihapus mungkin sedang dipakai sebagai penanda box, bentuk, atau
+  // ukuran roti. Penetapan itu harus ikut dilepas — kalau tidak, varian akan
+  // menunjuk foto yang sudah tidak ada di galeri dan server menolaknya.
   Object.keys(boxImages).forEach((size) => {
     if (boxImages[size] === removed) delete boxImages[size]
   })
@@ -567,17 +616,17 @@ const removeImage = (index) => {
   })
 }
 
-// jadikan foto tertentu sebagai cover (pindahkan ke posisi pertama)
+// Jadikan sampul = pindahkan ke urutan pertama
 const makeCover = (index) => {
   if (index <= 0) return
   const [img] = form.images.splice(index, 1)
   form.images.unshift(img)
 }
 
-// ===== URUTKAN ULANG FOTO =====
-// Urutan foto menentukan cover (foto pertama) sekaligus urutan tampil di
-// galeri halaman detail. Penetapan foto per box/bentuk menyimpan URL, bukan
-// nomor urut, jadi menggeser foto tidak merusak penetapan itu.
+// ===== GESER URUTAN FOTO =====
+// Urutan foto menentukan mana yang jadi sampul sekaligus urutan tampil di
+// galeri halaman produk. Aman digeser: penetapan foto per box/bentuk menyimpan
+// URL-nya, bukan nomor urut, jadi tidak ikut kacau saat urutan berubah.
 const dragIndex = ref(null)
 
 const moveImage = (from, to) => {
@@ -594,17 +643,21 @@ const onDropImage = (index) => {
   dragIndex.value = null
 }
 
-// ===== SUBMIT =====
-// TYPE5 size-pilihan (Basque): hanya size yang diberi harga > 0 dijadikan varian.
+// ===== UBAH ISIAN FORM JADI DATA UNTUK SERVER =====
+// Semua fungsi build* di bawah ini menerjemahkan isian admin menjadi daftar
+// varian. Polanya sama: hanya yang berharga di atas 0 yang ikut terkirim.
+
+// Basque: satu varian per ukuran yang diberi harga
 const buildNonCakeSizeVariants = () =>
   nonCakeSizes.value
     .filter((size) => Number(nonCakeSizePrices[size]) > 0)
     .map((size) => ({ size, price: Number(nonCakeSizePrices[size]) }))
 
+// TYPE3 & TYPE4: satu varian untuk tiap kotak harga di tabel.
+// Foto bentuk disalin ke SEMUA ukuran milik bentuk itu, supaya halaman produk
+// tetap menemukannya dari ukuran mana pun yang sedang dipilih pembeli.
 const buildVariantList = () => {
   const variants = []
-  // foto bentuk dilekatkan ke setiap ukuran milik bentuk tsb, supaya halaman
-  // detail bisa menemukannya dari ukuran mana pun yang sedang dipilih
   for (const size of roundSizes.value) {
     const v = { shape: 'ROUND', size, price: Number(roundPrices[size]) }
     if (shapeImages.ROUND) v.image = shapeImages.ROUND
@@ -618,35 +671,40 @@ const buildVariantList = () => {
   return variants
 }
 
-// klik thumbnail untuk menetapkan foto bentuk; klik lagi untuk melepasnya
+// Klik foto untuk menetapkannya ke sebuah bentuk, klik lagi untuk melepas
 const toggleShapeImage = (shape, url) => {
   shapeImages[shape] = shapeImages[shape] === url ? '' : url
 }
 
-// klik thumbnail untuk menetapkan foto ukuran bread; klik lagi untuk melepasnya
+// Sama seperti di atas, tapi untuk ukuran roti
 const toggleBreadSizeImage = (key, url) => {
   breadSizeImages[key] = breadSizeImages[key] === url ? '' : url
 }
 
-// TYPE6: hanya isi box yang diberi harga > 0 yang dijadikan varian.
-// Box yang dikosongkan admin dianggap tidak dijual untuk produk tsb.
+// TYPE6: satu varian per isi box yang diberi harga
 const buildBoxVariants = () =>
   cupcakeBoxes.value
     .filter((size) => Number(boxPrices[size]) > 0)
     .map((size) => {
       const variant = { size, price: Number(boxPrices[size]) }
-      // foto opsional; hanya dikirim kalau admin memilihnya
+      // Foto sifatnya opsional, jadi hanya disertakan kalau admin memilihnya
       if (boxImages[size]) variant.image = boxImages[size]
       return variant
     })
 
-// klik thumbnail untuk menetapkan foto box; klik lagi untuk melepasnya
+// Sama seperti di atas, tapi untuk isi box
 const toggleBoxImage = (size, url) => {
   if (boxImages[size] === url) delete boxImages[size]
   else boxImages[size] = url
 }
 
-// Validasi config filling (hanya kalau sub-kategori cinrolls & filling diaktifkan).
+// ===== PEMERIKSAAN SEBELUM DISIMPAN =====
+// Semua fungsi validate* mengembalikan pesan kesalahan, atau null kalau aman.
+// Backend tetap memvalidasi ulang; pemeriksaan di sini hanya supaya admin
+// langsung tahu yang kurang tanpa menunggu jawaban server.
+
+// Nama filling wajib diisi, tidak boleh kembar, dan pilihan bawaannya
+// harus menunjuk baris yang benar-benar ada
 const validateFilling = () => {
   if (!usesFillingSubcat.value || !filling.enabled) return null
   if (filling.options.length === 0)
@@ -661,11 +719,13 @@ const validateFilling = () => {
   return null
 }
 
-// Validasi daftar harga kombinasi (filling + topping).
+// Tiap baris kombinasi harus lengkap, nama-namanya harus terdaftar, dan
+// pasangan yang sama tidak boleh muncul dua kali
 const validateCombos = () => {
   if (!usesFillingSubcat.value) return null
   const rows = comboRows.list
-  if (rows.length === 0) return null // boleh kosong (tanpa penyesuaian harga)
+  // Boleh kosong — artinya tidak ada tambahan harga untuk kombinasi apa pun
+  if (rows.length === 0) return null
   const seen = new Set()
   for (const r of rows) {
     if (!r.filling || !r.topping) return t('admin.productForm.comboIncomplete')
@@ -681,7 +741,7 @@ const validateCombos = () => {
   return null
 }
 
-// Validasi config topping (nama saja, tanpa harga; batas jumlah pilihan user).
+// Sama seperti filling, ditambah pengecekan batas jumlah pilihan pembeli
 const validateTopping = () => {
   if (!usesToppingSubcat.value || !topping.enabled) return null
   if (topping.options.length === 0)
@@ -697,6 +757,8 @@ const validateTopping = () => {
   return null
 }
 
+// Pemeriksaan utama: bagian umum dulu, lalu bercabang sesuai tipe produk.
+// Berhenti di kesalahan pertama yang ditemukan.
 const validate = () => {
   if (!form.name.trim()) return t('admin.productForm.nameRequired')
   if (!form.description.trim()) return t('admin.productForm.descriptionRequired')
@@ -715,14 +777,13 @@ const validate = () => {
   }
 
   if (usesBread.value) {
-    // minimal satu ukuran diberi harga
+    // Setidaknya satu ukuran harus dijual
     if (buildBreadSizeVariants().length === 0)
       return t('admin.productForm.sizePriceRequired')
     return validateFilling() || validateTopping() || validateCombos()
   }
 
   if (usesNonCakeSize.value) {
-    // minimal satu size diberi harga
     if (buildNonCakeSizeVariants().length === 0)
       return t('admin.productForm.sizePriceRequired')
     return null
@@ -747,12 +808,12 @@ const validate = () => {
   }
 
   if (usesCupcake.value) {
-    // minimal satu isi box diberi harga; box yang dikosongkan berarti tidak dijual
     if (buildBoxVariants().length === 0) return t('admin.productForm.boxPriceRequired')
     return null
   }
 
-  // TYPE3 / TYPE4
+  // TYPE3 & TYPE4: kedua bentuk wajib ada, dan tabel harganya harus penuh —
+  // tidak boleh ada ukuran yang bolong di tengah
   if (!roundMinSize.value) return t('admin.productForm.roundMinRequired')
   if (!squareMinSize.value) return t('admin.productForm.squareMinRequired')
 
@@ -763,8 +824,9 @@ const validate = () => {
   return null
 }
 
-// Tempelkan config filling & topping + harga kombinasi ke payload (cinrolls).
-// null = kosongkan (mis. saat filling/topping dinonaktifkan atau bukan cinrolls).
+// Sisipkan pengaturan filling & topping ke data yang akan dikirim.
+// Sengaja mengirim null (bukan melewatkan field) saat dimatikan, supaya
+// pengaturan lama di server ikut terhapus.
 const attachFillingTopping = (payload) => {
   if (usesFillingSubcat.value) {
     payload.filling =
@@ -794,6 +856,8 @@ const attachFillingTopping = (payload) => {
   }
 }
 
+// Susun data akhir yang dikirim ke server. Bagian `base` sama untuk semua
+// tipe; sisanya menempel sesuai tipe produknya.
 const buildPayload = () => {
   const base = {
     name: form.name.trim(),
@@ -812,13 +876,12 @@ const buildPayload = () => {
       size: Number(type1.size),
       price: Number(type1.price),
     }
-    // hanya TYPE1 yang punya flavor fixed (TYPE2: user pilih saat order)
+    // TYPE2 tidak mengirim rasa — pembeli yang memilihnya saat memesan
     if (form.type === 'TYPE1') payload.flavor = form.flavor.trim()
     return payload
   }
 
   if (usesNonCakeSize.value) {
-    // sub-kategori size-pilihan (Basque): kirim variants per size
     return {
       ...base,
       type: 'TYPE5',
@@ -829,7 +892,7 @@ const buildPayload = () => {
   }
 
   if (usesBread.value) {
-    // Bread: user memilih ukuran bernama; kirim harga per ukuran (+ filling/topping cinrolls)
+    // Roti memakai `breadSizes` (ukuran bernama), bukan `variants` seperti tipe lain
     const payload = {
       ...base,
       type: 'TYPE5',
@@ -845,12 +908,12 @@ const buildPayload = () => {
     const payload = {
       ...base,
       type: 'TYPE5',
-      // kategori tanpa sub-kategori tidak mengirim field subcategory
+      // Kategori yang tidak punya sub-kategori tidak mengirim field ini sama sekali
       subcategory: hasSubcategory.value ? form.subcategory : undefined,
       flavor: form.flavor.trim(),
       shape: nonCake.shape,
       size: Number(nonCake.size),
-      // dimensi kedua hanya untuk SQUARE
+      // Hanya bentuk kotak yang punya dimensi kedua
       sizeB: nonCake.shape === 'SQUARE' ? Number(nonCake.sizeB) : undefined,
       price: Number(nonCakePrice.value),
     }
@@ -859,14 +922,12 @@ const buildPayload = () => {
   }
 
   if (usesCupcake.value) {
-    // goodiebag = satu varian harga tunggal (tanpa size); lainnya = varian per isi box
     const variants = usesGoodiebag.value
-      ? [{ price: Number(goodiebagPrice.value) }]
+      ? [{ price: Number(goodiebagPrice.value) }] // satu paket, tanpa ukuran
       : buildBoxVariants()
     const payload = { ...base, type: 'TYPE6', variants }
-    // goodiebag membawa sub-kategori (menentukan pilihan rasa pembeli)
+    // Sub-kategori goodiebag menentukan rasa apa saja yang boleh dipilih pembeli
     if (usesGoodiebag.value) payload.subcategory = form.subcategory
-    // rasa fixed hanya untuk American Butter; kategori lain user pilih saat order
     if (cupcakeFlavorIsFixed.value) payload.flavor = form.flavor.trim()
     return payload
   }
@@ -879,7 +940,9 @@ const buildPayload = () => {
   return { ...base, type: 'TYPE4', variants }
 }
 
-// untuk edit TYPE2/3: cari variant lama yang tidak ada lagi -> minta hapus
+// Saat mengubah TYPE3/TYPE4, admin bisa menaikkan ukuran terkecil sehingga
+// ukuran-ukuran di bawahnya hilang dari tabel. Varian lama itu tidak ikut
+// terhapus dengan sendirinya, jadi harus diminta hapus secara eksplisit.
 const buildRemoveVariants = () => {
   const kept = new Set(buildVariantList().map((v) => `${v.shape}-${v.size}`))
   return (props.product.variants ?? [])
@@ -900,7 +963,8 @@ const handleSubmit = async () => {
     if (!isEdit.value) {
       await createProduct(buildPayload())
     } else {
-      // saat edit, type tidak boleh berubah -> pakai type produk asli
+      // Tipe produk tidak boleh diubah setelah dibuat — bentuk variannya
+      // sudah terlanjur berbeda. Field `type` dibuang dari data kiriman.
       const payload = buildPayload()
       delete payload.type
       if (usesVariantGrid.value) {
@@ -918,6 +982,7 @@ const handleSubmit = async () => {
   }
 }
 
+// Modal dikunci selama proses simpan berjalan, biar tidak ditutup di tengah jalan
 const close = () => {
   if (isSubmitting.value) return
   emit('close')
@@ -925,20 +990,18 @@ const close = () => {
 </script>
 
 <template>
-  <!-- Dipindah ke <body>: modal ini berada di dalam <main> yang punya
-       pembungkus beranimasi (.tc-page), dan ancestor beranimasi/ber-transform
-       mengurung `position: fixed` di dalamnya — akibatnya overlay hanya
-       menggelapkan area konten, sidebar tidak ikut. Di body, overlay benar-benar
-       menutupi seluruh layar.
-       z-[55]: di atas tombol WhatsApp (z-50), di bawah ConfirmDialog (z-[60])
-       supaya dialog konfirmasi hapus tetap tampil di atas modal ini. -->
+  <!-- Modal dipindahkan ke <body>. Kalau dibiarkan di tempat asalnya, ia
+       berada di dalam pembungkus halaman yang beranimasi, dan itu membuat
+       latar gelapnya hanya menutupi area konten — sidebar tetap terang.
+       Angka z-[55] menaruhnya di atas tombol WhatsApp, tapi di bawah dialog
+       konfirmasi hapus supaya dialog itu tetap terlihat di atas modal ini. -->
   <Teleport to="body">
     <div
       v-if="open"
       class="fixed inset-0 z-[55] flex items-start justify-center bg-black/40 px-4 py-8 overflow-y-auto"
     >
     <div class="bg-white rounded-2xl w-full max-w-md shadow-[0_10px_40px_-12px_rgba(51,38,31,0.35)]">
-      <!-- HEADER -->
+      <!-- Judul modal + tombol tutup -->
       <div class="flex items-center justify-between px-6 py-5 border-b border-cream-200">
         <h2 class="text-xl text-cocoa-900 truncate">{{ modalTitle }}</h2>
         <button
@@ -951,9 +1014,10 @@ const close = () => {
         </button>
       </div>
 
-      <!-- BODY -->
+      <!-- Isi form. Bagian umum dulu, lalu bagian khusus per tipe produk. -->
       <form class="px-6 py-5 space-y-5" @submit.prevent="handleSubmit">
-        <!-- PRODUCT TYPE (hanya saat Add) -->
+        <!-- Tipe produk hanya bisa dipilih saat membuat baru; setelah tersimpan
+             tidak bisa diubah karena bentuk variannya sudah berbeda -->
         <div v-if="!isEdit">
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.productType') }}</label>
           <div class="relative">
@@ -971,7 +1035,7 @@ const close = () => {
           </div>
         </div>
 
-        <!-- CATEGORY (pilihan mengikuti type) -->
+        <!-- Pilihan kategori menyesuaikan tipe yang dipilih di atas -->
         <div>
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.category') }}</label>
           <div class="relative">
@@ -988,7 +1052,7 @@ const close = () => {
           </div>
         </div>
 
-        <!-- SUBCATEGORY (TYPE5 non-cake & Goodiebag; hanya kategori ber-sub-kategori) -->
+        <!-- Sub-kategori hanya muncul untuk kategori yang memang punya -->
         <div v-if="hasSubcategory">
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.subcategory') }}</label>
           <div class="relative">
@@ -1006,7 +1070,7 @@ const close = () => {
           </div>
         </div>
 
-        <!-- NAME -->
+        <!-- Nama produk -->
         <div>
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.name') }}</label>
           <input
@@ -1017,7 +1081,7 @@ const close = () => {
           />
         </div>
 
-        <!-- DESCRIPTION (ID) -->
+        <!-- Deskripsi bahasa Indonesia -->
         <div>
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.descriptionId') }}</label>
           <textarea
@@ -1028,7 +1092,7 @@ const close = () => {
           ></textarea>
         </div>
 
-        <!-- DESCRIPTION (EN) -->
+        <!-- Deskripsi bahasa Inggris -->
         <div>
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.descriptionEn') }}</label>
           <textarea
@@ -1039,7 +1103,7 @@ const close = () => {
           ></textarea>
         </div>
 
-        <!-- IMAGE (banyak foto; foto pertama = cover) -->
+        <!-- Foto produk. Urutannya berarti: yang pertama jadi sampul. -->
         <div>
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.images') }}</label>
           <button
@@ -1083,14 +1147,14 @@ const close = () => {
                 <img :src="img" alt="Preview" class="w-full h-full object-cover" draggable="false" />
               </button>
 
-              <!-- nomor posisi, supaya urutan mudah dibaca saat menggeser -->
+              <!-- Nomor urut, biar mudah dibaca saat menggeser -->
               <span
                 class="absolute top-1 left-1 w-5 h-5 rounded-full bg-cocoa-900/70 text-white text-[10px] font-bold flex items-center justify-center pointer-events-none"
               >
                 {{ index + 1 }}
               </span>
 
-              <!-- geser satu langkah; alternatif drag untuk layar sentuh -->
+              <!-- Tombol geser: pengganti seret-lepas untuk layar sentuh -->
               <button
                 v-if="index > 0"
                 type="button"
@@ -1129,7 +1193,7 @@ const close = () => {
           </div>
         </div>
 
-        <!-- FLAVOR fixed (TYPE1 & TYPE3) -->
+        <!-- Rasa, hanya untuk produk yang rasanya ditetapkan admin -->
         <div v-if="showFlavor">
           <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.flavor') }}</label>
           <input
@@ -1140,7 +1204,7 @@ const close = () => {
           />
         </div>
 
-        <!-- ===== TYPE1 & TYPE2: shape + size + price + discount (1 variant fixed) ===== -->
+        <!-- ===== TYPE1 & TYPE2: satu bentuk, satu ukuran, satu harga ===== -->
         <template v-if="usesSingleVariant">
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -1193,9 +1257,9 @@ const close = () => {
           </div>
         </template>
 
-        <!-- ===== TYPE5 (non-cake): shape+size tunggal ATAU harga per size (Basque) ===== -->
+        <!-- ===== TYPE5: tiga kemungkinan, tergantung kategorinya ===== -->
         <template v-if="usesNonCake">
-          <!-- Sub-kategori size-pilihan (Basque): admin isi harga per ukuran -->
+          <!-- Basque: pembeli memilih ukuran, jadi tiap ukuran punya harga -->
           <template v-if="usesNonCakeSize">
             <div>
               <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
@@ -1227,7 +1291,7 @@ const close = () => {
             </div>
           </template>
 
-          <!-- Bread: harga per ukuran bernama (dimensi tetap) -->
+          <!-- Roti: ukurannya sudah bernama & berdimensi tetap, tinggal diberi harga -->
           <template v-else-if="usesBread">
             <div>
               <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
@@ -1246,8 +1310,8 @@ const close = () => {
                     v-model="breadSizePrices[s.key]"
                     class="w-full rounded-full border border-cream-300 px-4 py-2 text-sm focus:outline-none"
                   />
-                  <!-- FOTO UNTUK UKURAN INI (opsional): galeri bergeser ke foto
-                       ini saat user memilih ukuran di halaman produk. -->
+                  <!-- Foto khusus ukuran ini (opsional). Galeri di halaman produk
+                       ikut berpindah ke foto ini saat pembeli memilih ukurannya. -->
                   <div v-if="form.images.length" class="mt-2">
                     <label class="block text-xs font-semibold text-cocoa-500 mb-1.5">
                       {{ t('admin.productForm.breadSizeImageHint') }}
@@ -1283,9 +1347,9 @@ const close = () => {
             </div>
           </template>
 
-          <!-- Sub-kategori biasa: shape + size tunggal + harga -->
+          <!-- TYPE5 lainnya: cukup satu bentuk, ukuran, dan harga -->
           <template v-else>
-          <!-- SHAPE -->
+          <!-- Bentuk -->
           <div>
             <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.shape') }}</label>
             <div class="relative">
@@ -1303,7 +1367,7 @@ const close = () => {
             </div>
           </div>
 
-          <!-- SIZE: ROUND satu angka, SQUARE dua angka (mis. 20 x 10) -->
+          <!-- Ukuran. Bulat cukup satu angka, kotak butuh dua (panjang x lebar). -->
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
@@ -1351,7 +1415,7 @@ const close = () => {
           </div>
           </template>
 
-          <!-- ===== FILLING (khusus CINROLLS VAN DEPOK) ===== -->
+          <!-- ===== Filling: daftar nama saja, harganya di tabel kombinasi ===== -->
           <div v-if="usesFillingSubcat" class="border-t border-cream-200 pt-4">
             <label class="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" v-model="filling.enabled" class="w-4 h-4 accent-brand-500" />
@@ -1360,7 +1424,7 @@ const close = () => {
             <p class="text-xs text-cocoa-400 mt-1">{{ t('admin.productForm.fillingHint') }}</p>
 
             <div v-if="filling.enabled" class="mt-4 space-y-3">
-              <!-- daftar opsi filling -->
+              <!-- Daftar pilihan filling -->
               <div class="space-y-2">
                 <div
                   v-for="(opt, i) in filling.options"
@@ -1406,7 +1470,7 @@ const close = () => {
             </div>
           </div>
 
-          <!-- ===== TOPPING (khusus CINROLLS VAN DEPOK) ===== -->
+          <!-- ===== Topping: sama seperti filling, tapi boleh dipilih lebih dari satu ===== -->
           <div v-if="usesToppingSubcat" class="border-t border-cream-200 pt-4">
             <label class="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" v-model="topping.enabled" class="w-4 h-4 accent-brand-500" />
@@ -1415,7 +1479,7 @@ const close = () => {
             <p class="text-xs text-cocoa-400 mt-1">{{ t('admin.productForm.toppingHint') }}</p>
 
             <div v-if="topping.enabled" class="mt-4 space-y-3">
-              <!-- daftar opsi topping (nama saja, tanpa harga) -->
+              <!-- Daftar pilihan topping -->
               <div class="space-y-2">
                 <div
                   v-for="(opt, i) in topping.options"
@@ -1452,7 +1516,7 @@ const close = () => {
                 {{ t('admin.productForm.toppingAddOption') }} ({{ topping.options.length }}/{{ MAX_TOPPING_OPTIONS }})
               </button>
 
-              <!-- batas jumlah pilihan user -->
+              <!-- Berapa banyak topping yang boleh dipilih pembeli -->
               <div class="grid grid-cols-2 gap-4 pt-1">
                 <div>
                   <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.toppingMaxSelect') }}</label>
@@ -1469,7 +1533,7 @@ const close = () => {
             </div>
           </div>
 
-          <!-- ===== HARGA KOMBINASI (filling + topping) ===== -->
+          <!-- ===== Tabel harga tambahan per pasangan filling + topping ===== -->
           <div
             v-if="usesFillingSubcat && filling.enabled && topping.enabled"
             class="border-t border-cream-200 pt-4"
@@ -1533,7 +1597,7 @@ const close = () => {
           </div>
         </template>
 
-        <!-- ===== TYPE6 goodiebag: harga tunggal per box + discount ===== -->
+        <!-- ===== TYPE6 goodiebag: dijual per paket, cukup satu harga ===== -->
         <template v-if="usesGoodiebag">
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -1562,7 +1626,7 @@ const close = () => {
           </div>
         </template>
 
-        <!-- ===== TYPE6 (cupcakes): harga per isi box + discount ===== -->
+        <!-- ===== TYPE6: satu harga untuk tiap isi box ===== -->
         <template v-else-if="usesCupcake">
           <div>
             <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
@@ -1585,8 +1649,8 @@ const close = () => {
                     class="w-full rounded-full border border-cream-300 px-4 py-2 text-sm focus:outline-none"
                   />
 
-                  <!-- Foto yang mewakili isi box ini, dipilih dari foto yang
-                       sudah diunggah di atas. Opsional. -->
+                  <!-- Foto yang mewakili isi box ini (opsional), dipilih dari
+                       foto yang sudah diunggah di atas -->
                   <template v-if="form.images.length">
                     <p class="text-xs text-cocoa-400 mt-2 mb-1.5">
                       {{ t('admin.productForm.boxImageHint') }}
@@ -1625,9 +1689,10 @@ const close = () => {
           </div>
         </template>
 
-        <!-- ===== TYPE3 / TYPE4: grid harga per shape + size ===== -->
+        <!-- ===== TYPE3 & TYPE4: tabel harga per bentuk & ukuran =====
+             Admin memilih ukuran terkecil, sisanya muncul otomatis sampai 30cm -->
         <template v-if="usesVariantGrid">
-          <!-- ROUND -->
+          <!-- Bentuk bulat -->
           <div>
             <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.round') }}</label>
             <div class="relative">
@@ -1643,7 +1708,7 @@ const close = () => {
               />
             </div>
 
-            <!-- COPY HARGA ROUND DARI PRODUK LAIN -->
+            <!-- Salin harga bulat dari produk lain, biar tidak mengetik ulang -->
             <div v-if="roundSizes.length" class="mt-3">
               <label class="block text-xs font-semibold text-cocoa-500 mb-1.5">{{ t('admin.productForm.copyPrice') }}</label>
               <div class="relative">
@@ -1667,7 +1732,7 @@ const close = () => {
               </p>
             </div>
 
-            <!-- FOTO UNTUK BENTUK ROUND (opsional) -->
+            <!-- Foto yang mewakili bentuk bulat (opsional) -->
             <div v-if="roundSizes.length && form.images.length" class="mt-3">
               <label class="block text-xs font-semibold text-cocoa-500 mb-1.5">
                 {{ t('admin.productForm.shapeImageHint') }}
@@ -1702,7 +1767,7 @@ const close = () => {
             </div>
           </div>
 
-          <!-- SQUARE -->
+          <!-- Bentuk kotak -->
           <div>
             <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.square') }}</label>
             <div class="relative">
@@ -1720,7 +1785,7 @@ const close = () => {
               />
             </div>
 
-            <!-- COPY HARGA SQUARE DARI PRODUK LAIN -->
+            <!-- Salin harga kotak dari produk lain -->
             <div v-if="squareSizes.length" class="mt-3">
               <label class="block text-xs font-semibold text-cocoa-500 mb-1.5">{{ t('admin.productForm.copyPrice') }}</label>
               <div class="relative">
@@ -1744,7 +1809,7 @@ const close = () => {
               </p>
             </div>
 
-            <!-- FOTO UNTUK BENTUK SQUARE (opsional) -->
+            <!-- Foto yang mewakili bentuk kotak (opsional) -->
             <div v-if="squareSizes.length && form.images.length" class="mt-3">
               <label class="block text-xs font-semibold text-cocoa-500 mb-1.5">
                 {{ t('admin.productForm.shapeImageHint') }}
@@ -1779,7 +1844,7 @@ const close = () => {
             </div>
           </div>
 
-          <!-- DISCOUNT -->
+          <!-- Diskon dalam persen -->
           <div>
             <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.productForm.discount') }}</label>
             <input
@@ -1793,10 +1858,10 @@ const close = () => {
           </div>
         </template>
 
-        <!-- ERROR -->
+        <!-- Pesan gagal, dari validasi maupun dari server -->
         <p v-if="errorMessage" class="text-sm text-brand-600">{{ errorMessage }}</p>
 
-        <!-- ACTIONS -->
+        <!-- Tombol simpan dimatikan selama unggah/simpan berjalan -->
         <div class="flex items-center justify-end gap-3 pt-2">
           <button
             type="button"

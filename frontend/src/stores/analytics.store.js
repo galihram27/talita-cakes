@@ -4,21 +4,31 @@ import { getDashboardStats } from '@/services/analytics.service'
 import { getProductCount } from '@/services/product.service'
 import { getGalleries } from '@/services/gallery.service'
 
-// Cache data dashboard analytics per filter bulan supaya balik ke halaman
-// admin analytics (atau ganti-ganti filter bulan) langsung tampil tanpa
-// loading. Pola: stale-while-revalidate — tampilkan cache dulu, refresh
-// diam-diam di background.
+/**
+ * Simpanan angka-angka dashboard admin.
+ *
+ * Berbeda dari simpanan lain di folder ini, yang ini disimpan PER PILIHAN
+ * BULAN — masing-masing punya simpanannya sendiri. Dengan begitu admin bisa
+ * bolak-balik antar bulan tanpa menunggu, karena bulan yang pernah dibuka
+ * angkanya sudah tersimpan.
+ *
+ * Hanya di memori, tidak ikut disimpan di penyimpanan peramban: angkanya
+ * cepat berubah, jadi menyimpannya lebih lama justru menyesatkan.
+ */
 export const useAnalyticsStore = defineStore('analytics', {
   state: () => ({
-    // key = 'all' | 'YYYY-MM', value = { totalVisitors, totalOrders, visitors,
-    // orders, totalProducts, totalGalleryImages }
+    // Kuncinya 'all' atau bulan tertentu ('2026-07'); isinya angka ringkasan
+    // beserta data grafik pengunjung & pesanan
     cache: {},
-    _inflight: {}, // guard per-key supaya tidak ada request dobel
+    // Permintaan yang sedang berjalan, dicatat per bulan supaya bulan yang
+    // berbeda tetap bisa diambil bersamaan
+    _inflight: {},
   }),
 
   actions: {
-    // Dipanggil dari onMounted / watch filter di view. Hanya throw kalau
-    // belum ada cache untuk key itu; kalau sudah ada, error refresh diabaikan.
+    // Kalau bulan itu sudah pernah dibuka, angkanya langsung tampil dan
+    // pembaruan berjalan diam-diam. Hanya bulan yang belum pernah dibuka
+    // yang kegagalannya diteruskan ke halaman.
     async ensureLoaded(key, params) {
       if (this.cache[key]) {
         this._refresh(key, params).catch(() => {})
@@ -27,6 +37,8 @@ export const useAnalyticsStore = defineStore('analytics', {
       await this._refresh(key, params)
     },
 
+    // Tiga sumber angka diambil sekaligus, bukan berurutan, supaya
+    // dashboard tidak menunggu tiga kali lamanya
     _refresh(key, params) {
       if (!this._inflight[key]) {
         this._inflight[key] = Promise.all([
@@ -51,8 +63,9 @@ export const useAnalyticsStore = defineStore('analytics', {
       return this._inflight[key]
     },
 
-    // Panggil setelah admin mengubah produk/gallery supaya angka stat card
-    // tidak basi. Cache dibiarkan tampil dulu; refresh jalan saat view aktif.
+    // Dipanggil setelah admin mengubah produk atau galeri, supaya angka
+    // "total produk" & "total foto" ikut menyesuaikan. Angkanya diambil ulang
+    // saat halaman dashboard dibuka lagi, bukan saat itu juga.
     invalidate() {
       this.cache = {}
     },

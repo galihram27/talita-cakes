@@ -5,11 +5,17 @@ import { FileText, ChevronDown } from 'lucide-vue-next'
 
 const { t, locale } = useI18n()
 
-// Deskripsi bisa disembunyikan/ditampilkan (default tertutup — user klik untuk buka).
+/**
+ * Bagian kepala halaman produk: label kategori, nama, dan deskripsi.
+ */
+
+// Deskripsi mulai dalam keadaan tertutup supaya pilihan ukuran & rasa di
+// bawahnya langsung terlihat tanpa harus menggulir
 const showDescription = ref(false)
 const toggleDescription = () => (showDescription.value = !showDescription.value)
 
-// label tipe memakai kamus yang sama dengan kartu tipe di HomeView
+// Label tipe memakai kamus yang sama dengan kartu tipe di halaman Home,
+// jadi penyebutannya konsisten di seluruh situs
 const typeLabel = (type) => {
   const num = { TYPE1: 1, TYPE2: 2, TYPE3: 3, TYPE4: 4, TYPE5: 5, TYPE6: 6 }[type]
   return num ? t(`home.types.t${num}.tag`) : type
@@ -20,20 +26,21 @@ const props = defineProps({
   name: { type: String, required: true },
   description: { type: String, default: '' },
   descriptionEn: { type: String, default: '' },
-  // kategori (TYPE1–TYPE4) & sub-kategori (TYPE5) menggantikan label tipe
   category: { type: String, default: '' },
   subcategory: { type: String, default: '' },
 })
 
-// Badge di atas nama produk memakai kategori, bukan nama tipe.
-// TYPE5 pakai sub-kategori; label tipe hanya jadi fallback untuk
-// data lama yang kategorinya masih kosong.
+/**
+ * Label yang tampil di atas nama produk, dipilih berjenjang:
+ * sub-kategori kalau ada, kalau tidak kategori, dan nama tipe sebagai
+ * jalan terakhir untuk produk lama yang kategorinya belum terisi.
+ */
 const badgeLabel = computed(
   () => props.subcategory || props.category || typeLabel(props.type)
 )
 
-// deskripsi mengikuti bahasa aktif; fallback ke versi Indonesia
-// untuk data lama yang versi Inggrisnya masih kosong
+// Ikut bahasa yang aktif. Produk lama belum punya versi Inggris, jadi
+// kalau kosong tetap pakai versi Indonesia daripada tidak tampil apa-apa.
 const shownDescription = computed(() =>
   locale.value === 'en' && props.descriptionEn ? props.descriptionEn : props.description
 )
@@ -48,7 +55,9 @@ const shownDescription = computed(() =>
     </span>
     <h1 class="font-display text-[38px] leading-tight mt-3.5 mb-4">{{ name }}</h1>
 
-    <!-- Deskripsi produk (bisa disembunyikan) -->
+    <!-- Deskripsi dalam panel yang bisa dibuka-tutup. v-show dipakai (bukan
+         v-if) supaya teksnya tetap ada di halaman dan terbaca mesin pencari
+         walau sedang tertutup. -->
     <div
       v-if="shownDescription"
       class="mb-7 rounded-2xl border bg-white overflow-hidden transition-colors"

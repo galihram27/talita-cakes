@@ -11,6 +11,10 @@ import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
 import { TYPE2_FLAVORS } from '@/config/constants'
 
+/**
+ * Detail produk berukuran tetap, tapi pembeli memilih rasa dan boleh
+ * melampirkan acuan desain. Bentuk & ukurannya sendiri tidak bisa dipilih.
+ */
 const props = defineProps({
   product: { type: Object, required: true },
 })
@@ -26,7 +30,7 @@ const isSubmitting = ref(false)
 const submitError = ref('')
 const submitSuccess = ref(false)
 
-// TYPE2 cuma punya 1 variant fixed (shape & size tidak bisa dipilih)
+// Produk ini hanya punya satu varian, jadi langsung diambil saja
 const variant = computed(() => props.product.variants?.[0] ?? null)
 
 const finalPrice = computed(() => {

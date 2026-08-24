@@ -1,22 +1,28 @@
 // src/utils/geocode.js
-// Semua urusan alamat <-> koordinat untuk peta checkout.
-//
-// Provider: MapTiler kalau VITE_MAPTILER_KEY terisi (key yang sama dengan style
-// peta, free tier-nya mengizinkan autocomplete), jatuh ke Nominatim/OSM kalau
-// kosong supaya pencarian tetap jalan tanpa key.
+
+/**
+ * Pencarian alamat untuk peta di halaman checkout — dua arah: dari teks
+ * alamat menjadi titik koordinat, dan sebaliknya.
+ *
+ * Ada dua penyedia layanan. MapTiler dipakai kalau kuncinya sudah diisi;
+ * kalau belum, pencarian tetap berjalan memakai Nominatim yang tidak butuh
+ * kunci sama sekali. Jadi fitur ini tidak pernah benar-benar mati, paling
+ * banter hasilnya kurang bagus.
+ */
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || ''
 
-// Hasil dibatasi Indonesia — toko hanya melayani radius 25 km dari Depok,
-// jadi kandidat luar negeri hanya bikin daftar saran berisik.
+// Hasil dibatasi Indonesia saja. Toko cuma melayani radius 25 km dari Depok,
+// jadi alamat luar negeri hanya membuat daftar saran penuh hal tak berguna.
 const COUNTRY = 'id'
 const RESULT_LIMIT = 5
 
 const EARTH_RADIUS_KM = 6371
 const toRad = (deg) => (deg * Math.PI) / 180
 
-// Jarak garis lurus antar 2 koordinat — hanya untuk mengurutkan saran.
-// Jarak & ongkir yang sebenarnya tetap dihitung backend (jarak rute motor).
+// Jarak garis lurus antar dua titik. HANYA untuk mengurutkan daftar saran —
+// jarak yang menentukan ongkir tetap dihitung server memakai jarak jalan
+// sungguhan, bukan angka dari sini.
 const straightLineKm = (lat1, lng1, lat2, lng2) => {
   const dLat = toRad(lat2 - lat1)
   const dLng = toRad(lng2 - lng1)
@@ -27,19 +33,20 @@ const straightLineKm = (lat1, lng1, lat2, lng2) => {
 }
 
 /**
- * Cari alamat -> daftar kandidat lokasi.
- * `proximity` ({ lat, lng }) = titik acuan (lokasi toko): dipakai untuk membias
- * hasil dari provider DAN mengurutkan kandidat dari yang terdekat.
+ * Cari alamat, hasilnya daftar kandidat lokasi.
  *
- * Urutan dari provider tidak dipakai apa adanya karena bias jaraknya lemah:
- * query "jalan merdeka" mengembalikan Jalan Merdeka Bogor (±25 km, di luar
- * radius antar) di atas Jalan Merdeka Depok (±1 km, jelas yang dimaksud).
- * Karena antar dibatasi radius 25 km dari toko, yang terdekat hampir selalu
- * yang dicari user.
+ * `proximity` adalah lokasi toko, dipakai dua kali: dikirim ke penyedia
+ * layanan sebagai petunjuk, lalu dipakai lagi untuk mengurutkan hasilnya
+ * sendiri di sini.
  *
- * Mengembalikan array { id, label, lat, lng }. Query kosong -> array kosong.
- * `signal` (AbortSignal) dipakai pemanggil untuk membatalkan request lama
- * saat user masih mengetik.
+ * Pengurutan ulang itu perlu karena petunjuk ke penyedia layanan pengaruhnya
+ * lemah. Contoh nyata: mengetik "jalan merdeka" menempatkan Jalan Merdeka
+ * Bogor — sekitar 25 km, sudah di tepi batas layanan — di atas Jalan Merdeka
+ * Depok yang cuma 1 km dan jelas yang dimaksud. Karena pengantaran dibatasi
+ * 25 km dari toko, yang terdekat hampir selalu yang dicari.
+ *
+ * `signal` dipakai pemanggil untuk membatalkan pencarian lama saat pengunjung
+ * masih mengetik, supaya hasil ketikan lama tidak menimpa yang baru.
  */
 export const searchAddress = async (query, { proximity, signal } = {}) => {
   const q = query.trim()
@@ -67,8 +74,12 @@ export const searchAddress = async (query, { proximity, signal } = {}) => {
 }
 
 /**
- * Koordinat -> alamat teks. Dipakai saat user klik peta / geser marker.
- * Mengembalikan string alamat, atau '' kalau tidak ketemu.
+ * Kebalikannya: dari titik di peta menjadi teks alamat. Dipakai saat
+ * pengunjung mengklik peta atau menggeser penanda lokasinya.
+ *
+ * Selalu memakai Nominatim, tidak peduli kunci MapTiler terisi atau tidak,
+ * karena untuk keperluan ini hasilnya sudah memadai dan tidak memakan kuota.
+ * Mengembalikan teks kosong kalau titik itu tidak dikenali.
  */
 export const reverseGeocode = async (lat, lng) => {
   const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
@@ -77,7 +88,9 @@ export const reverseGeocode = async (lat, lng) => {
   return result?.display_name || ''
 }
 
-// ===== MAPTILER =====
+// =========================
+// MAPTILER (dipakai kalau kuncinya terisi)
+// =========================
 
 const buildMaptilerSearchUrl = (q, proximity) => {
   const params = new URLSearchParams({
@@ -93,7 +106,8 @@ const buildMaptilerSearchUrl = (q, proximity) => {
 
 const parseMaptilerResults = (body) =>
   (body?.features ?? [])
-    // center = [lng, lat]
+    // Perhatikan urutannya: koordinat datang sebagai [bujur, lintang] —
+    // kebalikan dari kebiasaan menulis lintang dulu
     .filter((f) => Array.isArray(f.center) && f.center.length === 2)
     .map((f) => ({
       id: String(f.id),
@@ -102,7 +116,9 @@ const parseMaptilerResults = (body) =>
       lng: f.center[0],
     }))
 
-// ===== NOMINATIM (fallback tanpa key) =====
+// =========================
+// NOMINATIM (cadangan, tidak butuh kunci)
+// =========================
 
 const buildNominatimSearchUrl = (q, proximity) => {
   const params = new URLSearchParams({
@@ -112,9 +128,10 @@ const buildNominatimSearchUrl = (q, proximity) => {
     countrycodes: COUNTRY,
     addressdetails: '1',
   })
-  // Nominatim tidak punya parameter proximity; kotak ±0.5° (~55 km) di sekitar
-  // toko dipakai untuk mendekatkan hasil. bounded=0 = kotak hanya memprioritaskan,
-  // bukan membuang hasil di luarnya.
+  // Nominatim tidak menerima "titik acuan" seperti MapTiler, jadi caranya
+  // menggambar kotak sekitar 55 km mengelilingi toko. Angka 0 pada `bounded`
+  // berarti kotak itu hanya mengutamakan, bukan membuang hasil di luarnya —
+  // penting supaya alamat yang ditulis agak melenceng tetap bisa ketemu.
   if (proximity) {
     const d = 0.5
     params.set(

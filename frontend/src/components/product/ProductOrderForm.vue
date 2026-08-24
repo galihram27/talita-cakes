@@ -5,26 +5,34 @@ import { formatRupiah } from '@/utils/formatCurrency'
 
 const { t } = useI18n()
 
+/**
+ * Bagian penutup halaman produk: tulisan di atas kue, catatan, jumlah,
+ * dan tombol masukkan ke keranjang.
+ *
+ * Dipakai bersama seluruh tipe produk, karena itu banyak prop yang isinya
+ * "sembunyikan bagian ini" — tiap tipe punya kebutuhan berbeda, misalnya
+ * roti tidak butuh kolom tulisan di atas kue.
+ */
 const props = defineProps({
   textOnCake: { type: String, default: '' },
   notes: { type: String, default: '' },
   quantity: { type: Number, default: 1 },
-  minQuantity: { type: Number, default: 1 }, // batas bawah stepper (goodiebag = 10)
-  quantitySuffix: { type: String, default: '' }, // label satuan di sebelah angka, mis. "box"
-  useStepper: { type: Boolean, default: false }, // TYPE3 pakai stepper "Amount", TYPE1/2 pakai input angka
-  hideQuantity: { type: Boolean, default: false }, // goodiebag: jumlah diketik di atas, stepper disembunyikan
-  showTextOnCake: { type: Boolean, default: true }, // TYPE5 (non-cake) menyembunyikan tulisan di atas cake
+  minQuantity: { type: Number, default: 1 }, // goodiebag punya pembelian minimal
+  quantitySuffix: { type: String, default: '' }, // satuan di sebelah angka, mis. "box"
+  useStepper: { type: Boolean, default: false }, // tombol +/- atau kolom ketik biasa
+  hideQuantity: { type: Boolean, default: false }, // untuk tipe yang jumlahnya diisi di tempat lain
+  showTextOnCake: { type: Boolean, default: true },
   isSubmitting: { type: Boolean, default: false },
   submitError: { type: String, default: '' },
   submitSuccess: { type: Boolean, default: false },
-  // harga satuan (setelah diskon). Bila ada, total = unitPrice × quantity
-  // ditampilkan di tombol "Add to cart". null = belum ada (mis. size belum dipilih).
+  // Harga satuan setelah diskon, dipakai menghitung total di tombol.
+  // null berarti belum bisa dihitung — biasanya ukurannya belum dipilih.
   unitPrice: { type: Number, default: null },
 })
 
 const emit = defineEmits(['update:textOnCake', 'update:notes', 'update:quantity', 'submit'])
 
-// Total untuk label tombol. Kosong bila harga belum tersedia.
+// Total di label tombol. Dikosongkan kalau harganya belum bisa dipastikan.
 const totalLabel = computed(() =>
   props.unitPrice != null && props.unitPrice > 0
     ? formatRupiah(props.unitPrice * (props.quantity || 1))
@@ -32,6 +40,7 @@ const totalLabel = computed(() =>
 )
 
 const increaseQuantity = (current) => emit('update:quantity', current + 1)
+// Tidak boleh turun di bawah pembelian minimal produk
 const decreaseQuantity = (current) => {
   if (current > props.minQuantity) emit('update:quantity', current - 1)
 }
@@ -81,7 +90,9 @@ const decreaseQuantity = (current) => {
       {{ t('product.orderForm.addedToCart') }}
     </div>
 
-    <!-- qty + add to cart -->
+    <!-- Baris jumlah + tombol masukkan keranjang. Bentuk pengatur jumlahnya
+         berbeda per tipe produk: tombol +/-, kolom ketik, atau disembunyikan
+         sama sekali kalau jumlahnya sudah diisi di bagian lain. -->
     <div class="flex flex-col sm:flex-row sm:items-center gap-3.5 border-t border-cream-300 pt-5">
       <div
         v-if="!hideQuantity && useStepper"

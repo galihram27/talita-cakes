@@ -2,12 +2,21 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth.store'
 
+/**
+ * Satu-satunya pintu ke backend. Semua service memakai ini, bukan memanggil
+ * fetch/axios sendiri, supaya dua hal berikut berlaku di seluruh aplikasi:
+ *
+ * 1. Token dilampirkan otomatis ke setiap permintaan.
+ * 2. Kalau token kedaluwarsa, ia diperbarui diam-diam lalu permintaannya
+ *    diulang — pengunjung tidak merasakan apa-apa.
+ */
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
-  withCredentials: true, // wajib, supaya cookie refreshToken httpOnly terkirim
+  // Wajib, supaya cookie berisi refresh token ikut terkirim
+  withCredentials: true,
 })
 
-// Attach accessToken dari Pinia store ke setiap request
+// Lampirkan token ke setiap permintaan yang keluar
 api.interceptors.request.use((config) => {
   const authStore = useAuthStore()
   if (authStore.accessToken) {
@@ -16,10 +25,21 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Auto-retry sekali kalau kena 401 (access token expired)
+/**
+ * Penanganan token kedaluwarsa.
+ *
+ * Masalahnya: kalau halaman mengirim beberapa permintaan sekaligus dan
+ * semuanya ditolak karena token basi, tanpa penjagaan mereka akan sama-sama
+ * meminta token baru — token lama dicabut berkali-kali dan sebagian
+ * permintaan tetap gagal.
+ *
+ * Karena itu hanya permintaan pertama yang benar-benar memperbarui token;
+ * sisanya menunggu di antrean, lalu diulang bersama-sama memakai token baru.
+ */
 let isRefreshing = false
 let refreshQueue = []
 
+// Lepaskan semua yang mengantre: beri token baru, atau teruskan kegagalannya
 const processQueue = (error, token = null) => {
   refreshQueue.forEach(({ resolve, reject }) => {
     if (error) reject(error)
@@ -34,12 +54,16 @@ api.interceptors.response.use(
     const originalRequest = error.config
     const authStore = useAuthStore()
 
+    // Login & perpanjang token dikecualikan. Gagal login itu memang salah
+    // sandi, bukan token basi — kalau ikut ditangani di sini, hasilnya
+    // percobaan berulang tanpa ujung.
     const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
       originalRequest.url?.includes('/auth/refresh-token')
 
+    // `_retry` menjaga satu permintaan hanya diulang sekali
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
-        // kalau ada refresh yang sedang jalan, antre dulu
+        // Sudah ada yang memperbarui token, tunggu giliran lalu ulangi
         return new Promise((resolve, reject) => {
           refreshQueue.push({ resolve, reject })
         }).then((token) => {
@@ -61,20 +85,27 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return api(originalRequest)
       } catch (refreshError) {
+        // Token perpanjangan pun tidak berlaku: sesinya memang sudah habis,
+        // atau pengunjung ini belum pernah login sama sekali
         processQueue(refreshError, null)
-        authStore.clearSession() // refresh token juga invalid -> logout paksa
+        authStore.clearSession()
 
-        // Sesi benar-benar habis / guest melakukan aksi yang butuh login (mis.
-        // menambah produk ke keranjang). Alih-alih membiarkan pesan mentah
-        // "Refresh token required" muncul, arahkan ke halaman login sambil
-        // menyimpan halaman saat ini di query.redirect supaya bisa balik ke
-        // sini setelah login (LoginView membaca route.query.redirect).
-        // Ambil instance router bikinan ViteSSG dari holder (hindari circular
-        // dependency & instance router ganda). Hanya ada di client.
+        /**
+         * Antar ke halaman login, jangan biarkan pesan mentah dari server
+         * muncul di layar. Alamat halaman sekarang dititipkan supaya setelah
+         * login pengunjung kembali ke tempat semula — misalnya ia sedang
+         * menambah barang ke keranjang.
+         *
+         * Router diambil lewat berkas penampung, bukan diimpor langsung,
+         * supaya tidak terjadi impor melingkar (router memuat halaman, halaman
+         * memakai berkas ini). Diimpor saat dibutuhkan karena router hanya ada
+         * di peramban, tidak saat halaman dibangun.
+         */
         const { getRouterInstance } = await import('@/router/holder')
         const router = getRouterInstance()
         if (router) {
           const current = router.currentRoute.value
+          // Jangan mengantar ke login kalau sudah di sana
           if (current.name !== 'login') {
             router.push({ name: 'login', query: { redirect: current.fullPath } })
           }

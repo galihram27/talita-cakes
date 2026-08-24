@@ -8,6 +8,11 @@ import ProductFixedSpec from './ProductFixedSpec.vue'
 import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
 
+/**
+ * Halaman detail untuk produk paling sederhana: bentuk, ukuran, dan rasa
+ * semuanya sudah ditetapkan admin, jadi pembeli tidak memilih apa pun —
+ * cukup menentukan jumlah lalu memasukkannya ke keranjang.
+ */
 const props = defineProps({
   product: { type: Object, required: true },
 })
@@ -21,7 +26,7 @@ const isSubmitting = ref(false)
 const submitError = ref('')
 const submitSuccess = ref(false)
 
-// TYPE1 cuma punya 1 variant fixed
+// Produk ini hanya punya satu varian, jadi langsung diambil saja
 const variant = computed(() => props.product.variants?.[0] ?? null)
 
 const finalPrice = computed(() => {

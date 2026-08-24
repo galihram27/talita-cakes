@@ -1,3 +1,17 @@
+/**
+ * Seluruh teks situs dalam bahasa Indonesia.
+ *
+ * Susunannya dikelompokkan per bagian (common, nav, product, checkout, dan
+ * seterusnya), lalu dipanggil komponen lewat kuncinya — mis. t('nav.menu').
+ *
+ * ATURAN PENTING: kuncinya harus SAMA PERSIS dengan en.js. Menambah teks baru
+ * berarti menambahkannya di kedua berkas. Kunci yang hanya ada di sini akan
+ * tampil dalam bahasa Inggris saat pengunjung memilih bahasa itu, karena
+ * bahasa Inggris dipakai sebagai cadangan.
+ *
+ * Khusus teks halaman "Tentang Kami", yang dipakai bukan yang ada di berkas
+ * ini melainkan locales/id/about.js — berkas itu menimpanya. Lihat i18n/index.js.
+ */
 export default {
   common: {
     confirmation: "Konfirmasi",

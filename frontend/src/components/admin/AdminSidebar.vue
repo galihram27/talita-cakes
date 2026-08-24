@@ -11,6 +11,8 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
+// Menu panel admin. Dibungkus computed supaya labelnya ikut berubah
+// begitu bahasa diganti.
 const navItems = computed(() => [
   { to: '/admin/analytics', label: t('admin.sidebar.analytics') },
   { to: '/admin/products', label: t('admin.sidebar.products') },
@@ -18,6 +20,7 @@ const navItems = computed(() => [
   { to: '/admin/orders', label: t('admin.sidebar.orders') },
 ])
 
+// Menu yang sedang dibuka, untuk diberi warna berbeda
 const isActive = (item) => route.path === item.to
 
 const handleLogout = async () => {
@@ -27,7 +30,7 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <!-- Sidebar gelap ala panel admin: logo di atas, menu di bawahnya -->
+  <!-- Layar besar: sidebar tetap di kiri, menempel saat halaman digulir -->
   <aside
     class="hidden md:flex w-60 shrink-0 flex-col bg-cocoa-900 text-cream-100 sticky top-0 h-screen px-4 py-6"
   >
@@ -61,7 +64,7 @@ const handleLogout = async () => {
       </RouterLink>
     </nav>
 
-    <!-- Tautan bantu di bawah: kembali ke situs publik & keluar -->
+    <!-- mt-auto mendorong dua tautan ini menempel ke dasar sidebar -->
     <div class="mt-auto pt-6 border-t border-white/10 space-y-1">
       <RouterLink
         to="/"
@@ -81,7 +84,7 @@ const handleLogout = async () => {
     </div>
   </aside>
 
-  <!-- Versi mobile: bar gelap di atas dengan menu yang bisa digeser -->
+  <!-- Layar kecil: sidebar diganti bar atas, menunya digeser ke samping -->
   <div class="md:hidden bg-cocoa-900 text-cream-100 px-4 pt-4 pb-3 sticky top-0 z-40">
     <div class="flex items-center gap-3">
       <span class="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 overflow-hidden">

@@ -5,9 +5,11 @@ import { X, Upload } from 'lucide-vue-next'
 import { createGallery, updateGallery } from '@/services/gallery.service'
 import { uploadImage } from '@/services/upload.service'
 
+// Form tambah/ubah foto galeri, tampil sebagai modal.
+// Satu komponen dipakai untuk dua keperluan: `item` kosong berarti menambah
+// foto baru, `item` terisi berarti mengubah foto yang sudah ada.
 const props = defineProps({
   open: { type: Boolean, default: false },
-  // null = mode "Add", object gallery = mode "Edit"
   item: { type: Object, default: null },
 })
 
@@ -22,19 +24,21 @@ const modalTitle = computed(() =>
     : t('admin.galleryForm.addTitle')
 )
 
-// ===== STATE FORM =====
+// ===== ISI FORM =====
 const form = reactive({
   title: '',
   imageUrl: '',
   description: '',
-  tags: '', // input dipisah koma, backend menerima string "a,b,c"
+  tags: '', // diketik dipisah koma; backend yang memecahnya jadi daftar
 })
 
 const fileInputRef = ref(null)
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 
-// ===== RESET / PREFILL saat modal dibuka =====
+// ===== ISI ULANG FORM SAAT MODAL DIBUKA =====
+// Mode ubah: isi dengan data lama. Mode tambah: kosongkan.
+// Dijalankan tiap kali dibuka supaya sisa isian sebelumnya tidak tertinggal.
 const resetForm = () => {
   errorMessage.value = ''
   isSubmitting.value = false
@@ -56,15 +60,17 @@ watch(
   { immediate: true }
 )
 
-// ===== IMAGE UPLOAD (ke Cloudinary via /uploads/images) =====
-// Simpan URL Cloudinary, BUKAN base64 — base64 membengkakkan DB & bikin
-// fetch gallery lambat (1 gambar bisa bermega-mega byte).
+// ===== UNGGAH GAMBAR =====
+// File dikirim ke Cloudinary, lalu yang disimpan ke DB hanya URL-nya.
+// Gambar sengaja TIDAK disimpan sebagai base64 di dalam DB: ukurannya
+// bisa bermega-mega byte dan bikin galeri lambat dimuat.
 const isUploading = ref(false)
 
 const openFilePicker = () => fileInputRef.value?.click()
 
 const handleFileChange = async (e) => {
   const file = e.target.files?.[0]
+  // Kosongkan input file supaya memilih file yang sama dua kali tetap terbaca
   e.target.value = ''
   if (!file) return
 
@@ -85,7 +91,9 @@ const removeImage = () => {
   form.imageUrl = ''
 }
 
-// ===== SUBMIT =====
+// ===== SIMPAN =====
+// Judul & gambar wajib; sisanya boleh kosong. Backend memvalidasi ulang,
+// pengecekan di sini hanya supaya admin tidak menunggu sia-sia.
 const validate = () => {
   if (!form.title.trim()) return t('admin.galleryForm.titleRequired')
   if (!form.imageUrl) return t('admin.galleryForm.imageRequired')
@@ -124,6 +132,7 @@ const handleSubmit = async () => {
   }
 }
 
+// Modal dikunci selama proses simpan berjalan, biar tidak ditutup di tengah jalan
 const close = () => {
   if (isSubmitting.value) return
   emit('close')
@@ -131,127 +140,127 @@ const close = () => {
 </script>
 
 <template>
-  <!-- Dipindah ke <body>: modal ini berada di dalam <main> yang punya
-       pembungkus beranimasi (.tc-page), dan ancestor beranimasi/ber-transform
-       mengurung `position: fixed` di dalamnya — akibatnya overlay hanya
-       menggelapkan area konten, sidebar tidak ikut. Di body, overlay benar-benar
-       menutupi seluruh layar.
-       z-[55]: di atas tombol WhatsApp (z-50), di bawah ConfirmDialog (z-[60]). -->
+  <!-- Modal dipindahkan ke <body>. Kalau dibiarkan di tempat asalnya, ia
+       berada di dalam pembungkus halaman yang beranimasi, dan itu membuat
+       latar gelapnya hanya menutupi area konten — sidebar tetap terang.
+       Angka z-[55] menaruhnya di atas tombol WhatsApp, tapi di bawah dialog
+       konfirmasi. -->
   <Teleport to="body">
     <div
       v-if="open"
       class="fixed inset-0 z-[55] flex items-start justify-center bg-black/40 px-4 py-8 overflow-y-auto"
-  >
-    <div class="bg-white rounded-2xl w-full max-w-md shadow-[0_10px_40px_-12px_rgba(51,38,31,0.35)]">
-      <!-- HEADER -->
-      <div class="flex items-center justify-between px-6 py-5 border-b border-cream-200">
-        <h2 class="text-xl text-cocoa-900 truncate">{{ modalTitle }}</h2>
-        <button
-          type="button"
-          @click="close"
-          class="p-1 text-cocoa-400 hover:text-cocoa-900 transition"
-          :aria-label="t('common.close')"
-        >
-          <X class="w-5 h-5" />
-        </button>
-      </div>
-
-      <!-- BODY -->
-      <form class="px-6 py-5 space-y-5" @submit.prevent="handleSubmit">
-        <!-- TITLE -->
-        <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.galleryForm.title') }}</label>
-          <input
-            v-model="form.title"
-            type="text"
-            :placeholder="t('admin.galleryForm.titlePlaceholder')"
-            class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
-          />
-        </div>
-
-        <!-- IMAGE -->
-        <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.galleryForm.image') }}</label>
-          <button
-            type="button"
-            @click="openFilePicker"
-            :disabled="isUploading"
-            class="inline-flex items-center gap-2 rounded-full border border-cream-300 px-5 py-2 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 hover:border-brand-400 transition disabled:opacity-50"
-          >
-            <Upload class="w-4 h-4" />
-            {{ isUploading ? t('admin.galleryForm.uploading') : t('admin.galleryForm.upload') }}
-          </button>
-          <input
-            ref="fileInputRef"
-            type="file"
-            accept="image/*"
-            class="hidden"
-            @change="handleFileChange"
-          />
-
-          <div v-if="form.imageUrl" class="flex items-center gap-3 mt-3">
-            <div class="w-16 h-16 rounded-lg border border-cream-300 overflow-hidden bg-cream-100">
-              <img :src="form.imageUrl" alt="Preview" class="w-full h-full object-cover" />
-            </div>
-            <button
-              type="button"
-              @click="removeImage"
-              class="w-8 h-8 rounded-full border border-cream-300 text-cocoa-500 flex items-center justify-center hover:border-brand-400 hover:text-brand-600 transition"
-              :aria-label="t('admin.galleryForm.removeImage')"
-            >
-              <X class="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        <!-- DESCRIPTION -->
-        <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
-            {{ t('admin.galleryForm.description') }} <span class="text-cocoa-400 font-normal">{{ t('admin.galleryForm.optional') }}</span>
-          </label>
-          <textarea
-            v-model="form.description"
-            rows="3"
-            class="w-full rounded-2xl border border-cream-300 px-4 py-3 text-sm focus:outline-none resize-none"
-          ></textarea>
-        </div>
-
-        <!-- TAGS -->
-        <div>
-          <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
-            {{ t('admin.galleryForm.tags') }} <span class="text-cocoa-400 font-normal">{{ t('admin.galleryForm.tagsHint') }}</span>
-          </label>
-          <input
-            v-model="form.tags"
-            type="text"
-            :placeholder="t('admin.galleryForm.tagsPlaceholder')"
-            class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
-          />
-        </div>
-
-        <!-- ERROR -->
-        <p v-if="errorMessage" class="text-sm text-brand-600">{{ errorMessage }}</p>
-
-        <!-- ACTIONS -->
-        <div class="flex items-center justify-end gap-3 pt-2">
+    >
+      <div class="bg-white rounded-2xl w-full max-w-md shadow-[0_10px_40px_-12px_rgba(51,38,31,0.35)]">
+        <!-- Judul modal + tombol tutup -->
+        <div class="flex items-center justify-between px-6 py-5 border-b border-cream-200">
+          <h2 class="text-xl text-cocoa-900 truncate">{{ modalTitle }}</h2>
           <button
             type="button"
             @click="close"
-            :disabled="isSubmitting"
-            class="rounded-full border border-cream-300 px-5 py-2.5 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 transition disabled:opacity-50"
+            class="p-1 text-cocoa-400 hover:text-cocoa-900 transition"
+            :aria-label="t('common.close')"
           >
-            {{ t('admin.galleryForm.cancel') }}
-          </button>
-          <button
-            type="submit"
-            :disabled="isSubmitting || isUploading"
-            class="rounded-full bg-brand-500 text-white px-6 py-2.5 text-sm font-bold hover:bg-brand-600 transition disabled:opacity-50"
-          >
-            {{ isSubmitting ? t('admin.galleryForm.saving') : isEdit ? t('admin.galleryForm.saveChanges') : t('admin.galleryForm.addImage') }}
+            <X class="w-5 h-5" />
           </button>
         </div>
-      </form>
-    </div>
+
+        <form class="px-6 py-5 space-y-5" @submit.prevent="handleSubmit">
+          <!-- Judul foto (wajib) -->
+          <div>
+            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.galleryForm.title') }}</label>
+            <input
+              v-model="form.title"
+              type="text"
+              :placeholder="t('admin.galleryForm.titlePlaceholder')"
+              class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
+            />
+          </div>
+
+          <!-- Gambar (wajib). Input file-nya disembunyikan; yang diklik admin
+               adalah tombol di atasnya, supaya tampilannya seragam. -->
+          <div>
+            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">{{ t('admin.galleryForm.image') }}</label>
+            <button
+              type="button"
+              @click="openFilePicker"
+              :disabled="isUploading"
+              class="inline-flex items-center gap-2 rounded-full border border-cream-300 px-5 py-2 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 hover:border-brand-400 transition disabled:opacity-50"
+            >
+              <Upload class="w-4 h-4" />
+              {{ isUploading ? t('admin.galleryForm.uploading') : t('admin.galleryForm.upload') }}
+            </button>
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handleFileChange"
+            />
+
+            <!-- Pratinjau, muncul setelah unggahan selesai -->
+            <div v-if="form.imageUrl" class="flex items-center gap-3 mt-3">
+              <div class="w-16 h-16 rounded-lg border border-cream-300 overflow-hidden bg-cream-100">
+                <img :src="form.imageUrl" alt="Preview" class="w-full h-full object-cover" />
+              </div>
+              <button
+                type="button"
+                @click="removeImage"
+                class="w-8 h-8 rounded-full border border-cream-300 text-cocoa-500 flex items-center justify-center hover:border-brand-400 hover:text-brand-600 transition"
+                :aria-label="t('admin.galleryForm.removeImage')"
+              >
+                <X class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <!-- Deskripsi (opsional) -->
+          <div>
+            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
+              {{ t('admin.galleryForm.description') }} <span class="text-cocoa-400 font-normal">{{ t('admin.galleryForm.optional') }}</span>
+            </label>
+            <textarea
+              v-model="form.description"
+              rows="3"
+              class="w-full rounded-2xl border border-cream-300 px-4 py-3 text-sm focus:outline-none resize-none"
+            ></textarea>
+          </div>
+
+          <!-- Tag pencarian, diketik dipisah koma -->
+          <div>
+            <label class="block text-sm font-semibold text-cocoa-900 mb-1.5">
+              {{ t('admin.galleryForm.tags') }} <span class="text-cocoa-400 font-normal">{{ t('admin.galleryForm.tagsHint') }}</span>
+            </label>
+            <input
+              v-model="form.tags"
+              type="text"
+              :placeholder="t('admin.galleryForm.tagsPlaceholder')"
+              class="w-full rounded-full border border-cream-300 px-4 py-2.5 text-sm focus:outline-none"
+            />
+          </div>
+
+          <!-- Pesan gagal, baik dari validasi maupun dari server -->
+          <p v-if="errorMessage" class="text-sm text-brand-600">{{ errorMessage }}</p>
+
+          <!-- Tombol simpan dimatikan selama unggah/simpan berjalan -->
+          <div class="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              @click="close"
+              :disabled="isSubmitting"
+              class="rounded-full border border-cream-300 px-5 py-2.5 text-sm font-semibold text-cocoa-500 hover:bg-cream-50 transition disabled:opacity-50"
+            >
+              {{ t('admin.galleryForm.cancel') }}
+            </button>
+            <button
+              type="submit"
+              :disabled="isSubmitting || isUploading"
+              class="rounded-full bg-brand-500 text-white px-6 py-2.5 text-sm font-bold hover:bg-brand-600 transition disabled:opacity-50"
+            >
+              {{ isSubmitting ? t('admin.galleryForm.saving') : isEdit ? t('admin.galleryForm.saveChanges') : t('admin.galleryForm.addImage') }}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </Teleport>
 </template>

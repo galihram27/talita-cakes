@@ -1,7 +1,16 @@
 // scripts/generate-sitemap.mjs
-// Dijalankan sebagai `postbuild` (setelah vite-ssg build). Membaca file HTML
-// yang sudah diprerender di dist/ (termasuk halaman produk) lalu menulis
-// dist/sitemap.xml & dist/robots.txt. Tidak perlu backend — cukup daftar file.
+
+/**
+ * Membuat peta situs & aturan penelusuran untuk mesin pencari.
+ *
+ * Berjalan otomatis setiap selesai build. Cara kerjanya sederhana: menyusuri
+ * berkas HTML yang baru saja dihasilkan, lalu mengubah nama berkasnya jadi
+ * daftar alamat halaman.
+ *
+ * Karena bekerja dari berkas hasil build, halaman produk ikut terdaftar
+ * dengan sendirinya tanpa perlu bertanya ke server — apa pun yang berhasil
+ * dibangun jadi HTML pasti masuk daftar.
+ */
 import {
   readFileSync,
   writeFileSync,
@@ -11,10 +20,12 @@ import {
 } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
-const ROOT = process.cwd() // dijalankan dari folder frontend
+const ROOT = process.cwd() // selalu dijalankan dari folder frontend
 const DIST = join(ROOT, 'dist')
 
-// URL situs (absolut) untuk <loc> & baris Sitemap. Ambil dari env, lalu .env.
+// Alamat situs, dicari di environment variable dulu baru di berkas .env.
+// Urutan itu disengaja: saat deploy, alamatnya diberikan lewat environment
+// variable dan harus menang atas isi .env yang dipakai saat mengembangkan.
 function loadSiteUrl() {
   if (process.env.VITE_SITE_URL) return process.env.VITE_SITE_URL.replace(/\/+$/, '')
   try {
@@ -29,7 +40,7 @@ function loadSiteUrl() {
 
 const SITE_URL = loadSiteUrl()
 
-// Kumpulkan semua file .html di dalam dist/ (rekursif).
+// Kumpulkan semua berkas .html, termasuk yang ada di dalam subfolder
 function walk(dir) {
   const out = []
   for (const name of readdirSync(dir)) {
@@ -45,8 +56,11 @@ if (!existsSync(DIST)) {
   process.exit(0)
 }
 
-// dist/index.html -> "/", dist/menu.html -> "/menu",
-// dist/product/<id>.html -> "/product/<id>"
+// Ubah nama berkas jadi alamat halaman:
+//   dist/index.html          -> "/"
+//   dist/menu.html           -> "/menu"
+//   dist/product/<id>.html   -> "/product/<id>"
+// Halaman 404 dibuang, karena tidak ada gunanya didaftarkan ke mesin pencari.
 const paths = [
   ...new Set(
     walk(DIST)
@@ -75,9 +89,11 @@ ${urlEntries}
 writeFileSync(join(DIST, 'sitemap.xml'), sitemap)
 
 // ===== robots.txt =====
+// Halaman yang dilarang ditelusuri: yang isinya pribadi (keranjang, profil,
+// panel admin) dan yang tidak ada gunanya muncul di hasil pencarian
+// (login, daftar, atur ulang sandi).
 const robotsLines = [
   'User-agent: *',
-  // halaman privat/interaktif: jangan diindeks
   'Disallow: /admin',
   'Disallow: /cart',
   'Disallow: /checkout',

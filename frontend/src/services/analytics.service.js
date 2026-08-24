@@ -6,25 +6,28 @@ import {
 } from '@/lib/visitor'
 
 /**
- * POST /analytics/visit — lapor kunjungan sekali per sesi tab.
- * Tidak pernah throw: kegagalan analytics tidak boleh mengganggu halaman.
+ * Lapor satu kunjungan ke server, paling banyak sekali per tab.
+ *
+ * Sengaja tidak pernah melempar error: pencatatan pengunjung itu urusan
+ * sampingan, jadi kegagalannya tidak boleh sampai merusak halaman yang
+ * sedang dilihat orang.
  */
 export const reportVisit = async () => {
   if (hasReportedThisSession()) return
 
-  // tandai duluan supaya navigasi cepat tidak memicu request dobel
+  // Ditandai lebih dulu, sebelum permintaannya dikirim. Kalau ditandai
+  // belakangan, pengunjung yang cepat berpindah halaman bisa terhitung dua kali.
   markReportedThisSession()
 
   try {
     await api.post('/analytics/visit', { visitorId: getVisitorId() ?? undefined })
   } catch {
-    // diamkan
+    // Sengaja didiamkan, lihat penjelasan di atas
   }
 }
 
-/**
- * GET /analytics/dashboard?from=&to=&groupBy=day|month
- */
+// Data grafik untuk dashboard admin. Rentang tanggal & pengelompokan
+// (harian/bulanan) dikirim sebagai parameter.
 export const getDashboardStats = async (params = {}) => {
   const { data } = await api.get('/analytics/dashboard', { params })
   return data.data

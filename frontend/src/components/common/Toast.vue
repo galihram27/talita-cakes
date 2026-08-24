@@ -2,8 +2,13 @@
 import { watch, onBeforeUnmount, ref } from 'vue'
 import { CheckCircle2 } from 'lucide-vue-next'
 
-// Toast sukses ringan: muncul di kanan-bawah lalu hilang otomatis.
-// Dikontrol lewat v-model:message — set string untuk menampilkan, '' untuk sembunyi.
+/**
+ * Notifikasi kecil yang muncul sebentar lalu hilang sendiri.
+ *
+ * Cara pakai: `v-model:message`. Isi dengan teks untuk memunculkannya,
+ * dan komponen ini yang mengosongkannya lagi setelah waktunya habis —
+ * jadi pemanggil tidak perlu mengurus penyembunyiannya.
+ */
 const props = defineProps({
   message: { type: String, default: '' },
   duration: { type: Number, default: 2600 },
@@ -17,6 +22,8 @@ let hideTimer = null
 watch(
   () => props.message,
   (msg) => {
+    // Batalkan hitungan lama dulu. Tanpa ini, notifikasi kedua yang datang
+    // cepat akan ikut terhapus oleh timer notifikasi pertama.
     clearTimeout(hideTimer)
     if (msg) {
       visible.value = true
@@ -30,6 +37,8 @@ watch(
   }
 )
 
+// Hentikan timer kalau komponen keburu hilang, biar tidak memanggil
+// emit ke komponen yang sudah tidak ada
 onBeforeUnmount(() => clearTimeout(hideTimer))
 </script>
 

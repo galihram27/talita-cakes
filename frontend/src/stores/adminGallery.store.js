@@ -5,8 +5,19 @@ import { getGalleries } from '@/services/gallery.service'
 const LIMIT = 20
 const STORAGE_KEY = 'tc.adminGallery'
 
-// Persist hanya view default (page 1, tanpa search) supaya setelah refresh (F5)
-// gallery admin langsung tampil tanpa loading; data baru di-refresh diam-diam.
+/**
+ * Simpanan daftar foto galeri untuk halaman ADMIN.
+ *
+ * Dipisah dari simpanan galeri publik walau datanya dari sumber yang sama,
+ * karena keduanya punya kata kunci pencarian & posisi halaman sendiri-sendiri.
+ * Kalau digabung, mencari sesuatu di panel admin akan ikut mengubah tampilan
+ * galeri yang dilihat pengunjung.
+ *
+ * Seperti versi publiknya, yang disimpan hanya tampilan awal tanpa pencarian.
+ */
+
+// Akses penyimpanan peramban dibungkus try/catch, karena di mode penyamaran
+// atau saat penyimpanan penuh ia bisa melempar error
 const loadPersisted = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -23,13 +34,10 @@ const savePersisted = (items, totalPages, totalItems) => {
       JSON.stringify({ items, totalPages, totalItems })
     )
   } catch {
-    // storage penuh / privat mode — abaikan, cache in-memory tetap jalan
+    // Lihat catatan di atas
   }
 }
 
-// Cache list gallery untuk halaman ADMIN (terpisah dari gallery.store publik
-// karena posisi search & pagination-nya beda). Pola: stale-while-revalidate —
-// balik ke halaman admin gallery langsung tampil tanpa loading.
 export const useAdminGalleryStore = defineStore('adminGallery', {
   state: () => {
     const persisted = loadPersisted()
@@ -39,11 +47,12 @@ export const useAdminGalleryStore = defineStore('adminGallery', {
       page: 1,
       totalPages: persisted?.totalPages ?? 1,
       totalItems: persisted?.totalItems ?? 0,
-      hasLoaded: !!persisted, // true kalau ada cache localStorage → skip loading
+      hasLoaded: !!persisted,
     }
   },
 
   getters: {
+    // Masih ada halaman berikutnya? Dipakai tombol "muat lebih banyak"
     hasMore: (state) => state.page < state.totalPages,
   },
 

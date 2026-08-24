@@ -1,44 +1,37 @@
 // src/services/gallery.service.js
 import api from '@/lib/api'
 
-/**
- * GET /galleries?search=&page=&limit=
- * Mengembalikan { message, data, meta } sesuai response backend.
- */
+// Pemanggilan endpoint galeri. Membaca terbuka untuk umum; menambah,
+// mengubah, dan menghapus hanya bisa dilakukan admin.
+
+// Daftar foto galeri, bisa dicari & dibagi per halaman.
+// Ini satu-satunya yang mengembalikan respons utuh, karena pemanggilnya
+// juga butuh `meta` berisi jumlah total & jumlah halaman.
 export const getGalleries = async (params = {}) => {
   const { data } = await api.get('/galleries', { params })
   return data
 }
 
-/**
- * GET /galleries/:id
- * Dipakai kalau butuh detail terbaru dari server (bukan dari list yang sudah ada di memori).
- */
+// Satu foto, diambil langsung dari server. Dipakai kalau butuh data
+// terbaru, bukan yang sudah terlanjur ada di daftar.
 export const getGalleryById = async (id) => {
   const { data } = await api.get(`/galleries/${id}`)
   return data.data
 }
 
-/**
- * POST /galleries (admin only)
- * payload: { title, imageUrl, description?, tags? }
- */
+// Tambah foto baru (admin). payload: { title, imageUrl, description?, tags? }
 export const createGallery = async (payload) => {
   const { data } = await api.post('/galleries', payload)
   return data.data
 }
 
-/**
- * PATCH /galleries/:id (admin only)
- */
+// Ubah sebagian data foto (admin)
 export const updateGallery = async (id, payload) => {
   const { data } = await api.patch(`/galleries/${id}`, payload)
   return data.data
 }
 
-/**
- * DELETE /galleries/:id (admin only)
- */
+// Hapus foto (admin)
 export const deleteGallery = async (id) => {
   await api.delete(`/galleries/${id}`)
 }

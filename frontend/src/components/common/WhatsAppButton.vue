@@ -1,8 +1,13 @@
 <script setup>
 import { STORE_INFO } from '@/config/constants'
+
+// Tombol WhatsApp melayang di pojok kanan bawah, tampil di semua halaman.
+// Logonya ditulis sebagai SVG langsung di sini, bukan file gambar, supaya
+// tidak perlu unduhan tambahan dan warnanya bisa diatur lewat CSS.
 </script>
 
 <template>
+  <!-- Tidak ditampilkan sama sekali kalau nomornya belum diisi di config -->
   <a
     v-if="STORE_INFO.whatsappNumber"
     :href="`https://wa.me/${STORE_INFO.whatsappNumber}`"

@@ -4,16 +4,20 @@ import { useI18n } from 'vue-i18n'
 import { Check } from 'lucide-vue-next'
 import { FLAVOR_DESCRIPTIONS } from '@/config/constants'
 
-// Grid pilihan flavor (TYPE2 & TYPE4) — gaya tombol radio dari desain.
-// Mode multiple (mis. goodiebag): modelValue berupa array, user memilih beberapa
-// rasa sampai `max`.
+/**
+ * Pemilih rasa. Punya dua cara kerja:
+ * - biasa: pilih satu rasa, seperti tombol radio
+ * - `multiple` (goodiebag): pilih beberapa rasa sekaligus, dibatasi `max`
+ *
+ * Bentuk `modelValue` mengikuti caranya — teks untuk pilihan tunggal,
+ * daftar untuk pilihan jamak.
+ */
 const props = defineProps({
-  // string untuk mode tunggal; array untuk mode multiple
   modelValue: { type: [String, Array], default: '' },
   flavors: { type: Array, required: true },
   stepLabel: { type: String, default: '' },
   multiple: { type: Boolean, default: false },
-  max: { type: Number, default: 0 }, // batas jumlah pilihan (0 = tanpa batas)
+  max: { type: Number, default: 0 }, // 0 berarti tanpa batas
   hint: { type: String, default: '' }, // teks kecil di samping label, mis. "pilih 1-4"
 })
 
@@ -23,28 +27,33 @@ const { t, locale } = useI18n()
 const isSelected = (f) =>
   props.multiple ? (props.modelValue ?? []).includes(f) : props.modelValue === f
 
+// Pilihan tunggal langsung mengganti; pilihan jamak menambah atau
+// membuang rasa dari daftar
 const toggle = (f) => {
   if (!props.multiple) {
     emit('update:modelValue', f)
     return
   }
+
   const current = [...(props.modelValue ?? [])]
   const idx = current.indexOf(f)
   if (idx !== -1) {
     current.splice(idx, 1)
   } else {
-    if (props.max && current.length >= props.max) return // sudah mencapai batas
+    // Sudah mencapai batas: klik diabaikan diam-diam. Rasa yang sudah
+    // terpilih tetap bisa dilepas untuk menukarnya.
+    if (props.max && current.length >= props.max) return
     current.push(f)
   }
   emit('update:modelValue', current)
 }
 
-// Popup penjelasan rasa
+// Panduan rasa, muncul saat tanda tanya di samping label diklik
 const showGuide = ref(false)
 
 const lang = computed(() => (locale.value?.startsWith('id') ? 'id' : 'en'))
 
-// hanya tampilkan flavor yang punya penjelasan
+// Rasa yang belum ada penjelasannya tidak ikut ditampilkan di panduan
 const guideItems = computed(() =>
   props.flavors
     .filter((f) => FLAVOR_DESCRIPTIONS[f])

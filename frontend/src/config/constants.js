@@ -1,20 +1,42 @@
 // src/config/constants.js
 
-// Info toko untuk halaman About Us dll.
-// Isi yang tersedia saja — field kosong otomatis disembunyikan di halaman.
+/**
+ * Nilai tetap yang dipakai di banyak tempat: identitas toko, tarif ongkir,
+ * dan daftar rasa beserta penjelasannya.
+ *
+ * PENTING: sebagian isi berkas ini menyalin aturan yang sama dari backend
+ * (ongkir & daftar rasa). Kalau salah satunya diubah, yang lain harus ikut,
+ * kalau tidak angka yang dilihat pembeli berbeda dari yang dihitung server.
+ */
+
+/**
+ * Identitas toko. Diambil dari environment variable supaya bisa diganti
+ * tanpa menyunting kode.
+ *
+ * Yang kosong otomatis tidak ditampilkan — misalnya kalau `tiktok` belum
+ * diisi, ikon TikTok tidak muncul di footer.
+ */
 export const STORE_INFO = {
   since: 2012,
-  whatsappNumber: import.meta.env.VITE_OWNER_WHATSAPP_NUMBER || '', // format internasional tanpa "+", contoh: 6281234567890
-  instagram: import.meta.env.VITE_OWNER_INSTAGRAM || '', // username tanpa "@", contoh: talitascake
-  threads: import.meta.env.VITE_OWNER_THREADS || '', // username tanpa "@", contoh: talitacakes
-  tiktok: import.meta.env.VITE_OWNER_TIKTOK || '', // username tanpa "@", contoh: talitacakesdepok
-  address: import.meta.env.VITE_STORE_ADDRESS || '', // alamat toko / area pengantaran
-  // Sertifikat Halal BPJPH — bisa dioverride lewat env.
+  // Format internasional tanpa "+", mis. 6281234567890 (dituntut tautan wa.me)
+  whatsappNumber: import.meta.env.VITE_OWNER_WHATSAPP_NUMBER || '',
+  // Ketiganya nama pengguna tanpa "@"
+  instagram: import.meta.env.VITE_OWNER_INSTAGRAM || '',
+  threads: import.meta.env.VITE_OWNER_THREADS || '',
+  tiktok: import.meta.env.VITE_OWNER_TIKTOK || '',
+  address: import.meta.env.VITE_STORE_ADDRESS || '',
+  // Nomor sertifikat halal BPJPH. Punya nilai bawaan karena jarang berubah,
+  // tapi tetap bisa diganti lewat env.
   halalCertNumber: import.meta.env.VITE_HALAL_CERT_NUMBER || '3211000038200522',
 }
 
-// Tarif ongkir berjenjang berdasarkan radius dari toko
-// (mirror dari backend order.helper.js -> calculateDeliveryFee)
+/**
+ * Tarif ongkir berjenjang menurut jarak dari toko, untuk ditampilkan di
+ * halaman informasi.
+ *
+ * Ini hanya SALINAN untuk dibaca pembeli. Ongkir yang sebenarnya dihitung
+ * server (backend order.helper.js), jadi kedua daftar ini harus selalu sama.
+ */
 export const MAX_DELIVERY_DISTANCE_KM = 25
 export const DELIVERY_FEE_TIERS = [
   { label: 'Radius < 5 km', fee: 30000 },
@@ -24,8 +46,8 @@ export const DELIVERY_FEE_TIERS = [
   { label: 'Radius 21–25 km', fee: 75000 },
 ]
 
-// daftar rasa yang bisa dipilih user untuk TYPE2 (petite cake custom decor)
-// (mirror dari backend product.constant.js -> TYPE2_FLAVORS)
+// Rasa untuk petite cake custom decor (TYPE2).
+// Salinan dari backend product.constant.js — ubah keduanya bersamaan.
 export const TYPE2_FLAVORS = [
   'Double Choco',
   'Choco Blueberry',
@@ -33,8 +55,7 @@ export const TYPE2_FLAVORS = [
   'Vanilla Strawberry',
 ]
 
-// daftar rasa yang bisa dipilih user untuk TYPE4 (custom cake)
-// (mirror dari backend product.constant.js -> CUSTOM_FLAVORS)
+// Rasa untuk kue custom (TYPE4). Sama seperti di atas, salinan dari backend.
 export const CUSTOM_FLAVORS = [
   'Blackforest',
   'Double Choco Cream',
@@ -44,9 +65,13 @@ export const CUSTOM_FLAVORS = [
   'Oreo Cheese',
 ]
 
-// Penjelasan rasa untuk popup di halaman detail produk (TYPE2, TYPE4 & TYPE6).
-// Rasa tanpa entri di sini tetap bisa dipilih, hanya saja tidak muncul di
-// popup panduan rasa (lihat ProductFlavorPicker -> guideItems).
+/**
+ * Penjelasan tiap rasa, muncul di panduan rasa pada halaman produk.
+ *
+ * Kuncinya HARUS sama persis dengan nama rasa di daftar-daftar di atas.
+ * Rasa yang tidak punya penjelasan di sini tetap bisa dipilih pembeli —
+ * ia hanya tidak ikut tampil di panduan.
+ */
 export const FLAVOR_DESCRIPTIONS = {
   'Double Choco': {
     id: 'Cake coklat lembut dengan lapisan Homemade Chocolate Ganache yang kaya rasa dan lumer di setiap gigitan.',
@@ -65,8 +90,9 @@ export const FLAVOR_DESCRIPTIONS = {
     en: 'Soft vanilla cake layered with Strawberry Jam for a light, sweet, and fruity flavor.',
   },
 
-  // Rasa TYPE6 (cupcakes). Namanya sengaja berbeda dari rasa cake di atas
-  // meski mirip, karena teksnya menyebut "cupcake" dan "isian", bukan "lapisan".
+  // Rasa cupcake. Namanya sengaja dibedakan dari rasa kue di atas walau
+  // mirip, karena penjelasannya menyebut "cupcake" dan "isian",
+  // bukan "cake" dan "lapisan".
   'Double Choco Cupcakes': {
     id: 'Cupcake coklat lembut dengan isian Homemade Chocolate Ganache yang kaya rasa dan lumer di setiap gigitan.',
     en: 'Soft chocolate cupcake filled with Homemade Chocolate Ganache for a rich and indulgent chocolate flavor.',

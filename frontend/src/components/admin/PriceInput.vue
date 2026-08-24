@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 
-// input harga dengan pemisah ribuan (150000 -> "150.000"), value tetap Number
+// Input harga: yang dilihat admin berpemisah ribuan ("150.000"),
+// tapi nilai yang dikirim keluar tetap angka biasa (150000).
 const props = defineProps({
   modelValue: { type: Number, default: null },
   placeholder: { type: String, default: '' },
@@ -18,10 +19,13 @@ const format = (value) =>
 const display = computed(() => format(props.modelValue))
 
 const onInput = (e) => {
+  // Buang semua selain angka, jadi huruf & tanda baca otomatis terabaikan
   const digits = e.target.value.replace(/\D/g, '')
   const value = digits ? Number(digits) : null
   emit('update:modelValue', value)
-  // paksa tampilan tetap terformat walau value tidak berubah (mis. user ketik huruf)
+  // Tulis ulang isi input secara manual. Kalau tidak, saat admin mengetik
+  // huruf nilainya tidak berubah sehingga Vue tidak me-render ulang, dan
+  // huruf itu tertinggal di layar.
   e.target.value = format(value)
 }
 </script>

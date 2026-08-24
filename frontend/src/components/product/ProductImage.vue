@@ -5,19 +5,26 @@ import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
+/**
+ * Galeri foto di halaman produk: satu foto besar, panah kiri-kanan,
+ * dan deretan foto kecil di bawahnya.
+ */
 const props = defineProps({
-  // foto utama / cover (fallback untuk produk lama yang belum punya galeri)
+  // Foto tunggal, dipakai produk lama yang dibuat sebelum ada galeri
   image: { type: String, default: '' },
-  // seluruh foto produk; kalau ada, ditampilkan sebagai galeri
   images: { type: Array, default: () => [] },
   alt: { type: String, default: '' },
-  // URL foto yang ingin ditampilkan dari luar (mis. TYPE6: memilih isi box
-  // menggeser galeri ke foto box tsb). Hanya mengarahkan, tidak mengunci —
-  // pengunjung tetap bebas menggeser galeri setelahnya.
+  /**
+   * Foto yang ingin ditampilkan atas permintaan komponen induk — misalnya
+   * saat pembeli memilih isi box, galeri ikut berpindah ke foto box itu.
+   * Sifatnya hanya mengarahkan, bukan mengunci: setelah itu pembeli tetap
+   * bebas menggeser galeri sendiri.
+   */
   activeUrl: { type: String, default: '' },
 })
 
-// daftar foto final: pakai images kalau ada, kalau tidak fallback ke image tunggal
+// Utamakan galeri; kalau kosong, foto tunggal diperlakukan sebagai
+// galeri berisi satu foto agar sisa kode tidak perlu membedakannya
 const gallery = computed(() => {
   if (Array.isArray(props.images) && props.images.length) return props.images
   return props.image ? [props.image] : []
@@ -25,7 +32,7 @@ const gallery = computed(() => {
 
 const activeIndex = ref(0)
 
-// reset ke foto pertama kalau galeri berganti (mis. pindah produk)
+// Pindah produk -> kembali ke foto pertama, jangan meneruskan posisi lama
 watch(gallery, () => {
   activeIndex.value = 0
 })
@@ -33,10 +40,12 @@ watch(gallery, () => {
 const activeImage = computed(() => gallery.value[activeIndex.value] ?? '')
 const hasMultiple = computed(() => gallery.value.length > 1)
 
-// arah geser transisi: 'left' = foto baru masuk dari kanan, 'right' = dari kiri
+// Menentukan arah animasi: foto baru masuk dari kanan atau dari kiri
 const slideDirection = ref('left')
 
-// navigasi memutar (dari foto terakhir kembali ke pertama, dan sebaliknya)
+// Perpindahan foto berputar — dari foto terakhir lanjut ke foto pertama.
+// Sisa bagi (%) yang membuatnya berputar; +len pada prev supaya hasilnya
+// tidak negatif saat mundur dari foto pertama.
 const prev = () => {
   const len = gallery.value.length
   if (len < 2) return
@@ -55,9 +64,9 @@ const goTo = (index) => {
   activeIndex.value = index
 }
 
-// Arahkan galeri ke foto yang diminta induk. Kalau URL-nya kosong atau tidak
-// ada di galeri (mis. varian belum diberi foto), galeri dibiarkan pada foto
-// yang sedang tampil — lebih baik daripada melompat ke foto yang keliru.
+// Ikuti permintaan induk. Kalau fotonya tidak ada di galeri — misalnya varian
+// itu belum diberi foto — galeri dibiarkan pada foto yang sedang tampil,
+// karena itu lebih baik daripada melompat ke foto yang keliru.
 watch(
   () => props.activeUrl,
   (url) => {
@@ -68,7 +77,8 @@ watch(
   { immediate: true }
 )
 
-// tombol panah tampil saat pointer di atas foto, lalu hilang 2 detik setelah pointer keluar
+// Panah hanya muncul saat kursor berada di atas foto, lalu menghilang sendiri
+// dua detik setelah kursor pergi — biar tidak menutupi fotonya
 const controlsVisible = ref(false)
 let hideControlsTimer = null
 
@@ -87,8 +97,11 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
 </script>
 
 <template>
+  <!-- sticky: di layar lebar, foto ikut menempel saat pembeli menggulir
+       pilihan ukuran & rasa di sebelahnya -->
   <div class="w-full max-w-[440px] mx-auto md:mx-0 md:sticky md:top-24">
-    <!-- FOTO UTAMA -->
+    <!-- Foto besar. object-contain dipakai supaya kue tidak terpotong,
+         berapa pun perbandingan sisi foto aslinya. -->
     <div
       class="relative aspect-square rounded-[20px] border border-cream-300 overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_10px,#F0E3D6_10px_20px)]"
       @mouseenter="showControls"
@@ -110,7 +123,7 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
         {{ alt || t('product.noImage') }}
       </span>
 
-      <!-- PANAH KIRI / KANAN (hanya kalau foto lebih dari 1) -->
+      <!-- Panah & indikator hanya berguna kalau fotonya lebih dari satu -->
       <template v-if="hasMultiple">
         <button
           type="button"
@@ -131,7 +144,7 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
           <ChevronRight class="w-5 h-5" />
         </button>
 
-        <!-- indikator posisi -->
+        <!-- Penanda "3 / 8" di pojok foto -->
         <span
           class="absolute bottom-3 right-3 rounded-full bg-cocoa-900/60 text-white text-xs px-2.5 py-1"
         >
@@ -140,7 +153,8 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
       </template>
     </div>
 
-    <!-- THUMBNAIL (hanya tampil kalau foto lebih dari 1) -->
+    <!-- Deretan foto kecil. Di sini object-cover (bukan contain) supaya
+         semuanya sama besar dan berjajar rapi. -->
     <div v-if="hasMultiple" class="flex gap-2.5 mt-3 flex-wrap">
       <button
         v-for="(img, index) in gallery"
@@ -157,7 +171,8 @@ onBeforeUnmount(() => clearTimeout(hideControlsTimer))
 </template>
 
 <style scoped>
-/* geser antar foto: foto lama keluar sambil foto baru masuk dari sisi berlawanan */
+/* Animasi geser antar foto. Dibuat dua rangkaian karena arahnya harus
+   mengikuti tombol yang ditekan: maju bergeser ke kiri, mundur ke kanan. */
 .photo-slide-left-enter-active,
 .photo-slide-left-leave-active,
 .photo-slide-right-enter-active,

@@ -5,8 +5,17 @@ import { Upload, Images } from 'lucide-vue-next'
 import GalleryPickerModal from './GalleryPickerModal.vue'
 import { uploadImage } from '@/services/upload.service'
 
+/**
+ * Pemilih acuan desain kue, untuk produk yang dekorasinya bisa dipesan
+ * sesuai keinginan (TYPE2, TYPE4, sebagian cupcake).
+ *
+ * Pembeli punya dua cara: mengunggah fotonya sendiri, atau memilih dari
+ * galeri karya toko. Keduanya menghasilkan bentuk yang sama, hanya `source`
+ * yang membedakan — itu dipakai untuk menulis keterangan di bawah pratinjau.
+ */
 defineProps({
-  modelValue: { type: Object, default: null }, // { url, source: 'upload' | 'gallery' }
+  // { url, source: 'upload' | 'gallery' } — null berarti belum memilih
+  modelValue: { type: Object, default: null },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -21,6 +30,7 @@ const openFilePicker = () => fileInputRef.value?.click()
 
 const handleFileChange = async (e) => {
   const file = e.target.files?.[0]
+  // Kosongkan input file supaya memilih file yang sama dua kali tetap terbaca
   e.target.value = ''
   if (!file) return
 
@@ -54,7 +64,7 @@ const remove = () => emit('update:modelValue', null)
       {{ t('product.designRef.desc') }}
     </p>
 
-    <!-- pilihan sumber (belum ada referensi) -->
+    <!-- Dua tombol pilihan, hanya tampil selama belum ada acuan yang dipilih -->
     <div v-if="!modelValue" class="flex flex-wrap gap-2.5">
       <button
         type="button"
@@ -79,7 +89,7 @@ const remove = () => emit('update:modelValue', null)
 
     <p v-if="uploadError" class="text-sm text-brand-600 mt-2">{{ uploadError }}</p>
 
-    <!-- preview referensi terpilih -->
+    <!-- Setelah memilih, kedua tombol di atas berganti jadi pratinjau ini -->
     <div
       v-if="modelValue"
       class="flex items-center gap-3.5 border border-cream-300 bg-white rounded-xl px-3.5 py-3"

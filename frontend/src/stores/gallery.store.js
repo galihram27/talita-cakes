@@ -5,8 +5,17 @@ import { getGalleries } from '@/services/gallery.service'
 const LIMIT = 20
 const STORAGE_KEY = 'tc.gallery'
 
-// Persist hanya view default (page 1, tanpa search) supaya setelah refresh (F5)
-// gallery langsung tampil tanpa loading; data baru di-refresh diam-diam.
+/**
+ * Simpanan daftar foto galeri untuk halaman publik.
+ *
+ * Yang disimpan HANYA tampilan awalnya — halaman pertama tanpa kata kunci
+ * pencarian. Hasil pencarian tidak ikut disimpan karena kata kuncinya nyaris
+ * tak terbatas; menyimpan semuanya cuma memenuhi penyimpanan tanpa banyak
+ * terpakai ulang.
+ */
+
+// Akses penyimpanan peramban dibungkus try/catch, karena di mode penyamaran
+// atau saat penyimpanan penuh ia bisa melempar error
 const loadPersisted = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -20,12 +29,10 @@ const savePersisted = (items, totalPages) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, totalPages }))
   } catch {
-    // storage penuh / privat mode — abaikan, cache in-memory tetap jalan
+    // Lihat catatan di atas
   }
 }
 
-// Cache list gallery (termasuk posisi search & pagination) supaya balik ke
-// halaman Gallery langsung tampil tanpa loading. Pola: stale-while-revalidate.
 export const useGalleryStore = defineStore('gallery', {
   state: () => {
     const persisted = loadPersisted()
@@ -34,11 +41,12 @@ export const useGalleryStore = defineStore('gallery', {
       search: '',
       page: 1,
       totalPages: persisted?.totalPages ?? 1,
-      hasLoaded: !!persisted, // true kalau ada cache localStorage → skip loading
+      hasLoaded: !!persisted,
     }
   },
 
   getters: {
+    // Masih ada halaman berikutnya? Dipakai tombol "muat lebih banyak"
     hasMore: (state) => state.page < state.totalPages,
   },
 

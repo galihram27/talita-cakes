@@ -11,6 +11,11 @@ import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
 import { CUSTOM_FLAVORS } from '@/config/constants'
 
+/**
+ * Detail kue custom: pembeli memilih bentuk, ukuran, dan rasa, serta boleh
+ * melampirkan acuan desain. Ini tipe dengan pilihan terbanyak di antara
+ * produk kue.
+ */
 const props = defineProps({
   product: { type: Object, required: true },
 })
@@ -32,8 +37,9 @@ const selectedVariant = computed(() =>
   props.product.variants?.find((v) => v.id === selectedVariantId.value) ?? null
 )
 
-// Foto yang mewakili bentuk terpilih. Admin menetapkan satu foto per bentuk,
-// dilekatkan ke semua ukuran bentuk tsb — jadi cukup ambil yang pertama ada.
+// Foto yang mewakili bentuk terpilih, dipakai untuk menggeser galeri.
+// Admin menetapkan satu foto per bentuk lalu foto itu dilekatkan ke semua
+// ukuran bentuk tersebut, jadi cukup ambil varian pertama yang punya foto.
 const shapeImage = computed(
   () =>
     props.product.variants?.find((v) => v.shape === selectedShape.value && v.image)

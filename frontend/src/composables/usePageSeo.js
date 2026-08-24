@@ -1,8 +1,20 @@
 import { useSeoMeta, useHead } from '@unhead/vue'
 import { SITE_NAME, DEFAULT_DESCRIPTION, absUrl } from '@/config/seo'
 
-// SEO ringkas untuk halaman statis: title + description + Open Graph + canonical.
-// titleTemplate global (di App.vue) yang menyisipkan nama situs pada <title>.
+/**
+ * Pasang judul & keterangan halaman untuk mesin pencari dan pratinjau
+ * tautan di media sosial.
+ *
+ * Dipakai halaman-halaman sederhana yang isinya tetap. Halaman produk tidak
+ * memakai ini karena keterangannya disusun dari data produknya sendiri.
+ *
+ * Nama toko tidak perlu ditulis di `title` — App.vue yang menambahkannya
+ * secara otomatis ke setiap judul halaman.
+ *
+ * `path` opsional. Kalau diisi, dipasang penunjuk alamat resmi halaman ini,
+ * yang memberi tahu mesin pencari alamat mana yang harus dicatat bila halaman
+ * yang sama bisa dibuka dari beberapa alamat berbeda.
+ */
 export function usePageSeo({ title, description, path } = {}) {
   const desc = description || DEFAULT_DESCRIPTION
   useSeoMeta({

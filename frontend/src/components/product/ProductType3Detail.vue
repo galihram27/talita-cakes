@@ -8,6 +8,12 @@ import ProductVariantPicker from './ProductVariantPicker.vue'
 import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
 
+/**
+ * Detail kue yang tersedia dalam banyak bentuk & ukuran. Rasanya sudah
+ * ditetapkan admin, jadi yang dipilih pembeli hanya varian.
+ *
+ * Harga baru muncul setelah ukuran dipilih, karena tiap ukuran beda harga.
+ */
 const props = defineProps({
   product: { type: Object, required: true },
 })
@@ -27,8 +33,9 @@ const selectedVariant = computed(() =>
   props.product.variants?.find((v) => v.id === selectedVariantId.value) ?? null
 )
 
-// Foto yang mewakili bentuk terpilih. Admin menetapkan satu foto per bentuk,
-// dilekatkan ke semua ukuran bentuk tsb — jadi cukup ambil yang pertama ada.
+// Foto yang mewakili bentuk terpilih, dipakai untuk menggeser galeri.
+// Admin menetapkan satu foto per bentuk lalu foto itu dilekatkan ke semua
+// ukuran bentuk tersebut, jadi cukup ambil varian pertama yang punya foto.
 const shapeImage = computed(
   () =>
     props.product.variants?.find((v) => v.shape === selectedShape.value && v.image)

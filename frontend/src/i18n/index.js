@@ -1,47 +1,63 @@
-import { createI18n } from "vue-i18n";
-import en from "@/locales/en";
-import id from "@/locales/id";
-// Teks yang bisa diedit owner (per halaman) ditaruh di folder locales/id/.
-// File-file ini MENIMPA bagian yang sama di id.js. id.js sendiri tidak diubah.
-import idAbout from "@/locales/id/about.js";
+import { createI18n } from 'vue-i18n'
+import en from '@/locales/en'
+import id from '@/locales/id'
+import idAbout from '@/locales/id/about.js'
 
-// Pakai semua teks id.js, lalu timpa bagian tertentu dengan file editable owner.
+/**
+ * Pengaturan dua bahasa situs: Indonesia dan Inggris.
+ *
+ * Sebagian teks Indonesia dipisah ke folder locales/id/ — itu teks yang
+ * sewaktu-waktu ingin disunting pemilik toko sendiri. Berkas di folder itu
+ * MENIMPA bagian yang sama di id.js, sehingga id.js tidak perlu ikut diubah
+ * dan tetap rapi sebagai daftar teks utuh.
+ */
 const idMessages = {
   ...id,
   about: idAbout,
-};
+}
 
-const STORAGE_KEY = "talita_locale";
+const STORAGE_KEY = 'talita_locale'
 
-// Saat prerender (Node) tidak ada localStorage → default ke "id".
+/**
+ * Bahasa yang dipakai saat halaman dibuka.
+ *
+ * Diambil dari pilihan terakhir pengunjung. Saat halaman dibangun jadi HTML
+ * tidak ada peramban sehingga tidak ada pilihan tersimpan — di situ selalu
+ * bahasa Indonesia.
+ */
 const savedLocale = import.meta.env.SSR
   ? null
-  : localStorage.getItem(STORAGE_KEY);
+  : localStorage.getItem(STORAGE_KEY)
 const defaultLocale =
-  savedLocale === "en" || savedLocale === "id" ? savedLocale : "id";
+  savedLocale === 'en' || savedLocale === 'id' ? savedLocale : 'id'
 
 const i18n = createI18n({
   legacy: false,
   globalInjection: true,
   locale: defaultLocale,
-  fallbackLocale: "en",
+  // Teks yang belum diterjemahkan jatuh ke bahasa Inggris,
+  // supaya tidak muncul kode kunci mentah di layar
+  fallbackLocale: 'en',
   messages: { en, id: idMessages },
-});
+})
 
+// Ganti bahasa sekaligus mengingatnya untuk kunjungan berikutnya.
+// Penanda `lang` pada halaman ikut diperbarui — itu yang dipakai pembaca layar
+// dan mesin pencari untuk mengetahui bahasa isinya.
 export function setLocale(locale) {
-  i18n.global.locale.value = locale;
-  // localStorage & document hanya ada di browser
+  i18n.global.locale.value = locale
   if (!import.meta.env.SSR) {
-    localStorage.setItem(STORAGE_KEY, locale);
-    document.documentElement.setAttribute("lang", locale);
+    localStorage.setItem(STORAGE_KEY, locale)
+    document.documentElement.setAttribute('lang', locale)
   }
 }
 
-// util untuk kode di luar komponen (stores/services)
-export const t = (key, ...args) => i18n.global.t(key, ...args);
+// Untuk mengambil teks terjemahan dari luar komponen, mis. dari store
+export const t = (key, ...args) => i18n.global.t(key, ...args)
 
+// Pasang penanda bahasa awal saat halaman pertama kali dibuka
 if (!import.meta.env.SSR) {
-  document.documentElement.setAttribute("lang", defaultLocale);
+  document.documentElement.setAttribute('lang', defaultLocale)
 }
 
-export default i18n;
+export default i18n

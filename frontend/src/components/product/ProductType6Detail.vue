@@ -19,19 +19,27 @@ import {
   goodiebagFlavorLimit,
 } from '@/config/productOptions'
 
+/**
+ * Detail cupcake. Cara memilihnya berbeda menurut kategori:
+ * - Goodiebag : dijual per paket dengan pembelian minimal, tanpa pilihan isi
+ *               box. Rasanya dipilih beberapa sekaligus (Original) atau
+ *               tepat satu (Custom), tergantung sub-kategorinya.
+ * - American Butter : rasa & dekorasi sudah ditetapkan admin.
+ * - Kategori lain   : pembeli memilih isi box, rasa, dan acuan desain.
+ */
 const props = defineProps({
   product: { type: Object, required: true },
 })
 
 const { t } = useI18n()
 
-// Goodiebag: tidak ada pilihan isi box (harga tunggal per box) dan pembelian
-// minimal sejumlah box. Varian tunggalnya dipilih otomatis.
+// Goodiebag dijual per paket: tidak ada pilihan isi box, dan ada jumlah
+// pembelian minimal. Varian tunggalnya dipilih otomatis.
 const isGoodiebag = computed(() => isGoodiebagCupcake(props.product.category))
 const minQty = computed(() => goodiebagMinQty(props.product.category))
 
-// Goodiebag: batas jumlah rasa mengikuti sub-kategori produk.
-// Original = pilih 1-4 rasa (jamak); Custom = pilih tepat 1 rasa (tunggal).
+// Berapa rasa yang boleh dipilih, ditentukan sub-kategori goodiebag:
+// Original boleh 1 sampai 4 rasa, Custom tepat satu rasa.
 const flavorLimit = computed(() => goodiebagFlavorLimit(props.product.subcategory))
 const isSingleFlavor = computed(() => isGoodiebag.value && flavorLimit.value.max === 1)
 const isMultiFlavor = computed(() => isGoodiebag.value && flavorLimit.value.max > 1)
@@ -47,17 +55,18 @@ const isSubmitting = ref(false)
 const submitError = ref('')
 const submitSuccess = ref(false)
 
-// American Butter: rasa & dekorasi sudah fix dari admin, user tidak memilih.
-// Kategori lain: user pilih rasa (daftarnya beda per kategori) + unggah dekorasi.
+// American Butter sudah ditetapkan rasa & dekorasinya oleh admin, jadi
+// pembeli tidak memilih apa pun. Kategori lain memilih sendiri.
 const flavorIsFixed = computed(() => isFixedFlavorCupcake(props.product.category))
-// Goodiebag: rasa mengikuti sub-kategori produk; kategori lain: rasa per kategori.
+// Daftar rasa yang boleh dipilih, berbeda-beda per kategori
 const flavorOptions = computed(() =>
   isGoodiebag.value
     ? goodiebagFlavorsForSubcategory(props.product.subcategory)
     : cupcakeFlavorsForCategory(props.product.category)
 )
 
-// Rasa goodiebag terpilih sebagai array (tunggal -> [rasa], jamak -> daftar).
+// Rasa goodiebag selalu disimpan sebagai daftar, walau hanya berisi satu —
+// supaya sisa kode tidak perlu membedakan kedua cara pilih
 const goodiebagSelectedFlavors = computed(() =>
   isSingleFlavor.value
     ? selectedFlavor.value
@@ -66,12 +75,12 @@ const goodiebagSelectedFlavors = computed(() =>
     : selectedFlavors.value
 )
 
-// TYPE6: tiap variant = satu pilihan isi box (goodiebag = varian tunggal)
+// Tiap varian mewakili satu pilihan isi box; goodiebag hanya punya satu
 const selectedVariant = computed(
   () => props.product.variants?.find((v) => v.id === selectedVariantId.value) ?? null
 )
 
-// harga per box setelah diskon
+// Harga satu box setelah diskon
 const unitPrice = computed(() => {
   if (!selectedVariant.value) return null
   const price = Number(selectedVariant.value.price)
@@ -79,21 +88,24 @@ const unitPrice = computed(() => {
   return Math.round((price - (price * discount) / 100) * 100) / 100
 })
 
-// jumlah box yang dipakai untuk perkalian; goodiebag diketik manual, minimal minQty
+// Jumlah box yang dipesan. Goodiebag diketik sendiri oleh pembeli dan
+// tidak boleh kurang dari pembelian minimal.
 const boxCount = computed(() => {
   const q = Number(quantity.value)
   return Number.isInteger(q) && q > 0 ? q : minQty.value
 })
 
-// harga yang ditampilkan: goodiebag = total (harga per box x jumlah box),
-// kategori lain = harga per box (quantity dikalikan nanti di keranjang)
+// Yang ditampilkan berbeda: goodiebag menunjukkan total keseluruhan karena
+// jumlahnya sudah diketik di halaman ini, sedangkan kategori lain menunjukkan
+// harga per box — pengalian jumlahnya terjadi di keranjang.
 const finalPrice = computed(() => {
   if (unitPrice.value === null) return null
   if (!isGoodiebag.value) return unitPrice.value
   return Math.round(unitPrice.value * boxCount.value * 100) / 100
 })
 
-// harga coret (sebelum diskon), skalanya disamakan dengan finalPrice
+// Harga coret sebelum diskon. Skalanya harus mengikuti finalPrice di atas,
+// kalau tidak perbandingannya jadi menyesatkan.
 const originalPrice = computed(() => {
   if (!selectedVariant.value || Number(props.product.discount) <= 0) return null
   const base = Number(selectedVariant.value.price)
@@ -160,7 +172,8 @@ const handleSubmit = async () => {
 
 <template>
   <div class="grid md:grid-cols-[minmax(0,440px)_minmax(0,1fr)] gap-6 md:gap-8 lg:gap-10 items-start">
-    <!-- memilih isi box menggeser galeri ke foto box tsb (kalau ada fotonya) -->
+    <!-- Memilih isi box menggeser galeri ke foto box itu, kalau admin
+         memang menetapkan fotonya -->
     <ProductImage
       :image="product.image"
       :images="product.images"
@@ -184,7 +197,7 @@ const handleSubmit = async () => {
         :placeholder="t('product.chooseBoxFirst')"
       />
 
-      <!-- Rasa fixed (American Butter), read-only -->
+      <!-- American Butter: rasa sudah ditetapkan, hanya ditampilkan -->
       <div
         v-if="flavorIsFixed && product.flavor"
         class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5 max-w-md"
@@ -199,7 +212,7 @@ const handleSubmit = async () => {
         </span>
       </div>
 
-      <!-- Goodiebag: harga tunggal per box; user mengetik jumlah box sendiri -->
+      <!-- Goodiebag: jumlah paket diketik di sini, bukan di bagian bawah -->
       <div v-if="isGoodiebag" class="mb-6">
         <p class="text-[15px] font-extrabold mb-2.5">
           {{ t('product.boxAmount') }} <span class="text-brand-500">*</span>
@@ -227,7 +240,7 @@ const handleSubmit = async () => {
         :discount="product.discount"
       />
 
-      <!-- Goodiebag Original: pilih beberapa rasa (1-4), dekorasi dari admin -->
+      <!-- Goodiebag Original: pilih 1 sampai 4 rasa -->
       <ProductFlavorPicker
         v-if="isMultiFlavor"
         v-model="selectedFlavors"
@@ -238,7 +251,7 @@ const handleSubmit = async () => {
         :hint="t('product.flavorRangeHint', { min: flavorLimit.min, max: flavorLimit.max })"
       />
 
-      <!-- Goodiebag Custom: pilih tepat 1 rasa, dekorasi dari admin -->
+      <!-- Goodiebag Custom: pilih tepat satu rasa -->
       <ProductFlavorPicker
         v-else-if="isSingleFlavor"
         v-model="selectedFlavor"
@@ -246,7 +259,8 @@ const handleSubmit = async () => {
         :step-label="t('product.chooseFlavor')"
       />
 
-      <!-- Rasa & dekorasi pilihan user (Simple Decor / Custom 3D standalone) -->
+      <!-- Kategori lain: pembeli memilih rasa sendiri dan boleh melampirkan
+           acuan desain -->
       <template v-else-if="!flavorIsFixed">
         <ProductFlavorPicker
           v-model="selectedFlavor"

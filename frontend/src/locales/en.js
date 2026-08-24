@@ -1,3 +1,12 @@
+/**
+ * Seluruh teks situs dalam bahasa Inggris.
+ *
+ * Susunan & kuncinya harus sama persis dengan id.js — menambah teks baru
+ * berarti menambahkannya di kedua berkas.
+ *
+ * Bahasa ini juga berfungsi sebagai cadangan: teks yang kuncinya tidak
+ * ditemukan di bahasa lain akan diambil dari sini.
+ */
 export default {
   common: {
     confirmation: "Confirmation",

@@ -2,8 +2,17 @@ import { useAuthStore } from '@/stores/auth.store'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
-// Daftar rute diekspor sebagai array supaya ViteSSG yang membuat instance
-// router-nya (createWebHistory di client, memory history saat prerender).
+/**
+ * Daftar halaman beserta alamatnya.
+ *
+ * Berkas ini sengaja tidak membuat router-nya sendiri, hanya mengekspor
+ * daftarnya. Pembuatannya diserahkan ke main.js, karena halaman situs ini
+ * dibangun jadi HTML saat build — dan cara router bekerja saat proses build
+ * berbeda dari saat berjalan di peramban.
+ *
+ * Halaman dimuat sesuai kebutuhan (`() => import(...)`), jadi pengunjung
+ * yang hanya membuka beranda tidak ikut mengunduh seluruh halaman admin.
+ */
 export const routes = [
   {
     path: '/',
@@ -45,7 +54,9 @@ export const routes = [
         meta: { requiresAuth: true },
       },
 
-      // ===== AUTH (dipindah ke sini supaya Navbar dari DefaultLayout ikut tampil) =====
+      // ===== HALAMAN AKUN =====
+      // Diletakkan sebagai anak DefaultLayout supaya navbar & footer ikut
+      // tampil di halaman login/daftar, bukan halaman kosong tanpa navigasi.
       { path: 'login', name: 'login', component: () => import('@/views/auth/LoginView.vue') },
       { path: 'register', name: 'register', component: () => import('@/views/auth/RegisterView.vue') },
       {
@@ -66,7 +77,9 @@ export const routes = [
     ],
   },
 
-  // ===== ADMIN =====
+  // ===== PANEL ADMIN =====
+  // Penanda di sini berlaku untuk semua halaman di bawahnya, jadi tidak perlu
+  // ditulis ulang satu per satu. Pemeriksaannya ada di registerGuards().
   {
     path: '/admin',
     component: AdminLayout,
@@ -96,23 +109,35 @@ export const routes = [
     ],
   },
 
-  // ===== 404 =====
+  // Alamat yang tidak cocok dengan mana pun di atas -> halaman 404.
+  // Harus paling bawah, karena polanya menangkap segalanya.
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },
 ]
 
-// Posisi scroll terakhir di halaman Menu. Tautan "kembali ke menu" pada detail
-// produk adalah navigasi push, bukan back browser, sehingga savedPosition kosong
-// dan pengunjung terlempar ke hero section. Posisinya kita ingat sendiri.
+/**
+ * ===== POSISI GULIRAN HALAMAN =====
+ *
+ * Posisi terakhir di halaman Menu, diingat sendiri.
+ *
+ * Perlu dicatat manual karena tombol "kembali ke menu" di halaman produk
+ * bukan tombol kembali peramban, melainkan perpindahan halaman biasa. Peramban
+ * tidak menganggapnya "kembali", jadi tidak ada posisi tersimpan — akibatnya
+ * pengunjung mendarat di paling atas dan harus menggulir lagi mencari kue
+ * yang tadi dilihatnya.
+ */
 let menuScrollTop = 0
 
-// Diteruskan ke ViteSSG sebagai opsi router. Saat prerender (SSR) tidak ada
-// window/requestAnimationFrame, jadi cukup kembalikan posisi atas.
 export function scrollBehavior(to, from, savedPosition) {
+  // Saat halaman dibangun jadi HTML tidak ada peramban sama sekali,
+  // jadi tidak ada yang bisa digulir
   if (import.meta.env.SSR) return { top: 0 }
+
+  // Tombol kembali peramban: pakai posisi yang memang sudah disimpannya
   if (savedPosition) return savedPosition
 
-  // Kembali ke Menu dari detail produk: pulihkan posisi terakhir supaya
-  // pengunjung mendarat lagi di kartu yang tadi dibuka.
+  // Kembali ke Menu dari halaman produk: pulihkan posisi yang kita catat tadi.
+  // Ditunda satu frame supaya daftar produknya sempat tergambar dulu —
+  // menggulir sebelum itu tidak ada gunanya karena halamannya masih pendek.
   if (to.name === 'menu' && from.name === 'product-detail' && menuScrollTop > 0) {
     return new Promise((resolve) => {
       requestAnimationFrame(() => resolve({ top: menuScrollTop }))
@@ -122,36 +147,49 @@ export function scrollBehavior(to, from, savedPosition) {
   return { top: 0 }
 }
 
-// Dipasang di client (dipanggil dari main.js pada instance router bikinan ViteSSG).
-// Saat prerender guard di-skip: rute yang diprerender semuanya publik.
+/**
+ * ===== PENJAGA HALAMAN =====
+ * Dipanggil dari main.js. Semua pemeriksaan di sini hanya berjalan di
+ * peramban — saat halaman dibangun jadi HTML, yang diproses hanya halaman
+ * publik sehingga tidak ada yang perlu dijaga.
+ */
 export function registerGuards(router) {
-  // Rekam posisi scroll tepat sebelum meninggalkan halaman Menu.
+  // Catat posisi guliran tepat sebelum meninggalkan halaman Menu
   router.beforeEach((to, from) => {
     if (!import.meta.env.SSR && from.name === 'menu') menuScrollTop = window.scrollY
   })
 
-  // Navigation guard: proteksi route berdasarkan meta requiresAuth / requiresAdmin
+  // Cegat halaman yang butuh login atau hak admin
   router.beforeEach(async (to) => {
-    // Saat prerender tidak ada sesi & tidak perlu proteksi (rute publik saja).
     if (import.meta.env.SSR) return true
 
     const auth = useAuthStore()
 
-    // Tunggu sesi selesai dipulihkan (penting saat user refresh halaman admin)
+    /**
+     * Tunggu pemulihan sesi selesai dulu.
+     *
+     * Penting saat pengunjung memuat ulang halaman admin: sesinya belum
+     * sempat dipulihkan, jadi tanpa penantian ini ia akan terlihat seperti
+     * belum login dan langsung terlempar ke halaman login — padahal
+     * sebenarnya masih punya sesi yang sah.
+     */
     if (!auth.isReady) {
       await auth.restoreSession()
     }
 
+    // Penanda dicari sampai ke induknya, jadi halaman admin ikut terjaring
+    // walau penandanya hanya ditulis di rute induk
     const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
     const requiresAdmin = to.matched.some((r) => r.meta.requiresAdmin)
 
-    // Belum login -> arahkan ke login
+    // Belum login: antar ke login, alamat tujuannya dititipkan supaya
+    // setelah masuk ia kembali ke halaman yang tadi dituju
     if (requiresAuth && !auth.isAuthenticated) {
       return { name: 'login', query: { redirect: to.fullPath } }
     }
 
-    // Bukan admin tapi coba akses halaman admin -> lempar ke 404
-    // (pakai 404 supaya user tidak "tahu" bahwa halaman admin itu ada)
+    // Sudah login tapi bukan admin: dibalas 404, bukan "akses ditolak".
+    // Disengaja — pesan penolakan justru memberi tahu bahwa halaman itu ada.
     if (requiresAdmin && !auth.isAdmin) {
       return { name: 'not-found' }
     }

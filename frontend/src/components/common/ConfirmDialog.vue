@@ -3,13 +3,21 @@ import { watch, onUnmounted } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 
+/**
+ * Dialog "yakin?" serbaguna, dipakai sebelum tindakan yang tidak bisa dibatalkan
+ * seperti menghapus produk atau foto galeri.
+ *
+ * Semua teksnya bisa diatur pemanggil; yang dikosongkan memakai teks bawaan.
+ * Komponen ini tidak melakukan apa pun sendiri — ia hanya mengabarkan lewat
+ * event `confirm` atau `cancel`.
+ */
 const props = defineProps({
   open: { type: Boolean, default: false },
   title: { type: String, default: '' },
   message: { type: String, default: '' },
   confirmText: { type: String, default: '' },
   cancelText: { type: String, default: '' },
-  // gaya tombol konfirmasi: 'danger' (merah) atau 'primary' (gelap)
+  // Warna tombol konfirmasi: 'danger' merah untuk hapus, 'primary' untuk lainnya
   variant: { type: String, default: 'danger' },
   isLoading: { type: Boolean, default: false },
 })
@@ -17,10 +25,14 @@ const props = defineProps({
 const emit = defineEmits(['confirm', 'cancel'])
 const { t } = useI18n()
 
-// Kunci scroll halaman selama dialog terbuka TANPA menghilangkan scrollbar
-// (overflow tidak diubah, jadi scrollbar tetap terlihat & latar tidak melompat).
-// Semua cara menggulir dicegah: wheel/touch di-block, dan kalau posisi tetap
-// bergeser (drag scrollbar / keyboard) langsung dikembalikan.
+// ===== KUNCI GULIRAN HALAMAN =====
+// Berbeda dengan modal lain yang memakai `overflow: hidden`, di sini scrollbar
+// sengaja dibiarkan tetap ada — menyembunyikannya membuat halaman melebar
+// sesaat dan isinya terlihat "melompat" saat dialog muncul.
+//
+// Gantinya, semua cara menggulir dicegah satu per satu: putaran roda tetikus
+// dan usapan jari ditolak, lalu kalau posisinya tetap bergeser (misalnya
+// scrollbar diseret atau tombol panah ditekan) langsung dikembalikan.
 let lockedScrollY = 0
 
 const blockScroll = (e) => e.preventDefault()
@@ -44,21 +56,25 @@ watch(
   (open) => (open ? lockScroll() : unlockScroll())
 )
 
-// Jaga-jaga kalau komponen di-unmount saat dialog masih terbuka.
+// Jaga-jaga kalau komponen hilang selagi dialog masih terbuka — kalau tidak,
+// halaman berikutnya ikut terkunci dan tidak bisa digulir
 onUnmounted(unlockScroll)
 </script>
 
 <template>
-  <!-- Teleport ke <body> supaya overlay tidak terjebak containing-block dari
-       ancestor yang punya transform (mis. layout admin) — tanpa ini, `fixed`
-       jadi relatif ke ancestor tsb, bukan viewport, sehingga dialog muncul
-       di bawah layar dan latar gelap tidak menutup penuh. -->
+  <!-- Dipindahkan ke <body>. Kalau dibiarkan di tempat asalnya, ia bisa
+       terkurung pembungkus halaman yang beranimasi (mis. layout admin),
+       sehingga dialog muncul jauh di bawah layar dan latar gelapnya tidak
+       menutupi seluruh halaman.
+       z-[60] menaruhnya di atas modal lain, supaya dialog "yakin hapus?"
+       tetap terlihat saat dibuka dari dalam sebuah modal. -->
   <Teleport to="body">
     <div
       v-if="open"
       class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4"
     >
       <div class="bg-white rounded-2xl w-full max-w-sm shadow-xl p-6">
+        <!-- Ikon peringatan + judul & pesan -->
         <div class="flex items-start gap-3">
           <div
             class="shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
@@ -72,6 +88,8 @@ onUnmounted(unlockScroll)
           </div>
         </div>
 
+        <!-- Kedua tombol dimatikan selagi proses berjalan, biar tidak
+             terpicu dua kali kalau diklik berulang -->
         <div class="flex items-center justify-end gap-3 mt-6">
           <button
             type="button"

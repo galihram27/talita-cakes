@@ -4,30 +4,38 @@ import { useI18n } from 'vue-i18n'
 import { X } from 'lucide-vue-next'
 import { formatRupiah } from '@/utils/formatCurrency'
 
-// Checkpoint terakhir sebelum order benar-benar dibuat & user dilempar ke
-// WhatsApp. Sengaja menampilkan rekap lengkap, bukan sekadar "Anda yakin?":
-// setelah ini order tercatat dan (sesuai kebijakan) tidak bisa dibatalkan,
-// jadi user harus bisa mengecek tanggal/alamat/total sekali lagi di sini.
+/**
+ * Layar konfirmasi terakhir sebelum pesanan dibuat.
+ *
+ * Isinya sengaja rekap lengkap, bukan sekadar "Anda yakin?". Begitu tombol
+ * konfirmasi ditekan, pesanan tercatat dan pembeli langsung dilempar ke
+ * WhatsApp — jadi ini kesempatan terakhir mengecek tanggal, alamat, dan total.
+ *
+ * Komponen ini hanya menampilkan. Yang benar-benar menyimpan pesanan adalah
+ * halaman checkout, lewat event `confirm`.
+ */
 const props = defineProps({
   open: { type: Boolean, default: false },
   isSubmitting: { type: Boolean, default: false },
-  // { requestCakeDate, fulfillmentType, recipientType, recipientName,
-  //   recipientPhone, address, distanceKm, items, subtotal, deliveryFee,
-  //   total, includeEmail, email }
+  // Ringkasan pesanan yang sudah dihitung halaman checkout: tanggal, cara
+  // ambil/kirim, alamat, penerima, daftar item, dan rincian biayanya
   details: { type: Object, required: true },
 })
 
 const emit = defineEmits(['confirm', 'cancel'])
 const { t, locale } = useI18n()
 
-// Kunci scroll halaman selama modal terbuka supaya halaman checkout di
-// belakangnya tidak ikut bergeser. Nilai overflow asal disimpan lalu
-// dikembalikan (bukan di-reset ke ''), supaya style body dari tempat lain
+// ===== KUNCI GULIRAN HALAMAN =====
+// Selama modal terbuka, halaman checkout di belakangnya dibuat tidak bisa
+// digulir — kalau tidak, menggulir di dalam modal ikut menggeser halaman.
+//
+// Nilai `overflow` yang lama disimpan dulu lalu dikembalikan seperti semula,
+// bukan sekadar dikosongkan, supaya pengaturan dari bagian lain aplikasi
 // tidak ikut terhapus.
 let previousBodyOverflow = null
 
 const lockBodyScroll = () => {
-  if (previousBodyOverflow !== null) return // sudah terkunci
+  if (previousBodyOverflow !== null) return // sudah terkunci, jangan timpa
   previousBodyOverflow = document.body.style.overflow
   document.body.style.overflow = 'hidden'
 }
@@ -44,10 +52,12 @@ watch(
   { immediate: true }
 )
 
-// Modal bisa ikut hilang bersama halaman (mis. setelah order sukses & pindah
-// route) tanpa `open` sempat kembali false — buka kuncinya di sini juga.
+// Setelah pesanan berhasil, halaman langsung berpindah dan komponen ini hilang
+// tanpa `open` sempat kembali false. Tanpa baris ini, halaman berikutnya
+// mewarisi keadaan terkunci dan tidak bisa digulir sama sekali.
 onBeforeUnmount(unlockBodyScroll)
 
+// Tanggal ditampilkan lengkap dengan nama hari, mengikuti bahasa yang aktif
 const formatDate = (dateString) =>
   dateString
     ? new Date(dateString).toLocaleDateString(
@@ -58,14 +68,12 @@ const formatDate = (dateString) =>
 </script>
 
 <template>
-  <!-- Teleport ke body: root CheckoutView (.tc-page) menganimasikan transform,
-       dan elemen ber-transform jadi containing block untuk anaknya yang
-       position:fixed — tanpa ini `inset-0` mengacu ke kotak .tc-page (setinggi
-       halaman) sehingga modal ter-center terhadap halaman, bukan layar.
-       Pola yang sama dipakai modal detail di GalleryView. -->
+  <!-- Modal dipindahkan ke <body>. Kalau dibiarkan di tempat asalnya, ia
+       berada di dalam pembungkus halaman checkout yang beranimasi, dan itu
+       membuat modal ter-tengah terhadap TINGGI HALAMAN, bukan terhadap layar —
+       jadi bisa muncul jauh di bawah. Pola yang sama dipakai modal galeri. -->
   <Teleport to="body">
-    <!-- Overlay fixed & tidak bisa di-scroll: modal diam di tengah layar,
-         halaman di belakangnya dikunci lewat lockBodyScroll(). -->
+    <!-- Latar gelap menutupi seluruh layar dan tidak ikut bergulir -->
     <div
       v-if="open"
       class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4 py-8 overflow-hidden overscroll-contain"
@@ -75,7 +83,8 @@ const formatDate = (dateString) =>
         role="dialog"
         aria-modal="true"
       >
-        <!-- HEADER -->
+        <!-- Judul + tombol tutup. shrink-0 menahannya tetap terlihat
+             saat bagian tengah bergulir. -->
         <div class="shrink-0 flex items-center justify-between px-6 py-5 border-b border-cream-200">
           <h2 class="font-display text-xl text-cocoa-900">
             {{ t('checkout.confirm.title') }}
@@ -91,16 +100,16 @@ const formatDate = (dateString) =>
           </button>
         </div>
 
-        <!-- BODY. Katup pengaman: kalau isinya lebih tinggi dari layar (mis. cart
-             dengan banyak item di layar pendek), yang scroll cukup bagian ini —
-             header & tombol konfirmasi tetap terlihat. Untuk pesanan normal
-             konten muat penuh sehingga tidak ada scroll sama sekali. -->
+        <!-- Hanya bagian tengah ini yang bisa digulir, dan hanya kalau isinya
+             memang tidak muat (mis. keranjang panjang di layar pendek). Dengan
+             begitu tombol konfirmasi di bawah selalu terjangkau. -->
         <div class="px-6 py-5 overflow-y-auto overscroll-contain">
           <p class="text-[13.5px] text-[#6E5A4D] mb-4">
             {{ t('checkout.confirm.intro') }}
           </p>
 
-          <!-- Rekap -->
+          <!-- Rekap pesanan. Baris alamat, penerima, dan email hanya muncul
+               kalau memang relevan — pesanan ambil sendiri tidak butuh alamat. -->
           <dl class="rounded-xl border border-cream-300 bg-cream-50 divide-y divide-[#F0E3D6]">
             <div class="flex gap-3 px-4 py-2.5">
               <dt class="w-28 shrink-0 text-[12.5px] font-bold text-cocoa-400">
@@ -157,7 +166,7 @@ const formatDate = (dateString) =>
             </div>
           </dl>
 
-          <!-- Item + total -->
+          <!-- Daftar barang yang dipesan -->
           <ul class="flex flex-col gap-2.5 mt-4">
             <li
               v-for="item in details.items"
@@ -172,6 +181,7 @@ const formatDate = (dateString) =>
             </li>
           </ul>
 
+          <!-- Rincian biaya. Ongkir hanya ditampilkan untuk pesanan antar. -->
           <div class="border-t border-cream-200 mt-3.5 pt-3">
             <div class="flex justify-between text-[13.5px] text-[#6E5A4D] py-0.5">
               <span>{{ t('checkout.subtotal') }}</span>
@@ -191,7 +201,8 @@ const formatDate = (dateString) =>
           </div>
         </div>
 
-        <!-- FOOTER -->
+        <!-- Kedua tombol dimatikan selagi pesanan sedang dikirim, supaya tidak
+             terkirim dua kali kalau diklik berulang -->
         <div
           class="shrink-0 flex items-center justify-end gap-3 px-6 py-5 border-t border-cream-200"
         >

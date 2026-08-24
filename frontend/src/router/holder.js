@@ -1,7 +1,14 @@
-// Penampung instance router yang dibuat ViteSSG di main.js.
-// Dipakai kode non-komponen (mis. interceptor axios di lib/api.js) untuk
-// navigasi tanpa perlu membuat instance router sendiri — yang justru akan
-// berbeda dari router yang dipakai aplikasi.
+/**
+ * Penampung router aplikasi.
+ *
+ * Router-nya dibuat di main.js, lalu dititipkan ke sini supaya bisa dipakai
+ * kode yang bukan komponen — misalnya lib/api.js saat perlu mengantar
+ * pengunjung ke halaman login.
+ *
+ * Cara ini dipakai karena membuat router baru di tempat lain akan menghasilkan
+ * router yang berbeda dari yang sedang dipakai aplikasi, sehingga perpindahan
+ * halamannya tidak terjadi apa-apa.
+ */
 let _router = null
 
 export const setRouterInstance = (router) => {

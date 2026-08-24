@@ -2,11 +2,19 @@
 import { useI18n } from 'vue-i18n'
 import { formatRupiah } from '@/utils/formatCurrency'
 
+/**
+ * Baris harga di halaman produk.
+ *
+ * Selama pembeli belum memilih varian, harganya belum bisa dipastikan —
+ * dalam keadaan itu `price` dibiarkan null dan yang tampil teks pengganti
+ * seperti "Pilih ukuran dulu".
+ */
 defineProps({
   price: { type: Number, default: null },
+  // Harga sebelum diskon; ditampilkan tercoret di sebelah harga baru
   originalPrice: { type: Number, default: null },
   placeholder: { type: String, default: '' },
-  // teks kecil setelah harga, mis. "/ box" untuk goodiebag
+  // Teks kecil setelah harga, mis. "/ box"
   suffix: { type: String, default: '' },
 })
 
@@ -20,6 +28,7 @@ const { t } = useI18n()
     </p>
     <p v-else class="text-lg text-[#B7A18E]">{{ placeholder || t('product.pricePlaceholder') }}</p>
 
+    <!-- Harga coret hanya muncul kalau memang lebih mahal dari harga sekarang -->
     <p
       v-if="price !== null && originalPrice !== null && originalPrice > price"
       class="text-[17px] text-[#B7A18E] line-through"

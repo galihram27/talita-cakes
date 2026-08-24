@@ -1,90 +1,125 @@
 // src/stores/auth.store.js
-import { defineStore } from "pinia";
-import api from "@/lib/api";
+import { defineStore } from 'pinia'
+import api from '@/lib/api'
 
-export const useAuthStore = defineStore("auth", {
+/**
+ * Keadaan login pengguna, dipakai seluruh aplikasi.
+ *
+ * Ada dua macam token, dan pembagiannya disengaja:
+ * - Access token disimpan di memori saja. Sengaja TIDAK ditaruh di
+ *   penyimpanan peramban — kalau ada celah keamanan di halaman, isi
+ *   penyimpanan bisa dibaca skrip jahat, sedangkan memori tidak.
+ * - Refresh token tidak pernah disentuh berkas ini sama sekali. Ia ada di
+ *   cookie khusus yang tidak bisa dibaca JavaScript, dan peramban yang
+ *   mengirimkannya sendiri ke server.
+ *
+ * Akibat dari pilihan itu: memuat ulang halaman menghapus access token dari
+ * memori. Karena itu ada restoreSession(), yang menukar cookie tadi dengan
+ * access token baru supaya pengguna tidak perlu login lagi.
+ */
+export const useAuthStore = defineStore('auth', {
   state: () => ({
-    accessToken: null, // in-memory saja, JANGAN simpan ke localStorage
+    accessToken: null,
     user: null, // { id, name, email, role }
-    isReady: false, // true setelah restoreSession() selesai (sekali saat app load)
-    _restorePromise: null, // guard supaya restoreSession tidak jalan dobel
+    // Menandai pemulihan sesi sudah selesai. Penjaga halaman menunggu ini
+    // sebelum memutuskan seseorang boleh masuk atau tidak.
+    isReady: false,
+    // Penjaga supaya pemulihan sesi tidak berjalan dua kali bersamaan
+    _restorePromise: null,
   }),
 
   getters: {
     isAuthenticated: (state) => !!state.user,
-    isAdmin: (state) => state.user?.role === "ADMIN",
+    isAdmin: (state) => state.user?.role === 'ADMIN',
   },
 
   actions: {
     setAccessToken(token) {
-      this.accessToken = token;
+      this.accessToken = token
     },
 
     setUser(user) {
-      this.user = user;
+      this.user = user
     },
 
     clearSession() {
-      this.accessToken = null;
-      this.user = null;
+      this.accessToken = null
+      this.user = null
     },
 
-    // Dipanggil saat login sukses / verify email sukses
+    // Dipakai setelah login berhasil maupun setelah verifikasi email berhasil
     handleAuthSuccess({ accessToken, user }) {
-      this.accessToken = accessToken;
-      this.user = user;
+      this.accessToken = accessToken
+      this.user = user
     },
 
-    // Register step 1: kirim data akun, backend balas dengan kirim OTP ke email.
-    // Belum login di sini — login baru terjadi setelah verify email sukses.
+    // Pendaftaran belum membuat sesi login. Server hanya mengirim kode ke
+    // email; login baru terjadi setelah kode itu diverifikasi.
     async register(payload) {
-      const { data } = await api.post("/auth/register", payload);
-      return data;
+      const { data } = await api.post('/auth/register', payload)
+      return data
     },
 
     async login(credentials) {
-      const { data } = await api.post("/auth/login", credentials);
-      this.handleAuthSuccess(data.data);
-      return data;
+      const { data } = await api.post('/auth/login', credentials)
+      this.handleAuthSuccess(data.data)
+      return data
     },
 
+    /**
+     * Keluar. Pembersihan diletakkan di `finally` supaya tetap berjalan
+     * walau permintaan ke server gagal — dari sisi pengguna, menekan tombol
+     * keluar harus selalu berhasil.
+     */
     async logout() {
       try {
-        await api.post("/auth/logout");
+        await api.post('/auth/logout')
       } finally {
-        this.clearSession();
-        // kosongkan badge keranjang (dynamic import supaya tidak circular)
-        const { useCartStore } = await import("@/stores/cart.store");
-        useCartStore().reset();
-        // hapus cache pesanan admin dari localStorage (data sensitif)
-        const { useAdminOrdersStore } = await import("@/stores/adminOrders.store");
-        useAdminOrdersStore().invalidate();
+        this.clearSession()
+
+        // Kedua store di bawah diambil saat dibutuhkan, bukan diimpor di atas,
+        // karena keduanya juga memakai store ini — impornya akan melingkar.
+        const { useCartStore } = await import('@/stores/cart.store')
+        useCartStore().reset()
+
+        // Daftar pesanan tersimpan di penyimpanan peramban dan berisi data
+        // pembeli, jadi harus ikut dibuang saat keluar
+        const { useAdminOrdersStore } = await import('@/stores/adminOrders.store')
+        useAdminOrdersStore().invalidate()
       }
     },
 
-    // Dipanggil sekali saat app pertama kali load (App.vue -> onMounted / router guard)
-    // Coba pulihkan sesi dari refresh token cookie httpOnly
+    /**
+     * Pulihkan sesi dari cookie, dipanggil sekali saat aplikasi dibuka.
+     *
+     * Kalau sudah pernah atau sedang berjalan, pemanggil berikutnya menunggu
+     * proses yang sama — bukan memulai yang baru. Ini penting karena
+     * pemanggilnya bisa lebih dari satu tempat sekaligus.
+     */
     async restoreSession() {
-      // Kalau sudah pernah/ sedang jalan, pakai promise yang sama (hindari request dobel)
-      if (this._restorePromise) return this._restorePromise;
-      this._restorePromise = this._doRestoreSession();
-      return this._restorePromise;
+      if (this._restorePromise) return this._restorePromise
+      this._restorePromise = this._doRestoreSession()
+      return this._restorePromise
     },
 
     async _doRestoreSession() {
       try {
-        // 1. Tukar refresh token (cookie httpOnly) dengan access token baru
-        const { data: refreshData } = await api.post("/auth/refresh-token");
-        this.accessToken = refreshData.data.accessToken;
+        // Tukar cookie dengan access token baru...
+        const { data: refreshData } = await api.post('/auth/refresh-token')
+        this.accessToken = refreshData.data.accessToken
 
-        // 2. Pakai access token itu buat ambil data user
-        const { data: meData } = await api.get("/auth/me");
-        this.user = meData.data.user;
+        // ...lalu pakai token itu untuk mengambil data penggunanya
+        const { data: meData } = await api.get('/auth/me')
+        this.user = meData.data.user
       } catch (err) {
-        this.clearSession(); // gak ada sesi valid (guest, atau refresh token expired)
+        // Gagal itu hal biasa: bisa jadi memang belum pernah login, atau
+        // sesinya sudah kedaluwarsa. Bukan sesuatu yang perlu dilaporkan.
+        this.clearSession()
       } finally {
-        this.isReady = true;
+        // Selalu ditandai selesai, berhasil maupun tidak — kalau tidak,
+        // penjaga halaman akan menunggu selamanya.
+        this.isReady = true
       }
     },
   },
-});
+})

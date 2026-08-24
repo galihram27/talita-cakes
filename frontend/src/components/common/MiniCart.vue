@@ -11,17 +11,30 @@ const { t } = useI18n()
 const router = useRouter()
 const cartStore = useCartStore()
 
-// Ubah "SQUARE"/"ROUND" jadi "Square"/"Round" agar lebih rapi dibaca.
+/**
+ * Ringkasan keranjang yang muncul saat ikon keranjang di navbar diklik.
+ * Isinya hanya untuk dilihat — mengubah jumlah atau menghapus item
+ * dilakukan di halaman keranjang.
+ */
+
+// Di database bentuk tersimpan sebagai "SQUARE"; di layar ditulis "Square"
 const formatShape = (shape) =>
   shape ? shape.charAt(0).toUpperCase() + shape.slice(1).toLowerCase() : ''
 
-// Ringkasan opsi item jadi satu baris pendek (rasa · filling · topping · ukuran).
+/**
+ * Rangkum semua pilihan satu item jadi satu baris pendek, mis.
+ * "Coklat · Keju · Round · 20". Yang kosong otomatis tidak ikut tampil.
+ *
+ * Ukurannya ditulis berbeda-beda tergantung jenis produk: roti memakai nama
+ * ukurannya (Personal/Family), cupcake ditulis sebagai jumlah isi box, dan
+ * kue biasa cukup angka diameternya.
+ */
 const itemOptions = (item) => {
   const parts = []
   if (item.flavor) parts.push(item.flavor)
   if (item.filling) parts.push(item.filling)
   if (item.topping) parts.push(item.topping)
-  // Bread: tampilkan nama ukuran (Personal/Family/Sharing), bukan shape/size mentah.
+
   if (isBreadCategory(item.productCategory)) {
     const s = breadSizeForVariant(item)
     if (s) parts.push(s.label)
@@ -40,6 +53,7 @@ const itemOptions = (item) => {
 
 const isEmpty = computed(() => !cartStore.items || cartStore.items.length === 0)
 
+// Tutup dulu panelnya, biar tidak menggantung saat halaman berpindah
 const goToCart = () => {
   cartStore.closeMini()
   router.push('/cart')
@@ -47,13 +61,17 @@ const goToCart = () => {
 </script>
 
 <template>
+  <!-- Di layar kecil panel ini melayang di posisi tetap; mulai layar sedang
+       ke atas ia menggantung tepat di bawah ikon keranjang di navbar.
+       @click.stop menahan klik di dalam panel supaya tidak dianggap
+       "klik di luar" oleh navbar dan menutup panelnya sendiri. -->
   <Transition name="mini-cart">
     <div
       v-if="cartStore.isMiniOpen"
       class="fixed right-5 top-[80px] sm:absolute sm:right-0 sm:top-[calc(100%+10px)] z-[60] w-[calc(100vw-2.5rem)] max-w-[368px] bg-white border border-[#EBDCCC] rounded-2xl shadow-[0_18px_44px_-14px_rgba(51,38,31,0.4)] overflow-hidden"
       @click.stop
     >
-      <!-- Header -->
+      <!-- Judul + jumlah item -->
       <div class="flex items-center justify-between gap-2 px-4 pt-3.5 pb-2.5">
         <h3 class="font-display text-[17px] leading-none">
           {{ t('miniCart.title') }}
@@ -71,7 +89,7 @@ const goToCart = () => {
         </button>
       </div>
 
-      <!-- EMPTY -->
+      <!-- Keranjang kosong: ajak ke halaman menu -->
       <div v-if="isEmpty" class="px-4 py-8 text-center">
         <div class="text-[34px] mb-2">🧺</div>
         <p class="text-[#6E5A4D] text-sm font-semibold mb-4">
@@ -86,7 +104,9 @@ const goToCart = () => {
         </RouterLink>
       </div>
 
-      <!-- ISI -->
+      <!-- Daftar item. Tingginya dibatasi 46% layar lalu digulir, supaya
+           keranjang panjang tidak membuat panel memenuhi seluruh layar dan
+           tombol di bawahnya tetap terlihat. -->
       <template v-else>
         <div class="max-h-[46vh] overflow-y-auto px-4 pb-1 flex flex-col divide-y divide-cream-200">
           <div
@@ -94,6 +114,8 @@ const goToCart = () => {
             :key="item.id"
             class="flex gap-3 py-3 first:pt-1"
           >
+            <!-- Latar bergaris jadi penanda sementara kalau produknya
+                 belum punya foto -->
             <span
               class="relative shrink-0 w-[52px] h-[52px] rounded-[9px] overflow-hidden bg-[repeating-linear-gradient(45deg,#F6EDE4_0_8px,#F0E3D6_8px_16px)]"
             >
@@ -127,7 +149,8 @@ const goToCart = () => {
           </div>
         </div>
 
-        <!-- Footer -->
+        <!-- Subtotal + tombol ke halaman keranjang. Ongkir belum dihitung
+             di sini karena alamatnya baru ditanyakan saat checkout. -->
         <div class="border-t border-cream-300 px-4 pt-3 pb-4 bg-[#FFFDFB]">
           <div class="flex items-center justify-between mb-3">
             <span class="text-[13.5px] text-[#6E5A4D] font-semibold">
@@ -152,6 +175,8 @@ const goToCart = () => {
 </template>
 
 <style scoped>
+/* Animasi buka-tutup: panel seolah mekar dari sudut kanan atas,
+   yaitu dari arah ikon keranjang yang diklik */
 .mini-cart-enter-active,
 .mini-cart-leave-active {
   transition: transform 0.22s ease, opacity 0.2s ease;

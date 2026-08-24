@@ -19,6 +19,17 @@ import {
 } from '@/config/productOptions'
 import { formatRupiah } from '@/utils/formatCurrency'
 
+/**
+ * Detail produk non-kue: roti, cheesecake, dan brownies.
+ *
+ * Tipe dengan bentuk paling beragam — cara pembeli memilih berubah menurut
+ * kategorinya:
+ * - Roti      : pilih ukuran bernama (Personal / Family / Sharing)
+ * - Basque    : pilih ukuran, tiap ukuran beda harga
+ * - Cinrolls  : pilih satu filling + beberapa topping; harganya ditentukan
+ *               oleh pasangan keduanya, bukan oleh masing-masing
+ * - Lainnya   : ukuran sudah tetap, tidak ada yang perlu dipilih
+ */
 const props = defineProps({
   product: { type: Object, required: true },
 })
@@ -31,8 +42,8 @@ const isSubmitting = ref(false)
 const submitError = ref('')
 const submitSuccess = ref(false)
 
-// Sub-kategori size-pilihan (mis. Basque) & semua produk Bread: user memilih
-// ukuran (variant). Sub-kategori lain: 1 varian tetap dengan shape+size dari admin.
+// Penentu apakah pembeli perlu memilih ukuran. Kalau tidak, produknya
+// hanya punya satu varian yang ukurannya sudah ditetapkan admin.
 const isSizeSubcat = computed(() => isType5SizeSubcategory(props.product.subcategory))
 const isBread = computed(() => isBreadCategory(props.product.category))
 const usesSizePicker = computed(() => isSizeSubcat.value || isBread.value)
@@ -44,7 +55,8 @@ const activeVariant = computed(() =>
     : props.product.variants?.[0] ?? null
 )
 
-// Ukuran Bread untuk picker: petakan variant produk ke label + dimensi tetap.
+// Ubah varian roti jadi pilihan siap tampil: nama ukuran + dimensinya,
+// mis. "Family Size — 25 cm"
 const breadSizeDesc = (s) => {
   if (s.shape === null) return t('product.boxOf', { count: s.size })
   if (s.shape === 'SQUARE') return `${s.size}×${s.sizeB ?? s.size} cm`
@@ -69,16 +81,19 @@ const baseFinalPrice = computed(() => {
   return Math.round((price - (price * discount) / 100) * 100) / 100
 })
 
-// ===== FILLING (CINROLLS VAN DEPOK) — pilih SATU, pakai harga =====
+// ===== FILLING =====
+// Hanya satu yang bisa dipilih, dan tidak berharga sendiri —
+// harganya baru muncul dari pasangannya dengan topping.
 const fillingConfig = computed(() =>
   usesFilling(props.product.subcategory) ? props.product.filling : null
 )
 const hasFilling = computed(() => (fillingConfig.value?.options?.length ?? 0) > 0)
 
-// nama filling yang sedang dipilih (tunggal)
+// Filling yang sedang dipilih
 const selectedFilling = ref('')
 
-// Awali dengan opsi default (mis. "Tanpa Filling") supaya tidak pernah kosong.
+// Mulai dari pilihan bawaan yang ditetapkan admin (mis. "Tanpa Filling"),
+// supaya tidak pernah dalam keadaan belum memilih apa-apa
 watch(
   fillingConfig,
   (cfg) => {
@@ -101,11 +116,13 @@ const selectFilling = (name) => {
   selectedFilling.value = name
 }
 
-// ===== HARGA KOMBINASI (filling + topping) =====
+// ===== HARGA KOMBINASI =====
+// Tabel harga tambahan per pasangan filling + topping, diisi admin.
 const comboPrices = computed(() =>
   Array.isArray(props.product.comboPrices) ? props.product.comboPrices : []
 )
-// harga tambahan untuk pasangan (filling terpilih, satu topping); 0 kalau tak ada
+// Tambahan harga untuk satu topping, dipasangkan dengan filling yang sedang
+// dipilih. Pasangan yang tidak terdaftar dianggap tanpa tambahan.
 const comboPriceOf = (toppingName) => {
   const row = comboPrices.value.find(
     (c) => c.filling === selectedFilling.value && c.topping === toppingName
@@ -113,7 +130,8 @@ const comboPriceOf = (toppingName) => {
   return row ? Number(row.price) || 0 : 0
 }
 
-// ===== TOPPING (CINROLLS VAN DEPOK) — wajib pilih min 1, tanpa harga =====
+// ===== TOPPING =====
+// Wajib dipilih minimal satu, boleh lebih, sebatas yang diizinkan admin.
 const toppingConfig = computed(() =>
   usesTopping(props.product.subcategory) ? props.product.topping : null
 )
@@ -122,7 +140,7 @@ const toppingMax = computed(() =>
   Math.min(toppingConfig.value?.maxSelect ?? 1, MAX_TOPPING_SELECT)
 )
 
-// nama-nama topping yang dipilih user (bisa beberapa)
+// Topping yang sedang dipilih
 const selectedToppings = ref([])
 watch(toppingConfig, () => {
   selectedToppings.value = []
@@ -135,28 +153,29 @@ const toggleTopping = (name) => {
   if (i >= 0) {
     selectedToppings.value.splice(i, 1)
   } else {
-    // abaikan klik kalau sudah mencapai batas maksimal pilihan
+    // Sudah mencapai batas: klik diabaikan. Yang sudah terpilih tetap
+    // bisa dilepas untuk menukarnya.
     if (selectedToppings.value.length >= toppingMax.value) return
     selectedToppings.value.push(name)
   }
 }
 
-// total tambahan dari kombinasi: Σ harga (filling terpilih × tiap topping terpilih)
+// Jumlahkan tambahan dari semua topping yang dipilih
 const comboPriceAdd = computed(() =>
   selectedToppings.value.reduce((sum, t) => sum + comboPriceOf(t), 0)
 )
 
-// harga tampil = harga dasar + tambahan kombinasi
+// Harga yang tampil di layar: harga dasar ditambah semua tambahan tadi
 const finalPrice = computed(() =>
   baseFinalPrice.value == null ? null : baseFinalPrice.value + comboPriceAdd.value
 )
 
-// label ukuran untuk sub-kategori 1-varian (read-only)
+// Keterangan ukuran untuk produk yang ukurannya sudah tetap
 const sizeText = computed(() => {
   const v = props.product.variants?.[0]
   if (isSizeSubcat.value || !v || v.size == null) return ''
   const shapeWord = v.shape === 'ROUND' ? t('product.round') : t('product.square')
-  // pemisah titik-tengah antara bentuk & ukuran (jarak rapi)
+  // Titik tengah sebagai pemisah antara bentuk & ukuran
   return `${shapeWord} ${variantSizeLabel(v.shape, v.size, v.sizeB)}`
 })
 
@@ -168,7 +187,7 @@ const handleSubmit = async () => {
     submitError.value = t('product.chooseSizeFirst')
     return
   }
-  // topping wajib dipilih minimal satu
+  // Topping wajib dipilih minimal satu
   if (hasTopping.value && selectedToppings.value.length === 0) {
     submitError.value = t('product.topping.required')
     return
@@ -224,7 +243,7 @@ const handleSubmit = async () => {
         :placeholder="usesSizePicker ? t('product.chooseSizeFirst') : ''"
       />
 
-      <!-- Flavor fixed untuk TYPE5, read-only -->
+      <!-- Rasa sudah ditetapkan admin, jadi hanya ditampilkan -->
       <div
         v-if="product.flavor"
         class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5 max-w-md"
@@ -239,7 +258,7 @@ const handleSubmit = async () => {
         </span>
       </div>
 
-      <!-- Ukuran Bread: user memilih Personal / Family / Sharing -->
+      <!-- Roti: pilih ukuran bernama -->
       <div v-if="isBread" class="mb-6 max-w-md">
         <p class="text-[15px] font-extrabold mb-2.5">
           {{ t('product.chooseSize') }} <span class="text-brand-500">*</span>
@@ -272,7 +291,7 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      <!-- Size-pilihan (Basque): user memilih ukuran -->
+      <!-- Basque: pilih ukuran, tiap ukuran beda harga -->
       <ProductVariantPicker
         v-else-if="isSizeSubcat"
         v-model:variant-id="selectedVariantId"
@@ -280,7 +299,7 @@ const handleSubmit = async () => {
         :discount="product.discount"
       />
 
-      <!-- Size tetap (sub-kategori lain): read-only -->
+      <!-- Kategori lain: ukurannya tetap, hanya ditampilkan -->
       <div
         v-else-if="sizeText"
         class="mb-6 flex items-center gap-3.5 rounded-2xl border border-cream-300 bg-gradient-to-br from-white to-[#FDF7F1] px-4 py-3.5 max-w-md"
@@ -295,7 +314,7 @@ const handleSubmit = async () => {
         </span>
       </div>
 
-      <!-- FILLING (CINROLLS VAN DEPOK): pilih satu, pakai harga -->
+      <!-- Filling: pilih satu -->
       <div v-if="hasFilling" class="mb-6 max-w-md">
         <p class="text-[15px] font-extrabold mb-1">
           {{ t('product.filling.title') }}
@@ -325,7 +344,8 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      <!-- TOPPING (CINROLLS VAN DEPOK): wajib pilih min 1; harga per kombinasi -->
+      <!-- Topping: wajib minimal satu. Harga di tiap tombol adalah tambahan
+           untuk pasangannya dengan filling yang sedang dipilih. -->
       <div v-if="hasTopping" class="mb-6 max-w-md">
         <p class="text-[15px] font-extrabold mb-1">
           {{ t('product.topping.title') }} <span class="text-brand-500">*</span>
@@ -366,7 +386,7 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      <!-- TYPE5: user hanya isi note & jumlah item -->
+      <!-- Tanpa kolom tulisan di atas kue — tidak berlaku untuk produk ini -->
       <ProductOrderForm
         :unit-price="finalPrice"
         v-model:notes="notes"

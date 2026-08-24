@@ -1,66 +1,80 @@
 <script setup>
-import { ref, computed, watch } from "vue";
-import { useRoute } from "vue-router";
-import { ShoppingCart, ChevronDown, User, LogOut, Menu, X } from "lucide-vue-next";
-import { useI18n } from "vue-i18n";
-import { useAuthStore } from "@/stores/auth.store";
-import { useCartStore } from "@/stores/cart.store";
-import { setLocale } from "@/i18n";
-import MiniCart from "@/components/common/MiniCart.vue";
-import logo from "@/assets/images/logo.png";
+import { ref, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { ShoppingCart, ChevronDown, User, LogOut, Menu, X } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth.store'
+import { useCartStore } from '@/stores/cart.store'
+import { setLocale } from '@/i18n'
+import MiniCart from '@/components/common/MiniCart.vue'
+import logo from '@/assets/images/logo.png'
 
-const { t, locale } = useI18n();
-const route = useRoute();
-const authStore = useAuthStore();
-const cartStore = useCartStore();
+/**
+ * Bar navigasi atas, tampil di semua halaman publik.
+ *
+ * Susunannya berubah menurut lebar layar: di layar besar semua tautan
+ * berderet, di layar kecil disembunyikan ke balik tombol tiga garis.
+ */
 
-const switchLocale = (lang) => setLocale(lang);
+const { t, locale } = useI18n()
+const route = useRoute()
+const authStore = useAuthStore()
+const cartStore = useCartStore()
 
-// Tutup mini keranjang otomatis setiap kali pindah halaman.
+const switchLocale = (lang) => setLocale(lang)
+
+// Pindah halaman -> tutup ringkasan keranjang, biar tidak menggantung
 watch(
   () => route.fullPath,
   () => cartStore.closeMini()
-);
+)
 
-// Picu animasi "memantul" pada ikon + badge keranjang tiap kali jumlah item
-// bertambah (mis. setelah add to cart). Kelas dilepas lagi setelah animasi
-// selesai supaya bisa dipicu ulang di penambahan berikutnya.
-const isCartBumping = ref(false);
+// Ikon keranjang "memantul" sebentar tiap kali ada barang masuk, sebagai
+// penanda bahwa klik tadi berhasil.
+const isCartBumping = ref(false)
 watch(
   () => cartStore.count,
   (newCount, oldCount) => {
     if (newCount > oldCount) {
-      isCartBumping.value = false;
-      // paksa reflow via nextTick microtask supaya animasi restart
-      requestAnimationFrame(() => (isCartBumping.value = true));
+      // Dimatikan dulu lalu dinyalakan lagi di frame berikutnya. Tanpa jeda
+      // ini, penambahan kedua tidak memantul karena animasinya dianggap
+      // masih berjalan.
+      isCartBumping.value = false
+      requestAnimationFrame(() => (isCartBumping.value = true))
     }
   }
-);
+)
 
-const isUserMenuOpen = ref(false);
-const isNavOpen = ref(false);
-const toggleUserMenu = () => (isUserMenuOpen.value = !isUserMenuOpen.value);
-const closeUserMenu = () => (isUserMenuOpen.value = false);
-const toggleNav = () => (isNavOpen.value = !isNavOpen.value);
-const closeNav = () => (isNavOpen.value = false);
+// Dua hal yang bisa dibuka-tutup: menu akun dan menu geser di layar kecil
+const isUserMenuOpen = ref(false)
+const isNavOpen = ref(false)
+const toggleUserMenu = () => (isUserMenuOpen.value = !isUserMenuOpen.value)
+const closeUserMenu = () => (isUserMenuOpen.value = false)
+const toggleNav = () => (isNavOpen.value = !isNavOpen.value)
+const closeNav = () => (isNavOpen.value = false)
 
+// Huruf awal nama dipakai sebagai pengganti foto profil
 const userInitial = () =>
-  (authStore.user?.name || "?").trim().charAt(0).toUpperCase();
-const userFirst = () => (authStore.user?.name || "").trim().split(" ")[0];
+  (authStore.user?.name || '?').trim().charAt(0).toUpperCase()
+// Nama depan saja, supaya tidak memakan tempat di bar
+const userFirst = () => (authStore.user?.name || '').trim().split(' ')[0]
 
 const handleLogout = async () => {
-  closeUserMenu();
-  closeNav();
-  await authStore.logout();
-};
+  closeUserMenu()
+  closeNav()
+  await authStore.logout()
+}
 
+// Daftar tautan. Dibungkus computed supaya labelnya ikut berubah saat
+// bahasa diganti. `exact` menandai Beranda, yang jika tidak dibedakan akan
+// tampak aktif di semua halaman karena alamatnya "/".
 const navLinks = computed(() => [
-  { to: "/", label: t("nav.home"), exact: true },
-  { to: "/menu", label: t("nav.menu") },
-  { to: "/gallery", label: t("nav.gallery") },
-  { to: "/about", label: t("nav.about") },
-  { to: "/faq", label: t("nav.faq") },
-]);
+  { to: '/', label: t('nav.home'), exact: true },
+  { to: '/menu', label: t('nav.menu') },
+  { to: '/gallery', label: t('nav.gallery') },
+  { to: '/about', label: t('nav.about') },
+  { to: '/faq', label: t('nav.faq') },
+])
 </script>
 
 <template>
@@ -70,7 +84,7 @@ const navLinks = computed(() => [
     <div
       class="max-w-[1440px] mx-auto flex items-center gap-3 md:gap-7 px-5 md:px-8 lg:px-12 h-[72px]"
     >
-      <!-- Logo -->
+      <!-- Logo + nama toko, sekaligus tautan ke beranda -->
       <RouterLink
         to="/"
         class="flex items-center gap-2 md:gap-3 min-w-0 text-cocoa-900 hover:opacity-70 transition-opacity"
@@ -88,12 +102,12 @@ const navLinks = computed(() => [
           <span
             class="text-[9px] md:text-[10.5px] tracking-[0.14em] uppercase text-cocoa-400"
           >
-            {{ t("nav.since") }}
+            {{ t('nav.since') }}
           </span>
         </span>
       </RouterLink>
 
-      <!-- Nav links (desktop) -->
+      <!-- Tautan halaman, hanya tampil mulai layar sedang ke atas -->
       <nav
         class="hidden md:flex items-center gap-2 mx-auto text-[15px] font-semibold"
       >
@@ -112,13 +126,13 @@ const navLinks = computed(() => [
           to="/admin/analytics"
           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-brand-500 hover:bg-brand-100 transition-colors"
         >
-          🛠 {{ t("nav.admin") }}
+          🛠 {{ t('nav.admin') }}
         </RouterLink>
       </nav>
 
-      <!-- Right side -->
+      <!-- Sisi kanan: ganti bahasa, keranjang, akun, dan tombol menu -->
       <div class="flex items-center gap-2 md:gap-2.5 ml-auto md:ml-2 shrink-0">
-        <!-- Language switcher -->
+        <!-- Ganti bahasa ID / EN -->
         <div
           class="hidden sm:inline-flex items-center h-[42px] p-1 rounded-full bg-white border border-[#EBDCCC] text-[12px] font-extrabold"
         >
@@ -148,7 +162,7 @@ const navLinks = computed(() => [
           </button>
         </div>
 
-        <!-- Cart -->
+        <!-- Ikon keranjang + jumlah barang. Diklik untuk membuka ringkasannya. -->
         <div class="relative">
           <button
             type="button"
@@ -175,16 +189,16 @@ const navLinks = computed(() => [
           <MiniCart />
         </div>
 
-        <!-- GUEST -->
+        <!-- Belum login: tombol masuk -->
         <RouterLink
           v-if="!authStore.isAuthenticated"
           to="/login"
           class="hidden md:inline-flex items-center h-[42px] px-5 rounded-full bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 transition-colors"
         >
-          {{ t("nav.signIn") }}
+          {{ t('nav.signIn') }}
         </RouterLink>
 
-        <!-- LOGGED IN -->
+        <!-- Sudah login: nama + menu akun -->
         <div v-else class="relative hidden md:block">
           <button
             type="button"
@@ -214,7 +228,7 @@ const navLinks = computed(() => [
               @click="closeUserMenu"
             >
               <User class="w-4 h-4" stroke-width="1.8" />
-              {{ t("nav.profile") }}
+              {{ t('nav.profile') }}
             </RouterLink>
             <button
               type="button"
@@ -222,12 +236,12 @@ const navLinks = computed(() => [
               class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-brand-500 text-sm font-bold text-left hover:bg-brand-50 transition-colors"
             >
               <LogOut class="w-4 h-4" stroke-width="1.8" />
-              {{ t("nav.logout") }}
+              {{ t('nav.logout') }}
             </button>
           </div>
         </div>
 
-        <!-- Burger (mobile) -->
+        <!-- Tombol tiga garis, pengganti deretan tautan di layar kecil -->
         <button
           type="button"
           @click="toggleNav"
@@ -243,94 +257,95 @@ const navLinks = computed(() => [
       </div>
     </div>
 
-    <!-- Mobile nav -->
+    <!-- Menu layar kecil, menggeser masuk dari kanan -->
     <div class="md:hidden absolute left-0 right-0 top-full overflow-x-hidden z-40">
-    <Transition name="nav-slide">
-    <nav
-      v-if="isNavOpen"
-      class="flex flex-col border-t border-[#F5DCE8] bg-[#FDF2F7] shadow-[0_16px_30px_-16px_rgba(51,38,31,0.4)] px-5 pt-2 pb-4"
-    >
-      <RouterLink
-        v-for="link in navLinks"
-        :key="link.to"
-        :to="link.to"
-        class="py-3 px-2 text-cocoa-900 font-bold border-b border-[#F5DCE8] hover:text-brand-500 transition-colors"
-        @click="closeNav"
-      >
-        {{ link.label }}
-      </RouterLink>
-      <RouterLink
-        v-if="authStore.isAdmin"
-        to="/admin/analytics"
-        class="py-3 px-2 text-brand-500 font-extrabold hover:opacity-70 transition-opacity"
-        @click="closeNav"
-      >
-        🛠 {{ t("nav.adminPanel") }}
-      </RouterLink>
+      <Transition name="nav-slide">
+        <nav
+          v-if="isNavOpen"
+          class="flex flex-col border-t border-[#F5DCE8] bg-[#FDF2F7] shadow-[0_16px_30px_-16px_rgba(51,38,31,0.4)] px-5 pt-2 pb-4"
+        >
+          <RouterLink
+            v-for="link in navLinks"
+            :key="link.to"
+            :to="link.to"
+            class="py-3 px-2 text-cocoa-900 font-bold border-b border-[#F5DCE8] hover:text-brand-500 transition-colors"
+            @click="closeNav"
+          >
+            {{ link.label }}
+          </RouterLink>
+          <RouterLink
+            v-if="authStore.isAdmin"
+            to="/admin/analytics"
+            class="py-3 px-2 text-brand-500 font-extrabold hover:opacity-70 transition-opacity"
+            @click="closeNav"
+          >
+            🛠 {{ t('nav.adminPanel') }}
+          </RouterLink>
 
-      <!-- Auth actions (mobile) -->
-      <RouterLink
-        v-if="!authStore.isAuthenticated"
-        to="/login"
-        class="mt-3 inline-flex items-center justify-center h-[44px] px-5 rounded-full bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 transition-colors"
-        @click="closeNav"
-      >
-        {{ t("nav.signIn") }}
-      </RouterLink>
-      <template v-else>
-        <RouterLink
-          to="/profile"
-          class="flex items-center gap-2.5 py-3 px-2 text-cocoa-900 font-bold border-b border-[#F5DCE8] hover:text-brand-500 transition-colors"
-          @click="closeNav"
-        >
-          <User class="w-4 h-4" stroke-width="1.8" />
-          {{ t("nav.profile") }}
-        </RouterLink>
-        <button
-          type="button"
-          @click="handleLogout"
-          class="flex items-center gap-2.5 py-3 px-2 text-left text-brand-500 font-bold hover:opacity-70 transition-opacity"
-        >
-          <LogOut class="w-4 h-4" stroke-width="1.8" />
-          {{ t("nav.logout") }}
-        </button>
-      </template>
+          <!-- Tombol akun versi layar kecil -->
+          <RouterLink
+            v-if="!authStore.isAuthenticated"
+            to="/login"
+            class="mt-3 inline-flex items-center justify-center h-[44px] px-5 rounded-full bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 transition-colors"
+            @click="closeNav"
+          >
+            {{ t('nav.signIn') }}
+          </RouterLink>
+          <template v-else>
+            <RouterLink
+              to="/profile"
+              class="flex items-center gap-2.5 py-3 px-2 text-cocoa-900 font-bold border-b border-[#F5DCE8] hover:text-brand-500 transition-colors"
+              @click="closeNav"
+            >
+              <User class="w-4 h-4" stroke-width="1.8" />
+              {{ t('nav.profile') }}
+            </RouterLink>
+            <button
+              type="button"
+              @click="handleLogout"
+              class="flex items-center gap-2.5 py-3 px-2 text-left text-brand-500 font-bold hover:opacity-70 transition-opacity"
+            >
+              <LogOut class="w-4 h-4" stroke-width="1.8" />
+              {{ t('nav.logout') }}
+            </button>
+          </template>
 
-      <!-- Language switcher (mobile) -->
-      <div class="flex items-center gap-2 pt-3 sm:hidden">
-        <button
-          type="button"
-          @click="switchLocale('id')"
-          class="px-4 py-1.5 rounded-full text-[12px] font-extrabold border transition-colors"
-          :class="
-            locale === 'id'
-              ? 'bg-brand-500 border-brand-500 text-white'
-              : 'bg-white border-[#EBDCCC] text-cocoa-400'
-          "
-        >
-          ID
-        </button>
-        <button
-          type="button"
-          @click="switchLocale('en')"
-          class="px-4 py-1.5 rounded-full text-[12px] font-extrabold border transition-colors"
-          :class="
-            locale === 'en'
-              ? 'bg-brand-500 border-brand-500 text-white'
-              : 'bg-white border-[#EBDCCC] text-cocoa-400'
-          "
-        >
-          EN
-        </button>
-      </div>
-    </nav>
-    </Transition>
+          <!-- Ganti bahasa versi layar kecil -->
+          <div class="flex items-center gap-2 pt-3 sm:hidden">
+            <button
+              type="button"
+              @click="switchLocale('id')"
+              class="px-4 py-1.5 rounded-full text-[12px] font-extrabold border transition-colors"
+              :class="
+                locale === 'id'
+                  ? 'bg-brand-500 border-brand-500 text-white'
+                  : 'bg-white border-[#EBDCCC] text-cocoa-400'
+              "
+            >
+              ID
+            </button>
+            <button
+              type="button"
+              @click="switchLocale('en')"
+              class="px-4 py-1.5 rounded-full text-[12px] font-extrabold border transition-colors"
+              :class="
+                locale === 'en'
+                  ? 'bg-brand-500 border-brand-500 text-white'
+                  : 'bg-white border-[#EBDCCC] text-cocoa-400'
+              "
+            >
+              EN
+            </button>
+          </div>
+        </nav>
+      </Transition>
     </div>
   </header>
 
-  <!-- Backdrop penutup mini keranjang. Sibling <header> supaya berada di
-       bawah header (yang z-50) — header & panel tetap bisa diklik, sementara
-       klik di area halaman menutup mini keranjang. -->
+  <!-- Lapisan tak terlihat yang menutupi halaman selagi ringkasan keranjang
+       terbuka: klik di mana pun akan menutupnya. Sengaja diletakkan di luar
+       <header> dan diberi lapisan lebih rendah, supaya header dan panel
+       keranjangnya sendiri tetap bisa diklik. -->
   <div
     v-if="cartStore.isMiniOpen"
     class="fixed inset-0 z-40"
@@ -339,6 +354,9 @@ const navLinks = computed(() => [
 </template>
 
 <style scoped>
+/* Menu layar kecil masuk dengan menggeser dari tepi kanan.
+   overflow: hidden menahan isinya supaya tidak sempat terlihat melewati
+   tepi layar selagi bergeser. */
 .nav-slide-enter-active,
 .nav-slide-leave-active {
   transition: transform 0.3s ease, opacity 0.25s ease;

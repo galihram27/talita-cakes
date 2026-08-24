@@ -1,6 +1,18 @@
 // src/config/productOptions.js
-// Mirror aturan size dari backend (product.helper.js) supaya form admin
-// hanya memunculkan pilihan yang pasti lolos validasi server.
+
+/**
+ * Katalog aturan produk sisi frontend: kategori, sub-kategori, daftar rasa,
+ * ukuran roti, dan konfigurasi cupcake.
+ *
+ * SELURUH isi berkas ini adalah salinan dari backend
+ * (src/features/product/product.constant.js dan product.helper.js).
+ * Tujuannya supaya form admin hanya menawarkan pilihan yang pasti diterima
+ * server, dan halaman produk bisa menampilkan pilihan tanpa menunggu balasan.
+ *
+ * Karena itu: menambah kategori atau rasa baru berarti menyunting DUA berkas.
+ * Kalau hanya salah satu yang diubah, admin bisa memilih sesuatu yang lalu
+ * ditolak server — atau sebaliknya, pilihan yang sah tidak pernah muncul.
+ */
 
 export const PRODUCT_TYPE_OPTIONS = [
   { value: 'TYPE1', label: 'Type 1 (Signature Collection)' },
@@ -11,8 +23,7 @@ export const PRODUCT_TYPE_OPTIONS = [
   { value: 'TYPE6', label: 'Type 6 (Cupcakes)' },
 ]
 
-// mirror dari backend product.constant.js -> PRODUCT_CATEGORIES
-// (daftar kategori yang valid per product type)
+// Kategori yang sah untuk tiap tipe produk
 export const PRODUCT_CATEGORIES = {
   TYPE1: ['Signature Petite Cake Series', 'Signature Shortcake Series'],
   TYPE2: ['Simple Decor Petite Cake', 'Paper Topper Petite Cake', 'Custom 2D Petite Cake'],
@@ -32,9 +43,9 @@ export const PRODUCT_CATEGORIES = {
     'Signature Royal Custom Decor',
     'Signature Simple Roses Cake',
   ],
-  // TYPE5 (non-cake): kategori level-1; sub-kategori di TYPE5_SUBCATEGORIES
+  // TYPE5 bertingkat dua: kategori di sini, sub-kategorinya di bawah
   TYPE5: ['Bread', 'Cheese Cake', 'Brownies'],
-  // TYPE6 (cupcakes): aturan rasa & isi box per kategori di TYPE6_CATEGORY_CONFIG
+  // Tiap kategori cupcake punya aturan sendiri, lihat TYPE6_CATEGORY_CONFIG
   TYPE6: [
     'American Butter Cupcakes',
     'Simple Decor Cupcakes',
@@ -44,8 +55,7 @@ export const PRODUCT_CATEGORIES = {
   ],
 }
 
-// mirror dari backend product.constant.js -> TYPE5_SUBCATEGORIES
-// sub-kategori (level-2) TYPE5 dikelompokkan per kategori level-1
+// Sub-kategori TYPE5, dikelompokkan menurut kategori induknya
 export const TYPE5_SUBCATEGORIES = {
   Bread: ['CINROLLS VAN DEPOK', 'MOZZARELLA SAUSAGE ROLLS'],
   'Cheese Cake': ['BASQUE BURNT CHEESE CAKE'],
@@ -54,15 +64,14 @@ export const TYPE5_SUBCATEGORIES = {
     'SIGNATURE ASSORTED BROWNIES BOX',
     'SIGNATURE CUSTOM BROWNIES BOX',
   ],
-  // "Mozzarella Sausage Rolls" sengaja tidak didaftar -> tanpa sub-kategori
 }
 
-// Apakah kategori TYPE5 ini punya sub-kategori? Kategori tanpa entri di
-// TYPE5_SUBCATEGORIES tidak memakai subcategory.
+// Kategori yang tidak terdaftar di atas berarti tidak bertingkat dua,
+// jadi form admin tidak menampilkan pilihan sub-kategori untuknya
 export const type5HasSubcategories = (category) =>
   (TYPE5_SUBCATEGORIES[category]?.length ?? 0) > 0
 
-// Sub-kategori TYPE5 yang size-nya dipilih user (harga per size). Mirror backend.
+// Sub-kategori yang ukurannya dipilih pembeli, tiap ukuran punya harga sendiri
 export const TYPE5_SIZE_SUBCATEGORIES = {
   'BASQUE BURNT CHEESE CAKE': { shape: 'ROUND', sizes: [14, 16, 18, 20] },
 }
@@ -73,7 +82,9 @@ export const type5SizeConfig = (subcategory) =>
 export const isType5SizeSubcategory = (subcategory) =>
   Object.prototype.hasOwnProperty.call(TYPE5_SIZE_SUBCATEGORIES, subcategory)
 
-// ===== BREAD (kategori) — ukuran-pilihan user dengan dimensi TETAP — mirror backend =====
+// ===== ROTI =====
+// Ukurannya bernama dengan dimensi yang sudah ditetapkan, jadi admin hanya
+// mengisi harga tiap ukuran — bukan mengetik dimensinya.
 export const BREAD_CATEGORY = 'Bread'
 export const isBreadCategory = (category) => category === BREAD_CATEGORY
 
@@ -85,7 +96,9 @@ export const BREAD_SIZES = [
 
 export const breadSizeByKey = (key) => BREAD_SIZES.find((s) => s.key === key) ?? null
 
-// Cari ukuran bread yang cocok dengan variant (berdasar shape/size/sizeB).
+// Kebalikannya: dari sebuah varian, cari ukuran roti mana yang cocok.
+// Dipakai untuk menampilkan kembali nama ukurannya ("Family Size") dari data
+// yang tersimpan, karena yang masuk DB hanyalah dimensinya.
 export const breadSizeForVariant = (v) =>
   BREAD_SIZES.find(
     (s) =>
@@ -94,21 +107,22 @@ export const breadSizeForVariant = (v) =>
       (s.sizeB ?? null) === (v.sizeB ?? null),
   ) ?? null
 
-// ===== FILLING & TOPPING (khusus CINROLLS VAN DEPOK) — mirror backend =====
+// ===== FILLING & TOPPING =====
+// Sejauh ini hanya Cinrolls yang memakainya. Kedua fungsi di bawah dibuat
+// terpisah walau isinya sama, supaya nanti bisa diperluas sendiri-sendiri.
 export const CINROLLS_VAN_DEPOK = 'CINROLLS VAN DEPOK'
-export const MAX_FILLING_OPTIONS = 6 // maksimal opsi filling yang bisa dibuat admin
-export const MAX_TOPPING_OPTIONS = 6 // maksimal opsi topping yang bisa dibuat admin
-export const MAX_TOPPING_SELECT = 3 // maksimal jumlah topping yang boleh dipilih user
+export const MAX_FILLING_OPTIONS = 6 // batas jumlah pilihan yang boleh dibuat admin
+export const MAX_TOPPING_OPTIONS = 6
+export const MAX_TOPPING_SELECT = 3 // batas jumlah topping yang boleh dipilih pembeli
 
-// Apakah sub-kategori ini memakai pilihan filling & topping?
 export const usesFilling = (subcategory) => subcategory === CINROLLS_VAN_DEPOK
 export const usesTopping = (subcategory) => subcategory === CINROLLS_VAN_DEPOK
 
-// mirror dari backend product.constant.js -> TYPE6_CATEGORY_CONFIG
-// Rasa cupcake memakai nama tersendiri (berakhiran "Cupcakes") supaya tidak
-// tertukar dengan rasa cake yang namanya mirip. Seluruh kategori cupcake
-// berbagi daftar yang sama; yang berbeda hanya pilihan isi box dan apakah
-// rasanya ditentukan admin (American Butter).
+// ===== CUPCAKE =====
+// Nama rasanya sengaja diberi akhiran "Cupcakes" supaya tidak tertukar dengan
+// rasa kue yang namanya mirip — keduanya punya penjelasan berbeda di
+// constants.js. Semua kategori cupcake memakai daftar rasa yang sama; yang
+// membedakan hanya pilihan isi box dan siapa yang menentukan rasanya.
 export const CUPCAKE_FLAVORS = [
   'Double Choco Cupcakes',
   'Choco Blueberry Cupcakes',
@@ -116,7 +130,7 @@ export const CUPCAKE_FLAVORS = [
   'Vanilla Strawberry Cupcakes',
 ]
 
-// Rasa Goodiebag sub-kategori "Original Goodiebag". Mirror dari backend.
+// Goodiebag Original punya daftar rasanya sendiri, terpisah dari cupcake biasa
 export const ORIGINAL_GOODIEBAG_FLAVORS = [
   'Strawberry Marshmallow',
   'Double Cheese',
@@ -130,9 +144,11 @@ export const ORIGINAL_GOODIEBAG_FLAVORS = [
   'Choco Blueberry',
 ]
 
-// Dua sub-kategori Goodiebag Cupcakes: daftar rasa + batas jumlah rasa yang boleh
-// dipilih pembeli (Original: 1-4 rasa; Custom: tepat 1 rasa). Admin membuat produk
-// goodiebag per sub-kategori. Mirror dari backend product.constant.js.
+/**
+ * Dua macam goodiebag, masing-masing dengan daftar rasa & batas pilihannya:
+ * Original boleh 1 sampai 4 rasa, Custom tepat satu rasa.
+ * Admin membuat produk goodiebag terpisah untuk tiap sub-kategori.
+ */
 export const GOODIEBAG_SUBCATEGORIES = {
   'Original Goodiebag': { flavors: ORIGINAL_GOODIEBAG_FLAVORS, minFlavors: 1, maxFlavors: 4 },
   'Custom Goodiebag': { flavors: CUPCAKE_FLAVORS, minFlavors: 1, maxFlavors: 1 },
@@ -143,7 +159,8 @@ export const goodiebagSubcategories = () => Object.keys(GOODIEBAG_SUBCATEGORIES)
 export const goodiebagFlavorsForSubcategory = (subcategory) =>
   GOODIEBAG_SUBCATEGORIES[subcategory]?.flavors ?? []
 
-// Batas jumlah rasa yang boleh dipilih untuk satu sub-kategori goodiebag.
+// Batas rasa per sub-kategori goodiebag. Nilai bawaannya 1 rasa, dipakai
+// kalau sub-kategorinya tidak dikenal.
 export const goodiebagFlavorLimit = (subcategory) => ({
   min: GOODIEBAG_SUBCATEGORIES[subcategory]?.minFlavors ?? 1,
   max: GOODIEBAG_SUBCATEGORIES[subcategory]?.maxFlavors ?? 1,
@@ -152,7 +169,14 @@ export const goodiebagFlavorLimit = (subcategory) => ({
 export const isGoodiebagSubcategory = (subcategory) =>
   Object.prototype.hasOwnProperty.call(GOODIEBAG_SUBCATEGORIES, subcategory)
 
+/**
+ * Aturan tiap kategori cupcake:
+ * - fixedFlavor : true berarti rasanya ditetapkan admin, pembeli tidak memilih
+ * - flavors     : rasa yang boleh dipilih pembeli
+ * - boxes       : pilihan isi box yang tersedia
+ */
 export const TYPE6_CATEGORY_CONFIG = {
+  // Satu-satunya yang rasanya ditetapkan admin, karena itu `flavors` kosong
   'American Butter Cupcakes': { fixedFlavor: true, flavors: [], boxes: [2, 4, 6, 9, 12] },
   'Simple Decor Cupcakes': {
     fixedFlavor: false,
@@ -169,12 +193,12 @@ export const TYPE6_CATEGORY_CONFIG = {
     flavors: CUPCAKE_FLAVORS,
     boxes: [4, 6, 9, 12],
   },
-  // Goodiebag: harga tunggal per box (tanpa pilihan isi box). Punya sub-kategori
-  // (lihat GOODIEBAG_SUBCATEGORIES); pilihan rasa mengikuti sub-kategori produk.
-  // User memilih 1-4 rasa, minimal beli 10 box.
+  // Goodiebag berbeda sendiri: dijual per paket dengan harga tunggal, jadi
+  // `boxes` kosong. Rasanya juga kosong di sini karena ditentukan
+  // sub-kategorinya (lihat GOODIEBAG_SUBCATEGORIES).
   'Goodiebag Cupcakes': {
     fixedFlavor: false,
-    flavors: [], // rasa ditentukan per sub-kategori
+    flavors: [],
     boxes: [],
     goodiebag: true,
     minQty: 10,
@@ -193,19 +217,17 @@ export const cupcakeBoxesForCategory = (category) =>
 export const isFixedFlavorCupcake = (category) =>
   TYPE6_CATEGORY_CONFIG[category]?.fixedFlavor === true
 
-// Kategori goodiebag: harga tunggal per box, tanpa pilihan isi box.
 export const isGoodiebagCupcake = (category) =>
   TYPE6_CATEGORY_CONFIG[category]?.goodiebag === true
 
-// Jumlah box minimum (default 1 untuk kategori non-goodiebag).
+// Pembelian minimal. Kategori biasa tidak punya batas, jadi bawaannya 1.
 export const goodiebagMinQty = (category) =>
   TYPE6_CATEGORY_CONFIG[category]?.minQty ?? 1
 
-// Kategori dengan pilihan rasa jamak (mis. goodiebag: 1-4 rasa).
+// Kategori yang rasanya boleh dipilih lebih dari satu
 export const isMultiFlavorCupcake = (category) =>
   TYPE6_CATEGORY_CONFIG[category]?.multiFlavor === true
 
-// Batas jumlah rasa yang boleh dipilih untuk kategori rasa-jamak.
 export const cupcakeFlavorLimit = (category) => ({
   min: TYPE6_CATEGORY_CONFIG[category]?.minFlavors ?? 1,
   max: TYPE6_CATEGORY_CONFIG[category]?.maxFlavors ?? 1,
@@ -216,27 +238,31 @@ export const SHAPE_OPTIONS = [
   { value: 'SQUARE', label: 'Square' },
 ]
 
-// min size yang boleh dipilih per shape (samakan dgn ROUND/SQUARE_MIN_OPTIONS backend)
+// ===== UKURAN KUE =====
+// Ukuran terkecil yang boleh dipilih admin, lalu naik kelipatan 2 sampai 30cm.
+// Bulat boleh mulai lebih kecil daripada kotak.
 export const ROUND_MIN_OPTIONS = [16, 18, 20]
 export const SQUARE_MIN_OPTIONS = [18, 20]
 export const MAX_SIZE = 30
 
-// generate [min, min+2, ..., 30]
+// Dari ukuran terkecil, hasilkan seluruh ukuran sampai 30cm.
+// Contoh: generateSizeRange(18) -> [18, 20, 22, 24, 26, 28, 30]
 export const generateSizeRange = (minSize) => {
   const sizes = []
   for (let s = minSize; s <= MAX_SIZE; s += 2) sizes.push(s)
   return sizes
 }
 
-// TYPE1 pakai satu size manual; tawarkan pilihan genap 16..30 biar konsisten
+// TYPE1 ukurannya diketik admin, tapi tetap ditawarkan daftar genap 16–30
+// supaya seragam dengan tipe lain
 export const TYPE1_SIZE_OPTIONS = generateSizeRange(16)
 
-// label size sesuai shape: ROUND -> "16 cm", SQUARE -> "16×16 cm"
+// Penulisan ukuran kue: bulat "16 cm", kotak "16×16 cm"
 export const sizeLabel = (shape, size) =>
   shape === 'SQUARE' ? `${size}×${size} cm` : `${size} cm`
 
-// label size varian yang mendukung dimensi kedua (sizeB) untuk SQUARE non-cake:
-// ROUND -> "20 cm", SQUARE -> "20×10 cm" (pakai sizeB kalau ada, jika tidak NxN)
+// Sama seperti di atas, tapi untuk produk yang sisi kotaknya bisa berbeda
+// (mis. roti 22×10 cm). Kalau sisi kedua tidak diisi, dianggap bujur sangkar.
 export const variantSizeLabel = (shape, size, sizeB = null) => {
   if (size == null) return ''
   if (shape === 'SQUARE') return `${size}×${sizeB ?? size} cm`
