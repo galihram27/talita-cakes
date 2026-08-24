@@ -4,6 +4,10 @@ Situs toko kue rumahan di Depok: katalog produk, keranjang, dan checkout yang
 berakhir di WhatsApp — bukan pembayaran online. Dilengkapi panel admin untuk
 mengelola produk, galeri, pesanan, dan statistik pengunjung.
 
+🔗 **Kunjungi situsnya:** [talita-cakes.vercel.app](https://talita-cakes.vercel.app)
+
+![Tampilan beranda Talita's Cake & Cupcakes](docs/assets/tampilan-utama.jpg)
+
 Repositori ini berisi dua aplikasi yang berjalan terpisah:
 
 | Folder      | Isi                    | Dijalankan di   |
