@@ -2,7 +2,7 @@
 
 # 🍰 Talita's Cake & Cupcakes
 
-**A production e-commerce platform for a home bakery in Depok, Indonesia — serving real customers, real orders, and a real revenue stream.**
+**A production e-commerce platform for a home bakery in Depok, Indonesia, serving real customers, real orders, and a real revenue stream.**
 
 [![Live Site](https://img.shields.io/badge/Live_Demo-talita--cakes.vercel.app-ff5c8d?style=for-the-badge)](https://talita-cakes.vercel.app)
 [![Vue 3](https://img.shields.io/badge/Vue_3-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)](https://vuejs.org/)
@@ -27,7 +27,7 @@ every order costs the owner time.
 keeping the channel customers already trust. Buyers browse a structured
 catalogue, configure a cake, and check out with a server-calculated total and
 delivery fee. The order is persisted, then the buyer is handed off to WhatsApp
-with a pre-composed message containing every detail — so the conversation the
+with a pre-composed message containing every detail, so the conversation the
 owner is used to still happens, but starts from accurate, already-agreed numbers.
 
 **Why it matters**
@@ -61,15 +61,15 @@ This is not a tutorial clone. It is a two-app system running in production
 ## ✨ Key Features
 
 **🧁 Six-variant product configurator**
-The catalogue models six structurally different product types — from fixed SKUs,
-to fully configurable cakes (shape, size, flavour, design reference), to cupcake
-boxes priced by box contents. Option rules are declared once per side and kept in
-lockstep between API and UI, so an admin can never publish a combination the
-server would later reject.
+The catalogue models six structurally different product types, ranging from
+fixed SKUs to fully configurable cakes (shape, size, flavour, design reference)
+to cupcake boxes priced by contents. Option rules are declared once per side and
+kept in lockstep between API and UI, so an admin can never publish a combination
+the server would later reject.
 
 **🔒 Server-authoritative pricing & shipping**
-The browser computes prices for display only. Every total — item price, discount,
-and delivery fee — is recomputed server-side at cart and order time. Shipping is
+The browser computes prices for display only. Every total (item price, discount,
+and delivery fee) is recomputed server-side at cart and order time. Shipping is
 derived from real motorcycle routing distance (HERE Routing API) between store
 and customer coordinates, with a straight-line fallback when that service is
 unavailable.
@@ -78,7 +78,7 @@ unavailable.
 Public pages, including every product detail page, are rendered to HTML at build
 time so crawlers and WhatsApp link previews receive complete markup. Because
 admin edits would otherwise go stale in that HTML, the backend fires a debounced
-deploy hook whenever products or gallery items change — automatic rebuilds, no
+deploy hook whenever products or gallery items change, so rebuilds happen without
 manual redeploys.
 
 **📊 Admin console with analytics**
@@ -97,7 +97,7 @@ touching application code.
 
 <div align="center">
 
-![Talita's Cake & Cupcakes — homepage](docs/assets/tampilan-utama.jpg)
+![Talita's Cake & Cupcakes homepage](docs/assets/tampilan-utama.jpg)
 
 _Homepage. Live at **[talita-cakes.vercel.app](https://talita-cakes.vercel.app)**._
 
@@ -109,32 +109,47 @@ _Homepage. Live at **[talita-cakes.vercel.app](https://talita-cakes.vercel.app)*
 
 ## 🧩 Challenges & Solutions
 
-**The hardest problem: keeping a pre-rendered site both fast and fresh.**
+**The hardest problem: one catalogue, six products that behave nothing alike.**
 
-`vite-ssg` renders public pages to static HTML at build time, which is what makes
-the catalogue indexable and gives WhatsApp link previews real titles and images.
-But static HTML is a snapshot: the moment the owner added a product from the
-admin panel, the generated files were out of date — and manually redeploying
-after every edit is not a workflow a non-technical user will ever follow.
+A real bakery menu is not one product shape repeated. This one has six. A
+signature shortcake is fixed: nothing to choose. A custom fondant cake needs
+shape, size, flavour, and an uploaded design reference. Bread is sold in three
+named sizes whose dimensions are fixed while the owner sets the price of each.
+Cinnamon rolls add one filling and up to three toppings. Basque cheesecake is
+priced per diameter. Goodiebag cupcakes have no box options at all: a flat price
+per box, a minimum of ten boxes, and one to four flavours chosen across the
+order. Every one of those rules came from how the shop actually sells.
 
-The fix was a two-track content strategy. Ordinary visitors always see live data,
-because the hydrated app fetches from the API right after load — nothing is ever
-stale for a human. For crawlers, the backend detects product and gallery
-mutations and triggers a **debounced deploy hook** (default two minutes), so a
-burst of admin edits collapses into a single rebuild instead of a queue of them.
+The obvious approach, a table and a form per type, fails quickly. Pricing, cart,
+order, and the admin panel would each have to re-implement the same six-way
+branch, and the sixth variation would be added in five places and forgotten in
+the sixth. Instead I collapsed storage to a single `Product` plus
+`ProductVariant` pair with nullable `shape`, `size`, and `sizeB`, and moved the
+differences out of the code and into data: one rule module declares every valid
+category, flavour list, box size, and selection limit, exposed through
+intent-revealing predicates such as `isGoodiebagCupcake()` and `usesFilling()`.
+Business logic asks what a product allows instead of switching on its type.
 
-A subtler trap surfaced in production: the SPA fallback rewrite on Vercel pointed
-at `/index.html`, which — with `cleanUrls` enabled — is itself a 308 redirect to
-`/`. Rewrites do not follow redirects, so every route without a pre-rendered file
-(cart, checkout, admin, newly added products) returned a hard 404. Pointing the
-rewrite at `/` restored them, and the failure mode is now documented in the repo
-so it cannot silently return.
+Validation then splits across three layers by what each one can actually know.
+Zod checks payload shape at the edge. The service layer decides semantics, for
+example whether a chosen flavour is legal for that type and category. The
+repository handles the one check that only holds inside a transaction: whether a
+cake's shape and size matrix is complete. That check has to run after the rows
+are written and roll them back if it fails, so it is the single deliberate
+exception to the rule that repositories carry no business logic.
+
+The result is that adding a category or flavour touches declarative data rather
+than control flow. The honest cost is that the rule table is mirrored on the
+frontend for form rendering, so the two files have to move together, and `size`
+carries two meanings: diameter for cakes, cupcake count for boxes. Both are
+written down in the contributor guide, because an invariant a future maintainer
+cannot see is an invariant that will break.
 
 ---
 
 ## 🚀 Getting Started
 
-**Prerequisites** — Node.js 20+ (developed on v24), a PostgreSQL database, and
+**Prerequisites:** Node.js 20+ (developed on v24), a PostgreSQL database, and
 accounts for Cloudinary and Resend.
 
 ### 1. Backend
@@ -164,7 +179,7 @@ cd frontend
 npm run build                 # static pre-render + sitemap.xml + robots.txt
 ```
 
-> The API must be reachable during a production build — pre-rendering fetches the
+> The API must be reachable during a production build, because pre-rendering fetches the
 > catalogue in order to generate product pages.
 
 Required environment variables are documented in the `.env.example` file of each
@@ -174,7 +189,7 @@ app, which is kept in sync with the variables the code actually reads.
 
 ## 👤 Contact
 
-**Galih Ramadhan** — Full-Stack Web Developer
+**Galih Ramadhan**, Full-Stack Web Developer
 
 [![GitHub](https://img.shields.io/badge/GitHub-galihram27-181717?style=flat-square&logo=github)](https://github.com/galihram27)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/YOUR-LINKEDIN-HANDLE)
