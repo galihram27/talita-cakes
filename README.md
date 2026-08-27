@@ -1,332 +1,187 @@
-# Talita's Cake & Cupcakes
+<div align="center">
 
-Situs toko kue rumahan di Depok: katalog produk, keranjang, dan checkout yang
-berakhir di WhatsApp — bukan pembayaran online. Dilengkapi panel admin untuk
-mengelola produk, galeri, pesanan, dan statistik pengunjung.
+# 🍰 Talita's Cake & Cupcakes
 
-🔗 **Kunjungi situsnya:** [talita-cakes.vercel.app](https://talita-cakes.vercel.app)
+**A production e-commerce platform for a home bakery in Depok, Indonesia — serving real customers, real orders, and a real revenue stream.**
 
-![Tampilan beranda Talita's Cake & Cupcakes](docs/assets/tampilan-utama.jpg)
+[![Live Site](https://img.shields.io/badge/Live_Demo-talita--cakes.vercel.app-ff5c8d?style=for-the-badge)](https://talita-cakes.vercel.app)
+[![Vue 3](https://img.shields.io/badge/Vue_3-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)](https://vuejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express 5](https://img.shields.io/badge/Express_5-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Prisma](https://img.shields.io/badge/Prisma_7-2D3748?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-Repositori ini berisi dua aplikasi yang berjalan terpisah:
-
-| Folder      | Isi                    | Dijalankan di   |
-| ----------- | ---------------------- | --------------- |
-| `backend/`  | REST API + basis data  | Render          |
-| `frontend/` | Situs & panel admin    | Vercel          |
-
----
-
-## Cara kerja singkat
-
-**Pemesanan berakhir di WhatsApp.** Pembeli menyusun pesanan di situs, lalu
-menekan konfirmasi. Pesanan disimpan sebagai catatan, dan pembeli diarahkan ke
-chat penjual dengan pesan yang sudah tersusun rapi berisi rincian pesanan,
-tanggal, alamat, dan totalnya. Kesepakatan akhir terjadi di chat itu.
-
-**Halaman dibangun jadi HTML saat build.** Halaman publik di-render lebih dulu
-sewaktu proses build, jadi mesin pencari menerima halaman yang sudah berisi —
-bukan halaman kosong yang menunggu JavaScript. Setelah terbuka di peramban,
-aplikasi mengambil alih dan berpindah halaman tanpa memuat ulang.
-
-Konsekuensinya: mengubah produk atau galeri lewat panel admin **tidak langsung
-terlihat di HTML statis**. Backend memicu build ulang otomatis lewat
-`DEPLOY_HOOK_URL` (lihat [Deploy](#deploy)). Bagi pengunjung biasa perubahannya
-tetap langsung terlihat, karena data diambil dari API.
-
-**Ongkir dihitung server.** Jarak dihitung dari koordinat alamat memakai rute
-motor lewat HERE Routing API, dengan jarak garis lurus sebagai cadangan kalau
-layanan itu tidak tersedia. Angka dari peramban tidak pernah dipercaya.
+</div>
 
 ---
 
-## Menjalankan di komputer sendiri
+## 📖 About the Project
 
-Butuh Node.js 20+ (dikembangkan memakai v24) dan sebuah basis data PostgreSQL.
+Most small Indonesian bakeries sell through WhatsApp alone. Orders arrive as
+free-form chat messages, prices are quoted by hand, delivery fees are guessed,
+and the shop has no catalogue a search engine can find. Mistakes are frequent and
+every order costs the owner time.
 
-### Backend
+**Talita's Cake & Cupcakes** replaces that workflow with a full storefront while
+keeping the channel customers already trust. Buyers browse a structured
+catalogue, configure a cake, and check out with a server-calculated total and
+delivery fee. The order is persisted, then the buyer is handed off to WhatsApp
+with a pre-composed message containing every detail — so the conversation the
+owner is used to still happens, but starts from accurate, already-agreed numbers.
+
+**Why it matters**
+
+| Before | After |
+| --- | --- |
+| Prices quoted manually per chat | Server-authoritative pricing, never trusted from the client |
+| Delivery fee estimated by feel | Real motorcycle routing distance from store coordinates |
+| No catalogue, invisible to search | Pre-rendered HTML per product, sitemap, rich results |
+| Order history lives in a chat log | Persisted orders, admin dashboard, visitor analytics |
+
+This is not a tutorial clone. It is a two-app system running in production
+(Render + Vercel), designed around one shop owner's actual operating constraints.
+
+---
+
+## 🛠 Built With
+
+| Layer | Technology |
+| --- | --- |
+| **Frontend** | Vue 3 (Composition API), Vite 8, `vite-ssg` static pre-render, Pinia, Vue Router, Vue I18n, Tailwind CSS 4 |
+| **Backend** | Node.js 20+, Express 5, layered feature architecture |
+| **Database** | PostgreSQL via Prisma 7 (migrations + seeding) |
+| **Auth** | JWT access/refresh pair, bcrypt, httpOnly cookies, email OTP |
+| **Validation** | Zod (server), VeeValidate + Zod (client) |
+| **Integrations** | Cloudinary (media), Resend (transactional email), HERE Routing API (distance), MapLibre GL + MapTiler (address picker), Chart.js (analytics) |
+| **Infrastructure** | Render (API), Vercel (static frontend), deploy hooks for content-triggered rebuilds |
+
+---
+
+## ✨ Key Features
+
+**🧁 Six-variant product configurator**
+The catalogue models six structurally different product types — from fixed SKUs,
+to fully configurable cakes (shape, size, flavour, design reference), to cupcake
+boxes priced by box contents. Option rules are declared once per side and kept in
+lockstep between API and UI, so an admin can never publish a combination the
+server would later reject.
+
+**🔒 Server-authoritative pricing & shipping**
+The browser computes prices for display only. Every total — item price, discount,
+and delivery fee — is recomputed server-side at cart and order time. Shipping is
+derived from real motorcycle routing distance (HERE Routing API) between store
+and customer coordinates, with a straight-line fallback when that service is
+unavailable.
+
+**⚡ SEO-grade static pre-rendering with live content**
+Public pages, including every product detail page, are rendered to HTML at build
+time so crawlers and WhatsApp link previews receive complete markup. Because
+admin edits would otherwise go stale in that HTML, the backend fires a debounced
+deploy hook whenever products or gallery items change — automatic rebuilds, no
+manual redeploys.
+
+**📊 Admin console with analytics**
+Role-guarded admin area for products, gallery, orders, and visitor statistics.
+Admin accounts cannot be created through public registration; the first one is
+provisioned through a repeatable Prisma seed.
+
+**🌐 Fully bilingual (ID/EN)**
+Every string lives in locale modules with enforced key parity between languages,
+including a dedicated plain-language copy file the shop owner can edit without
+touching application code.
+
+---
+
+## 📸 Screenshots
+
+<div align="center">
+
+![Talita's Cake & Cupcakes — homepage](docs/assets/tampilan-utama.jpg)
+
+_Homepage. Live at **[talita-cakes.vercel.app](https://talita-cakes.vercel.app)**._
+
+</div>
+
+> _More captures (product configurator, checkout map, admin analytics) to follow._
+
+---
+
+## 🧩 Challenges & Solutions
+
+**The hardest problem: keeping a pre-rendered site both fast and fresh.**
+
+`vite-ssg` renders public pages to static HTML at build time, which is what makes
+the catalogue indexable and gives WhatsApp link previews real titles and images.
+But static HTML is a snapshot: the moment the owner added a product from the
+admin panel, the generated files were out of date — and manually redeploying
+after every edit is not a workflow a non-technical user will ever follow.
+
+The fix was a two-track content strategy. Ordinary visitors always see live data,
+because the hydrated app fetches from the API right after load — nothing is ever
+stale for a human. For crawlers, the backend detects product and gallery
+mutations and triggers a **debounced deploy hook** (default two minutes), so a
+burst of admin edits collapses into a single rebuild instead of a queue of them.
+
+A subtler trap surfaced in production: the SPA fallback rewrite on Vercel pointed
+at `/index.html`, which — with `cleanUrls` enabled — is itself a 308 redirect to
+`/`. Rewrites do not follow redirects, so every route without a pre-rendered file
+(cart, checkout, admin, newly added products) returned a hard 404. Pointing the
+rewrite at `/` restored them, and the failure mode is now documented in the repo
+so it cannot silently return.
+
+---
+
+## 🚀 Getting Started
+
+**Prerequisites** — Node.js 20+ (developed on v24), a PostgreSQL database, and
+accounts for Cloudinary and Resend.
+
+### 1. Backend
 
 ```bash
 cd backend
 npm install
-cp .env.example .env        # lalu isi nilainya, lihat tabel di bawah
-npx prisma migrate dev      # siapkan tabel basis data
-npx prisma db seed          # buat akun admin pertama (butuh ADMIN_* di .env)
-npm run dev                 # jalan di http://localhost:5000
+cp .env.example .env          # fill in the values
+npx prisma migrate dev        # create the schema
+npx prisma db seed            # provision the first admin (needs ADMIN_* vars)
+npm run dev                   # → http://localhost:5000
 ```
 
-Panel admin di `/admin` hanya bisa dibuka akun ber-peran admin, dan peran itu
-tidak bisa diberikan lewat halaman pendaftaran. Karena itu akun admin pertama
-dibuat lewat perintah seed di atas. Perintahnya aman diulang: akun yang sudah
-ada diperbarui, bukan diduplikasi.
-
-### Frontend
+### 2. Frontend
 
 ```bash
 cd frontend
 npm install
-cp .env.example .env        # isi minimal VITE_API_BASE_URL
-npm run dev                 # jalan di http://localhost:5173
+cp .env.example .env          # set VITE_API_BASE_URL=http://localhost:5000/api
+npm run dev                   # → http://localhost:5173
 ```
 
-Isi `VITE_API_BASE_URL` dengan `http://localhost:5000/api` saat mengembangkan.
-
-### Perintah lain
-
-| Perintah                | Folder     | Kegunaan                                        |
-| ----------------------- | ---------- | ----------------------------------------------- |
-| `npm run dev`           | keduanya   | jalankan mode pengembangan                      |
-| `npm start`             | backend    | jalankan mode produksi                          |
-| `npm run build`         | backend    | siapkan Prisma & terapkan migrasi (dipakai Render) |
-| `npm run build`         | frontend   | build lengkap: HTML statis + sitemap + robots.txt |
-| `npm run build:spa`     | frontend   | build tanpa pra-render, untuk memeriksa cepat   |
-| `npm run preview`       | frontend   | lihat hasil build secara lokal                  |
-| `npx prisma db seed`    | backend    | buat/perbarui akun admin dari `ADMIN_*`         |
-| `npx prisma studio`     | backend    | lihat & sunting isi basis data lewat peramban   |
-
----
-
-## Pengaturan (environment variable)
-
-### Backend
-
-| Nama                       | Wajib | Keterangan                                                        |
-| -------------------------- | :---: | ----------------------------------------------------------------- |
-| `DATABASE_URL`             |  ya   | Koneksi PostgreSQL. Pakai yang *pooled* untuk aplikasi.           |
-| `JWT_SECRET`               |  ya   | Kunci penanda access token. Isi teks acak yang panjang.           |
-| `JWT_REFRESH_SECRET`       |  ya   | Kunci refresh token. **Harus berbeda** dari yang di atas.         |
-| `FRONTEND_URL`             |  ya   | Alamat frontend, untuk izin akses lintas domain & cookie.         |
-| `NODE_ENV`                 |       | Isi `production` saat dideploy. Kosongkan saat lokal.             |
-| `PORT`                     |       | Default 5000. Di Render diisi otomatis.                           |
-| `ADMIN_NAME`               |       | Keempatnya dipakai `npx prisma db seed` untuk membuat akun admin pertama. Tidak lengkap = pembuatan admin dilewati. |
-| `ADMIN_EMAIL`              |       |                                                                   |
-| `ADMIN_PASSWORD`           |       |                                                                   |
-| `ADMIN_PHONE`              |       |                                                                   |
-| `CLOUDINARY_CLOUD_NAME`    |  ya   | Penyimpanan gambar. Server ini tidak menyimpan berkas apa pun.    |
-| `CLOUDINARY_API_KEY`       |  ya   |                                                                   |
-| `CLOUDINARY_API_SECRET`    |  ya   |                                                                   |
-| `RESEND_API_KEY`           |  ya   | Pengiriman email kode OTP.                                        |
-| `RESEND_FROM_EMAIL`        |  ya   | Alamat pengirim, mis. `Talita Cakes <no-reply@domain.com>`.       |
-| `EMAIL_LOGO_URL`           |       | Logo di email. Kosong = pakai `logo.png` dari frontend.           |
-| `OWNER_WHATSAPP_NUMBER`    |  ya   | Tujuan pesanan. Format internasional **tanpa** `+`.               |
-| `STORE_LATITUDE`           |  ya   | Titik toko, jadi acuan perhitungan ongkir.                        |
-| `STORE_LONGITUDE`          |  ya   |                                                                   |
-| `HERE_API_KEY`             |       | Jarak rute motor. Kosong = pakai jarak garis lurus (lebih murah dari jarak sebenarnya). |
-| `GOOGLE_MAPS_API_KEY`      |       | Ulasan Google. Lihat catatan di bawah.                            |
-| `GOOGLE_PLACE_ID`          |       |                                                                   |
-| `VISITOR_ID_SALT`          |       | Pengacak penanda pengunjung cadangan.                             |
-| `DEPLOY_HOOK_URL`          |       | Pemicu build ulang otomatis. Kosong = fitur mati.                 |
-| `DEPLOY_HOOK_DEBOUNCE_MS`  |       | Jeda pemicu, default 2 menit.                                     |
-
-### Frontend
-
-| Nama                        | Wajib | Keterangan                                                     |
-| --------------------------- | :---: | -------------------------------------------------------------- |
-| `VITE_API_BASE_URL`         |  ya   | Alamat backend + `/api`.                                       |
-| `VITE_SITE_URL`             |       | Alamat situs, tanpa garis miring di akhir. Kosong = penunjuk alamat resmi tidak dipasang. |
-| `VITE_MAPTILER_KEY`         |       | Peta checkout. Kosong = pakai peta tanpa kunci.                |
-| `VITE_OWNER_WHATSAPP_NUMBER`|       | Ditampilkan di footer & tombol melayang.                       |
-| `VITE_OWNER_INSTAGRAM`      |       | Nama pengguna tanpa `@`. Kosong = ikonnya tidak muncul.        |
-| `VITE_OWNER_THREADS`        |       | Sama seperti di atas.                                          |
-| `VITE_OWNER_TIKTOK`         |       | Sama seperti di atas.                                          |
-| `VITE_STORE_ADDRESS`        |       | Alamat toko di footer.                                         |
-| `VITE_HALAL_CERT_NUMBER`    |       | Nomor sertifikat halal. Sudah ada nilai bawaannya.             |
-
-> Tabel di atas disusun dari variabel yang benar-benar dibaca kode, dan
-> `.env.example` di kedua folder sudah dicocokkan dengannya. Kalau menambah
-> variabel baru, tambahkan juga ke berkas contoh agar keduanya tidak melenceng.
-
----
-
-## Susunan folder
-
-### Backend
-
-Tiap fitur berdiri sendiri di `src/features/<nama>/`, dengan pembagian lapisan
-yang sama di semua fitur:
-
-```
-routes       daftar alamat endpoint + middleware yang dipasang
-validation   memeriksa bentuk data yang masuk (memakai Zod)
-controller   urusan HTTP saja: baca request, panggil service, susun jawaban
-service      aturan bisnis — di sinilah keputusan diambil
-repository   satu-satunya yang menyentuh basis data
-```
-
-```
-backend/src/
-├─ features/     auth, product, cart, order, gallery, analytics,
-│                review, settings, upload
-├─ middlewares/  penjaga login & peran, validasi, penangan error
-├─ lib/          koneksi Prisma, penyimpanan sementara
-├─ utils/        token, OTP, email, jarak, penyusun pesan WhatsApp
-├─ config/       .env, identitas toko, versi ketentuan layanan
-└─ routes/       titik kumpul seluruh endpoint (prefix /api)
-```
-
-Endpoint yang tersedia: `/auth`, `/products`, `/carts`, `/orders`,
-`/galleries`, `/analytics`, `/uploads`, `/reviews`, `/settings`.
-
-### Frontend
-
-```
-frontend/src/
-├─ views/        halaman, termasuk views/admin/ dan views/auth/
-├─ components/   admin/ · checkout/ · common/ · product/
-├─ stores/       keadaan bersama (Pinia): sesi, keranjang, katalog, dsb.
-├─ services/     pemanggilan API
-├─ config/       aturan produk, identitas toko, perkakas SEO
-├─ locales/      teks dua bahasa (id & en)
-├─ lib/          klien API, penanda pengunjung
-├─ router/       daftar halaman + penjaga akses
-└─ utils/        format rupiah, pencarian alamat, gambar
-```
-
----
-
-## Hal yang perlu diketahui
-
-**Enam tipe produk.** Ini sumber kerumitan terbesar di proyek ini, karena tiap
-tipe punya cara memilih yang berbeda:
-
-| Tipe  | Yang dipilih pembeli                                            |
-| ----- | --------------------------------------------------------------- |
-| TYPE1 | tidak ada — bentuk, ukuran, dan rasa sudah ditetapkan            |
-| TYPE2 | rasa + acuan desain                                              |
-| TYPE3 | bentuk & ukuran                                                  |
-| TYPE4 | bentuk, ukuran, rasa, + acuan desain                             |
-| TYPE5 | tergantung kategori: ukuran bernama (roti), pilihan ukuran (Basque), filling & topping (Cinrolls), atau tidak ada |
-| TYPE6 | isi box + rasa; goodiebag dijual per paket dengan pembelian minimal |
-
-Aturannya ditulis di **dua tempat yang harus selalu sama**:
-`backend/src/features/product/product.constant.js` dan
-`frontend/src/config/productOptions.js`. Menambah kategori atau rasa berarti
-menyunting keduanya — kalau hanya salah satu, admin bisa memilih sesuatu yang
-lalu ditolak server.
-
-**Harga selalu dihitung ulang server.** Angka dari peramban tidak pernah
-dipercaya, baik harga produk maupun ongkir.
-
-**Dua macam token.** Access token berumur 1 jam dan hanya disimpan di memori
-peramban. Refresh token berumur 7 hari, disimpan di cookie yang tidak bisa
-dibaca JavaScript. Karena itu memuat ulang halaman memicu pemulihan sesi
-otomatis. Ketiga angka masa berlaku itu harus sejalan: `utils/token.js`,
-`auth.service.js`, dan `utils/cookie.js`.
-
-**Pemesanan minimal H+3.** Diatur lewat `MIN_DAYS_BEFORE_CAKE_DATE` di
-`backend/src/features/order/order.helper.js`.
-
-**Teks situs dwibahasa.** Semua teks ada di `frontend/src/locales/`. Kunci di
-`id.js` dan `en.js` harus sama persis. Khusus halaman "Tentang Kami", teksnya
-dipisah ke `locales/id/about.js` yang sengaja diberi panduan agar bisa disunting
-pemilik toko tanpa perlu paham koding.
-
----
-
-## Deploy
-
-Frontend ditayangkan sebagai kumpulan berkas HTML statis, backend sebagai
-aplikasi Node biasa.
-
-### 1. Build frontend
-
-**Backend harus hidup dan terjangkau selama build berlangsung.** Saat halaman
-di-render jadi HTML, ia mengambil data lewat `VITE_API_BASE_URL` — daftar produk
-untuk halaman `/product/:id`, serta isi Menu, Home, dan Galeri. Kalau API mati,
-build tetap berhasil tapi hanya halaman statis yang jadi; halaman produk
-terpaksa dirender di peramban dan tidak terbaca mesin pencari.
-
-Isi environment variable di penyedia hosting frontend, minimal:
-
-- `VITE_API_BASE_URL` — alamat backend + `/api`
-- `VITE_SITE_URL` — domain situs tanpa garis miring di akhir. Wajib diisi kalau
-  SEO diharapkan bekerja, karena dipakai penunjuk alamat resmi, pratinjau
-  tautan, dan `sitemap.xml`.
+### 3. Verify the production build
 
 ```bash
 cd frontend
-npm ci
-npm run build     # menghasilkan frontend/dist/ berisi HTML, aset,
-                  # sitemap.xml, dan robots.txt
+npm run build                 # static pre-render + sitemap.xml + robots.txt
 ```
 
-### 2. Fallback ke index.html (wajib)
+> The API must be reachable during a production build — pre-rendering fetches the
+> catalogue in order to generate product pages.
 
-Halaman yang **tidak** ikut dibangun jadi HTML — `/cart`, `/checkout`,
-`/profile`, `/admin/*`, halaman akun, serta produk baru yang belum sempat
-di-build ulang — harus dialihkan ke `index.html` agar dirender di peramban.
-Halaman yang sudah punya berkas HTML tetap disajikan dari berkasnya, karena
-penyedia hosting memeriksa keberadaan berkas lebih dulu.
-
-Konfigurasinya sudah disiapkan di repo:
-
-- **Netlify / Cloudflare Pages** — `frontend/public/_redirects`, otomatis ikut
-  tersalin ke `dist/`.
-- **Vercel** — `frontend/vercel.json`. Root Directory proyek harus disetel ke
-  `frontend`.
-- **Render (Static Site)** — tambahkan aturan di dashboard:
-  `Source: /*` → `Destination: /index.html`, Action: Rewrite.
-- **Nginx**:
-  ```nginx
-  location / { try_files $uri $uri.html $uri/index.html /index.html; }
-  ```
-
-> **Jangan mengubah tujuan rewrite Vercel menjadi `/index.html`.**
-> Ini pernah membuat situs 404 di produksi. Dengan `cleanUrls` aktif,
-> `/index.html` sudah menjadi aturan pengalihan 308 ke `/`, sedangkan rewrite
-> tidak mengikuti pengalihan — akibatnya semua halaman yang tidak dibangun jadi
-> HTML berbalik menjadi 404. Tujuannya harus `/`.
-
-### 3. Build ulang otomatis saat konten berubah
-
-Karena halaman dibangun saat build, konten baru baru masuk ke HTML setelah
-build ulang. Ini hanya berpengaruh pada mesin pencari — pengunjung biasa
-langsung melihat perubahannya.
-
-1. Buat **Deploy Hook** di penyedia hosting frontend (alamat rahasia yang
-   memicu build ulang). Netlify: Site settings → Build & deploy → Build hooks.
-   Vercel: Settings → Git → Deploy Hooks. Cloudflare Pages dan Render punya
-   fitur serupa.
-2. Isi environment variable di **backend**:
-   - `DEPLOY_HOOK_URL` — alamat hook tadi
-   - `DEPLOY_HOOK_DEBOUNCE_MS` — opsional, default 2 menit
-3. Backend memanggil hook itu setiap produk atau galeri berubah, dengan jeda
-   supaya banyak perubahan beruntun hanya memicu satu build.
-
-Kalau `DEPLOY_HOOK_URL` dikosongkan, fitur ini mati — aman untuk pengembangan
-lokal.
-
-### 4. Memeriksa hasilnya
-
-- Buka "View Page Source" pada `/` dan `/product/<id>`. HTML-nya harus sudah
-  berisi nama, deskripsi, dan harga produk — bukan halaman kosong.
-- Pastikan `/sitemap.xml` dan `/robots.txt` bisa dibuka.
-- Uji data terstruktur lewat Google Rich Results Test, lalu daftarkan sitemap
-  di Search Console.
-- Tempel tautan produk di WhatsApp — pratinjaunya (judul + gambar) harus muncul.
+Required environment variables are documented in the `.env.example` file of each
+app, which is kept in sync with the variables the code actually reads.
 
 ---
 
-## Yang belum rapi
+## 👤 Contact
 
-Beberapa hal yang diketahui belum beres, dicatat agar tidak menyesatkan:
+**Galih Ramadhan** — Full-Stack Web Developer
 
-1. **Fitur ulasan Google menganggur.** Backend punya rantai lengkapnya —
-   endpoint, penyimpanan sementara 6 jam, kunci API — tapi
-   `components/common/GoogleReviews.vue` memakai ulasan yang ditulis langsung
-   di dalam berkasnya. `services/review.service.js` tidak dipanggil komponen
-   mana pun. Perlu diputuskan: disambungkan, atau kode backend-nya dibuang.
+[![GitHub](https://img.shields.io/badge/GitHub-galihram27-181717?style=flat-square&logo=github)](https://github.com/galihram27)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/YOUR-LINKEDIN-HANDLE)
+[![Email](https://img.shields.io/badge/Email-galihramadhan5678@gmail.com-EA4335?style=flat-square&logo=gmail&logoColor=white)](mailto:galihramadhan5678@gmail.com)
 
-2. **Komentar keliru** di `backend/src/features/product/product.service.js`
-   menyebut "Mozzarella Sausage Rolls" sebagai contoh kategori tanpa
-   sub-kategori, padahal ia justru sebuah sub-kategori dari Bread.
+**Project link:** [github.com/galihram27/talita-cakes](https://github.com/galihram27/talita-cakes)
 
----
-
-## Teknologi
-
-**Backend** — Node.js, Express 5, Prisma 7 (PostgreSQL), Zod, JWT, bcrypt,
-Cloudinary, Resend.
-
-**Frontend** — Vue 3, Vite 8, vite-ssg, Pinia, Vue Router, Vue I18n,
-Tailwind CSS 4, Axios, MapLibre GL.
+<div align="center">
+<sub>Built and maintained for a real bakery. ⭐ Star the repo if it was useful to you.</sub>
+</div>
