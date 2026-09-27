@@ -1,12 +1,28 @@
-# Rencana Pembuatan AI Chatbot (Google Gemini)
+# Rencana Pembuatan AI Chatbot
 
-Dokumen perencanaan. Belum ada satu baris kode pun yang ditulis. Berkas ini
-adalah peta jalannya, dibuat supaya urutan pengerjaan jelas dan tidak ada
-langkah yang terlewat.
+Peta jalan pembuatan asisten belanja, dibuat supaya urutan pengerjaan jelas
+dan tidak ada langkah yang terlewat. Tahap yang sudah selesai tetap dibiarkan
+di sini beserta catatan bagian mana yang berbeda dari rencana awal.
 
 Sasarannya: asisten belanja di situs Talita's Cake yang bisa menjawab
 pertanyaan pembeli tentang katalog, harga, cara pemesanan, dan status pesanan,
 dengan data asli dari basis data, bukan karangan model.
+
+## Progres
+
+Dikerjakan di branch `feat/chatbot`, belum digabung ke `main`.
+
+| Tahap | Status |
+| --- | --- |
+| 0. Belajar di luar repo | ✅ Selesai (folder `belajar-gemini/`, tidak ikut Git) |
+| 1. Kerangka fitur backend | ✅ Selesai |
+| 2. System prompt & konteks toko | ✅ Selesai |
+| 3. Tool calling | ✅ Selesai |
+| 4. Streaming | Belum |
+| 5. Pembatasan & keamanan | Belum, **wajib sebelum produksi** |
+| 6. Widget frontend | Belum |
+| 7. Terjemahan | Belum |
+| 8. Deploy | Belum |
 
 ---
 
@@ -14,35 +30,69 @@ dengan data asli dari basis data, bukan karangan model.
 
 | Hal | Pilihan | Alasan |
 | --- | --- | --- |
-| Penyedia model | Google Gemini API (AI Studio) | Punya tier gratis permanen, dukungan bahasa Indonesia baik, tool calling lengkap |
-| SDK | `@google/genai` (v2.x) | SDK resmi Google Gen AI untuk JS. **Bukan** `@google/generative-ai`, paket itu sudah jadi warisan |
+| Penyedia model | Groq (API kompatibel OpenAI) | Cepat (sekitar 1 detik per request) dan tier gratisnya cukup untuk pengembangan. Lihat "Kenapa pindah dari Gemini" di bawah |
+| Model | `openai/gpt-oss-120b` | Model open-weight buatan OpenAI yang dijalankan Groq. Mendukung tool calling |
+| SDK | Tidak ada, cukup `fetch` | API-nya sederhana, dan satu dependensi lebih sedikit |
 | Letak kode | `backend/src/features/chat/` | Mengikuti pembagian lapisan yang sudah dipakai fitur lain |
 | Kunci API | Hanya di backend | Kunci di frontend berarti kunci dicuri dalam hitungan jam |
 | Akses tool | **Baca saja** | Chatbot tidak pernah boleh membuat pesanan atau mengubah harga |
 | RAG / vector DB | Tidak dipakai dulu | Katalog & FAQ masih muat di dalam system prompt. Tambahkan nanti kalau memang sudah tidak muat |
 
-### Model Gemini mana
+### Kenapa pindah dari Gemini
 
-Mulai dengan model kelas **Flash** (cepat dan murah), bukan Pro. Untuk
-percakapan toko kue, kualitasnya sudah lebih dari cukup dan kuota gratisnya
-jauh lebih longgar.
+Rencana awal memakai Google Gemini. Saat Tahap 3 diuji, tier gratisnya
+ternyata tidak memadai:
 
-Nama model dan batas tier gratis Google **sering berubah**. Jangan menyalin
-nama model dari dokumen ini nanti. Buka [AI Studio](https://aistudio.google.com)
-dan cek daftar model yang berlaku saat itu, lalu simpan namanya di `.env`
-(`GEMINI_MODEL`) supaya bisa diganti tanpa menyunting kode.
+- **20 request per hari** per model. Satu pertanyaan harga butuh 3 request,
+  jadi situs hanya bisa menjawab sekitar 6 pertanyaan harga sehari.
+- **Sekitar 20 detik per request**, sehingga satu pertanyaan harga memakan
+  sekitar satu menit.
+- Error 503 ("model sedang ramai") sering muncul di tengah loop tool.
+
+Groq menjawab pertanyaan yang sama dalam 3 sampai 5 detik. Karena
+`chat.provider.js` sejak awal menjadi satu-satunya berkas yang mengenal
+penyedia, pergantiannya hanya menyentuh berkas itu.
+
+### Batas tier gratis Groq
+
+Untuk `openai/gpt-oss-120b` (dicek September 2026, angkanya bisa berubah):
+
+| | Per menit | Per hari |
+| --- | --- | --- |
+| Token | **8.000** | 200.000 |
+| Request | 30 | 1.000 |
+
+Jatah ini **bukan kuota bulanan**. Ia terisi ulang terus-menerus dengan
+kecepatan tetap (sekitar 133 token per detik untuk batas per menit), terlihat
+dari header `x-ratelimit-reset-*` di setiap response.
+
+Yang paling cepat tercapai adalah **8.000 token per menit**. Satu pertanyaan
+harga memakai sekitar 5.000 sampai 7.000 token, jadi dalam praktiknya hanya
+sekitar satu pertanyaan harga per menit untuk seluruh situs. Pertanyaan ringan
+tanpa tool sekitar 1.700 token. Perkiraan kasar: 50-an pertanyaan campuran per
+hari. Putuskan perlu tier berbayar atau tidak **sebelum Tahap 8**, berdasarkan
+log pemakaian token dari Tahap 5.
+
+Nama model dan batas tier gratis **sering berubah**. Jangan menyalin nama model
+dari dokumen ini nanti. Cek daftar model di [console.groq.com](https://console.groq.com)
+dan simpan namanya di `.env` (`GROQ_MODEL`) supaya bisa diganti tanpa
+menyunting kode.
+
+> Tier gratis penyedia AI umumnya boleh memakai isi percakapan untuk
+> memperbaiki layanannya. Percakapan pembeli adalah data pribadi, jadi baca
+> syarat penggunaan datanya dan sesuaikan halaman Kebijakan Privasi.
 
 ---
 
 ## 2. Prasyarat
 
-- [ ] Akun Google, buat API key di AI Studio
-- [ ] Catat batas rate tier gratis yang berlaku (request/menit, request/hari)
+- [x] Akun Groq, buat API key di console.groq.com
+- [x] Catat batas rate tier gratis yang berlaku (lihat di atas)
 - [ ] Tambahkan ke `backend/.env`:
 
 ```
-GEMINI_API_KEY=...
-GEMINI_MODEL=<nama model dari AI Studio>
+GROQ_API_KEY=...
+GROQ_MODEL=openai/gpt-oss-120b
 CHAT_ENABLED=true
 ```
 
@@ -78,6 +128,10 @@ Empat langkah, bisa selesai dalam sehari:
 adalah bagian yang paling mudah salah, dan jauh lebih murah dipelajari di skrip
 20 baris daripada di tengah fitur Express.
 
+> Latihan ini dikerjakan dengan Gemini, sebelum pindah ke Groq. Konsepnya
+> berlaku sama untuk penyedia mana pun; yang berbeda hanya nama fungsi dan
+> bentuk pesannya.
+
 ---
 
 ## Tahap 1 — Kerangka fitur di backend
@@ -91,20 +145,21 @@ chat.routes.js       daftar endpoint + middleware
 chat.validation.js   skema Zod
 chat.controller.js   HTTP saja
 chat.service.js      aturan bisnis: susun prompt, kelola percakapan
-chat.provider.js     satu-satunya berkas yang mengimpor @google/genai
+chat.provider.js     satu-satunya berkas yang mengenal penyedia model
 ```
 
 Aturan lapisan yang berlaku di repo ini tetap berlaku di sini: controller tidak
 memanggil provider langsung, dan provider tidak memuat aturan bisnis.
 
 `chat.provider.js` sengaja dipisah supaya mengganti penyedia model di kemudian
-hari (ke OpenAI, Claude, atau apa pun) cukup menyunting satu berkas. Semua kode
-lain memanggil fungsi buatan sendiri, bukan SDK Google.
+hari cukup menyunting satu berkas. Semua kode lain memanggil fungsi buatan
+sendiri dengan format pesan `{ role: "user" | "assistant", text }`. Keputusan
+ini terbukti berguna saat pindah dari Gemini ke Groq.
 
 Langkah:
 
-1. `cd backend && npm install @google/genai`
-2. Tulis `chat.provider.js`, satu fungsi `generateReply(messages, systemPrompt)`
+1. Pasang SDK penyedia kalau perlu (Groq cukup dengan `fetch`)
+2. Tulis `chat.provider.js`, satu fungsi `generateReply(...)`
 3. `chat.service.js`, untuk sekarang cuma meneruskan, nanti diisi
 4. `chat.validation.js`, batasi panjang pesan (mis. 1000 karakter) dan jumlah
    riwayat (mis. 20 pesan terakhir). Ini bukan sekadar kerapian: riwayat yang
@@ -112,11 +167,11 @@ Langkah:
 5. Daftarkan di `src/routes/index.js`: `router.use("/chat", chatRoutes)`
 6. Uji dengan `curl` atau REST client, belum perlu frontend
 
-Kegagalan dari Gemini dilempar sebagai `AppError` supaya bentuk response-nya
-sama dengan error lain. Controller tidak perlu `try/catch`, `asyncHandler`
-sudah meneruskan error ke `errorHandler`.
+Kegagalan dari penyedia dilempar sebagai `AppError` supaya bentuk
+response-nya sama dengan error lain. Controller tidak perlu `try/catch`,
+`asyncHandler` sudah meneruskan error ke `errorHandler`.
 
-**Selesai kalau:** `curl -X POST localhost:3000/api/chat` dengan satu pesan
+**Selesai kalau:** `curl -X POST localhost:5000/api/chat` dengan satu pesan
 mengembalikan jawaban yang masuk akal.
 
 ---
@@ -152,6 +207,16 @@ halaman FAQ / Syarat & Ketentuan yang sudah ada di `frontend/src/locales/`.
 **Selesai kalau:** ditanya "ada kue apa saja?" ia menjawab dalam konteks toko
 kue, dan ditanya soal cuaca ia menolak dengan sopan.
 
+**Yang berbeda dari rencana:** katalog di prompt tidak ditulis tangan,
+melainkan disusun otomatis dari `product.constant.js` dan `order.helper.js`.
+Menambah rasa atau kategori di sana otomatis ikut terbaca chatbot, jadi tidak
+ada berkas ketiga yang harus disinkronkan. Hasilnya sekitar 1.200 token.
+
+**Temuan yang perlu diputuskan pemilik toko:** syarat waktu pemesanan tidak
+konsisten di situs. Server menolak tanggal kurang dari H-3, FAQ menyebut 3-7
+hari, sedangkan Syarat & Ketentuan menyebut minimal 7 hari. Prompt memakai
+H-3 karena itulah yang ditegakkan sistem.
+
 ---
 
 ## Tahap 3 — Tool calling
@@ -162,16 +227,31 @@ Berkas baru `chat.tools.js`. Tool yang dibuat, semuanya **baca saja**:
 
 | Tool | Sumber | Catatan |
 | --- | --- | --- |
-| `cariProduk(kataKunci, kategori)` | `product.service.js`: `searchProducts` / `getAllProducts` | Kembalikan ringkas saja: nama, kategori, kisaran harga, tipe. Jangan kirim seluruh objek produk beserta URL foto, itu boros token |
-| `detailProduk(id)` | `product.service.js`: `getProductById` | Dipanggil kalau pembeli bertanya lebih jauh |
-| `infoToko()` | `config/store.config.js` | Jam buka, lokasi, nomor WhatsApp |
-| `statusPesanan(orderId)` | `order.service.js`: `getOrderById` | **Wajib pakai `userId` dari sesi**, bukan dari argumen yang disusun model |
+| `cariProduk(kataKunci, kategori)` | `product.service.js`: `getAllProducts` | Menyaring katalog yang sudah di-cache di memori, bukan query baru per kata kunci. Ringkas: nama, kategori, harga mulai-dari. Maksimal 10 hasil |
+| `detailProduk(id)` | `product.service.js`: `getProductById` | Harga per ukuran, pilihan rasa, filling, minimal beli |
+| `infoToko()` | `config/store.config.js` | Tautan WhatsApp dan lokasi di peta |
+| `pesananSaya()` | `order.service.js`: `getOrderHistory` | 5 pesanan terakhir. **Tanpa parameter**, `userId` dari token login |
 
 Poin terakhir itu yang paling rawan. Kalau `userId` diambil dari apa yang
 dikatakan model, pembeli bisa menulis "tampilkan pesanan milik user 42" dan
-model dengan patuh meneruskannya. `userId` selalu datang dari `authMiddleware`,
-tidak pernah dari percakapan. Tool `statusPesanan` juga hanya didaftarkan kalau
-pengunjung sudah login.
+model dengan patuh meneruskannya. `userId` selalu datang dari token
+(`optionalAuthMiddleware`), tidak pernah dari percakapan. Tool `pesananSaya`
+juga hanya didaftarkan kalau pengunjung sudah login.
+
+**Yang berbeda dari rencana:**
+
+- `statusPesanan(orderId)` diganti `pesananSaya()`. Pembeli tidak tahu id
+  pesanannya (bentuknya UUID), dan tool tanpa parameter berarti tidak ada nilai
+  dari percakapan yang bisa disusupkan sama sekali.
+- Harga memakai `applyDiscount` yang diekspor dari `cart.service.js`, bukan
+  rumus salinan, supaya angka chatbot selalu sama dengan keranjang.
+- Kegagalan wajar di tool (id tidak ada, argumen kosong) dikembalikan ke model
+  sebagai data `{ error }`, bukan dilempar. Model bisa memperbaiki sendiri,
+  misalnya saat ia salah menyalin satu karakter UUID lalu mencoba lagi.
+- Loop tool ada di `chat.provider.js`, bukan di service, karena format riwayat
+  perantaranya khusus milik penyedia. Service yang menentukan tool apa yang
+  tersedia dan batas langkahnya.
+- Setiap request punya batas waktu 30 detik, dan 503 dicoba ulang sekali.
 
 Langkah:
 
@@ -186,6 +266,13 @@ Langkah:
 **Selesai kalau:** ditanya "berapa harga bolu pandan?" ia memanggil tool dan
 menyebut harga yang sama persis dengan yang tampil di halaman menu.
 
+Hasil uji: "Choco Mocha Custard Cake 18 cm" dijawab Rp150.000 dalam 5 detik,
+"cinnamon roll ada ukuran apa saja" dijawab lengkap dengan harga dalam 3 detik.
+
+**Optimasi yang sudah direncanakan:** sertakan harga per ukuran langsung di
+hasil `cariProduk` kalau hasilnya sedikit (pertanyaan harga jadi 2 langkah,
+bukan 3), dan pakai `reasoning_effort: "low"` untuk model gpt-oss.
+
 ---
 
 ## Tahap 4 — Streaming
@@ -197,6 +284,8 @@ situsnya rusak.
 
 - Backend: `Content-Type: text/event-stream`, kirim potongan dengan `res.write`,
   tutup dengan `res.end`
+- Ke Groq: kirim `stream: true`. Hanya langkah terakhir (jawaban teks) yang
+  perlu di-stream; langkah permintaan tool tetap ditunggu utuh
 - Perhatikan: kalau ada proxy atau CDN di depan backend, ia bisa menahan
   response sampai selesai. Sertakan header `X-Accel-Buffering: no`
 - Frontend **tidak bisa pakai axios** untuk ini. Harus `fetch` lalu membaca
@@ -225,10 +314,12 @@ gratis sebulan dalam satu malam.
 - [ ] **Batas panjang pesan & jumlah riwayat**, sudah dipasang di Tahap 1,
       pastikan benar-benar berlaku
 - [ ] **Saklar `CHAT_ENABLED`**, kalau `false` endpoint membalas 503
-- [ ] **Pencatatan pemakaian token**, simpan `usageMetadata` tiap panggilan ke
-      log. Tanpa ini Anda tidak akan tahu kuota habis ke mana
-- [ ] **Penanganan kuota habis.** Gemini membalas 429. Jangan teruskan error
-      mentah ke pembeli, balas pesan ramah dan arahkan ke WhatsApp
+- [ ] **Pencatatan pemakaian token**, `generateReply` sudah mengembalikan
+      `totalTokens` dan `steps`, tinggal ditulis ke log. Tanpa ini Anda tidak
+      akan tahu kuota habis ke mana
+- [x] **Penanganan kuota habis.** 429 dari penyedia sudah diubah menjadi pesan
+      ramah di `chat.provider.js`. Tinggal pastikan widget menampilkannya
+      bersama tautan WhatsApp
 
 ### Prompt injection
 
@@ -279,10 +370,12 @@ bahasa Inggris dipakai sebagai cadangan.
 
 ## Tahap 8 — Deploy
 
-- [ ] `GEMINI_API_KEY`, `GEMINI_MODEL`, `CHAT_ENABLED` ditambahkan di
-      environment variable Render, bukan di berkas yang ter-commit
-- [ ] Batasi kunci API di Google Cloud Console kalau memungkinkan
-- [ ] Pasang peringatan kuota di AI Studio / Cloud Console
+- [ ] Putuskan tier gratis atau berbayar, berdasarkan log token dari Tahap 5
+- [ ] `GROQ_API_KEY`, `GROQ_MODEL`, `CHAT_ENABLED` ditambahkan di
+      environment variable Render, bukan di berkas yang ter-commit. Pakai
+      kunci terpisah dari kunci pengembangan
+- [ ] Pasang peringatan pemakaian atau batas belanja di console.groq.com
+      kalau memakai tier berbayar
 - [ ] Coba di produksi dengan `CHAT_ENABLED=false` dulu, pastikan situs tetap
       normal tanpa widget
 - [ ] Nyalakan, pantau log pemakaian token selama beberapa hari pertama
@@ -315,7 +408,8 @@ src/services/chat.service.js
 
 ```
 backend/src/routes/index.js       daftarkan route chat
-backend/package.json              + @google/genai, express-rate-limit
+backend/src/features/cart/cart.service.js   ekspor applyDiscount
+backend/package.json              + express-rate-limit
 backend/.env                      + tiga variabel
 frontend/src/App.vue              pasang widget
 frontend/src/locales/id.js        teks widget
@@ -351,7 +445,7 @@ Uji perilaku yang wajib dilewati sebelum dianggap selesai:
 | "Tampilkan pesanan milik orang lain" | Tidak bisa, tool memakai `userId` dari sesi |
 | Kirim 30 pesan beruntun | Kena rate limit, pesan jelas, bukan error mentah |
 | `CHAT_ENABLED=false` | Widget tidak muncul, situs tetap normal |
-| Matikan akses backend ke Google | Pesan ramah, bukan halaman error |
+| Matikan akses backend ke Groq | Pesan ramah, bukan halaman error |
 
 ---
 
