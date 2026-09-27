@@ -8,6 +8,7 @@ import analyticsRoutes from "../features/analytics/analytics.routes.js";
 import uploadRoutes from "../features/upload/upload.routes.js";
 import reviewRoutes from "../features/review/review.routes.js";
 import settingsRoutes from "../features/settings/settings.routes.js";
+import chatRoutes from "../features/chat/chat.routes.js";
 
 /**
  * Titik kumpul seluruh route fitur.
@@ -27,5 +28,6 @@ router.use("/analytics", analyticsRoutes);
 router.use("/uploads", uploadRoutes);
 router.use("/reviews", reviewRoutes);
 router.use("/settings", settingsRoutes);
+router.use("/chat", chatRoutes);
 
 export default router;
