@@ -1,9 +1,5 @@
 import { generateReply } from "./chat.provider.js";
-
-// Sementara. Diganti prompt lengkap berisi konteks toko di chat.prompt.js
-// (Tahap 2 RENCANA-CHATBOT.md).
-const SYSTEM_PROMPT =
-   "Kamu adalah asisten belanja toko kue Talita's Cake. Jawab singkat dan ramah, dalam bahasa yang dipakai pembeli.";
+import { SYSTEM_PROMPT } from "./chat.prompt.js";
 
 /**
  * Menyusun balasan untuk satu giliran percakapan.
