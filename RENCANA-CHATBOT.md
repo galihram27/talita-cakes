@@ -18,7 +18,7 @@ Dikerjakan di branch `feat/chatbot`, belum digabung ke `main`.
 | 1. Kerangka fitur backend | ✅ Selesai |
 | 2. System prompt & konteks toko | ✅ Selesai |
 | 3. Tool calling | ✅ Selesai |
-| 4. Streaming | Belum |
+| 4. Streaming | ✅ Selesai |
 | 5. Pembatasan & keamanan | Belum, **wajib sebelum produksi** |
 | 6. Widget frontend | Belum |
 | 7. Terjemahan | Belum |
@@ -298,6 +298,31 @@ ke stream berarti membongkar ulang penanganan state-nya.
 
 **Selesai kalau:** teks jawaban terlihat mengalir kata demi kata saat dites
 dengan `curl -N`.
+
+**Hasilnya:** endpoint terpisah `POST /api/chat/stream`, sedangkan
+`POST /api/chat` tetap membalas JSON untuk uji dengan curl. Kata pertama tiba
+sekitar 0,8 detik (tanpa tool) sampai 1,5 detik (dengan tool). Bentuk event:
+
+```
+event: delta   data: {"text":"..."}      potongan jawaban, berulang
+event: done    data: {}                  jawaban selesai
+event: error   data: {"message":"..."}   gagal setelah stream berjalan
+```
+
+Yang perlu diketahui widget di Tahap 6:
+
+- Kegagalan **sebelum** kata pertama (kuota habis, validasi, penyedia sibuk)
+  dibalas JSON biasa dengan status HTTP. Widget harus memeriksa
+  `response.ok` dulu sebelum membaca stream
+- Kegagalan **setelah** stream berjalan datang sebagai event `error`
+- Menutup koneksi (`AbortController` di sisi widget) ikut menghentikan
+  request ke Groq, jadi tidak ada token yang terbuang
+
+**Temuan untuk diperbaiki di prompt:** saat menjelaskan cara memesan, model
+sempat menambahkan janji yang tidak pernah dibuat toko ("kami akan
+mengingatkan menjelang tanggal ambil") dan menebak metode pembayaran
+("transfer bank"). Perlu aturan agar tidak menambah langkah atau janji di
+luar bagian CARA MEMESAN dan KEBIJAKAN.
 
 ---
 
