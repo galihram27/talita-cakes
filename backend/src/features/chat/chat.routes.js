@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { chatController } from "./chat.controller.js";
+import { chatController, chatStreamController } from "./chat.controller.js";
 import { validate } from "../../middlewares/validate.js";
 import { optionalAuthMiddleware } from "../../middlewares/auth.middleware.js";
 import { chatSchema } from "./chat.validation.js";
@@ -19,5 +19,13 @@ const router = Router();
 
 // POST /chat
 router.post("/", optionalAuthMiddleware, validate(chatSchema), chatController);
+
+// POST /chat/stream (jawaban dikirim bertahap, dipakai widget)
+router.post(
+   "/stream",
+   optionalAuthMiddleware,
+   validate(chatSchema),
+   chatStreamController
+);
 
 export default router;

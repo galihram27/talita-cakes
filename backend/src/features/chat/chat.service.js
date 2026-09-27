@@ -18,8 +18,16 @@ const FALLBACK_REPLY =
  *
  * `userId` hanya terisi kalau pengunjung login, dan menentukan apakah tool
  * pesanan ikut tersedia.
+ *
+ * `onDelta` dan `signal` hanya dipakai endpoint stream: yang pertama menerima
+ * potongan teks, yang kedua menghentikan request ke penyedia saat pembeli
+ * menutup koneksi.
  */
-export const replyToChat = async (messages, userId) => {
+export const replyToChat = async (
+   messages,
+   userId,
+   { onDelta, signal } = {}
+) => {
    const tools = buildTools({ userId });
 
    const { text } = await generateReply({
@@ -28,7 +36,14 @@ export const replyToChat = async (messages, userId) => {
       tools: tools.definitions,
       runTool: tools.run,
       maxSteps: MAX_TOOL_STEPS,
+      onDelta,
+      signal,
    });
 
-   return { reply: text || FALLBACK_REPLY };
+   if (text) return { reply: text };
+
+   // Pesan pengganti juga dikirim lewat stream, supaya pembeli tidak menatap
+   // gelembung chat yang kosong.
+   onDelta?.(FALLBACK_REPLY);
+   return { reply: FALLBACK_REPLY };
 };

@@ -77,7 +77,20 @@ const toAppError = (status) => {
    return new AppError("Asisten sedang tidak bisa menjawab.", 502);
 };
 
-const post = async (apiKey, body) => {
+const toNetworkError = (err) => {
+   // AbortError berarti pembeli sendiri yang menutup koneksi, bukan gangguan.
+   if (err.name !== "AbortError") {
+      console.error("Chat API network error:", err.name, err.message);
+   }
+   return toAppError(err.name === "TimeoutError" ? "timeout" : "network");
+};
+
+// Batas waktu berlaku untuk satu request utuh, termasuk selama stream
+// dibaca. `signal` dari pemanggil ikut digabung, supaya request ke penyedia
+// berhenti begitu pembeli menutup koneksinya.
+const openStream = async (apiKey, body, signal) => {
+   const signals = [AbortSignal.timeout(REQUEST_TIMEOUT_MS), signal];
+
    let response;
    try {
       response = await fetch(API_URL, {
@@ -86,12 +99,11 @@ const post = async (apiKey, body) => {
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
          },
-         body: JSON.stringify(body),
-         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+         body: JSON.stringify({ ...body, stream: true }),
+         signal: AbortSignal.any(signals.filter(Boolean)),
       });
    } catch (err) {
-      console.error("Chat API network error:", err.name, err.message);
-      throw toAppError(err.name === "TimeoutError" ? "timeout" : "network");
+      throw toNetworkError(err);
    }
 
    if (!response.ok) {
@@ -99,21 +111,84 @@ const post = async (apiKey, body) => {
       throw toAppError(response.status);
    }
 
-   return response.json();
+   return response;
 };
 
 // 503 ("server sedang ramai") biasanya hilang dalam hitungan detik. Tanpa
 // percobaan ulang, satu 503 di tengah loop tool membuang langkah yang sudah
 // berhasil. Hanya 503 yang diulang: 429 berarti kuota habis, mengulanginya
-// justru menambah beban.
-const postWithRetry = async (apiKey, body) => {
+// justru menambah beban. Pengulangan hanya mungkin sebelum stream dibaca,
+// karena status diketahui sebelum isi pertama tiba.
+const openStreamWithRetry = async (apiKey, body, signal) => {
    try {
-      return await post(apiKey, body);
+      return await openStream(apiKey, body, signal);
    } catch (err) {
       if (err.statusCode !== 503) throw err;
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-      return post(apiKey, body);
+      return openStream(apiKey, body, signal);
    }
+};
+
+// Membaca stream SSE dari penyedia: baris "data: {...}" dipisah baris
+// kosong, diakhiri "data: [DONE]". Satu potongan jaringan bisa berisi
+// setengah baris, jadi sisanya ditahan sampai potongan berikutnya tiba.
+async function* readChunks(response) {
+   const decoder = new TextDecoder();
+   let buffer = "";
+
+   for await (const bytes of response.body) {
+      buffer += decoder.decode(bytes, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+
+      for (const line of lines) {
+         if (!line.startsWith("data: ")) continue;
+         const data = line.slice("data: ".length).trim();
+         if (data === "[DONE]") return;
+         yield JSON.parse(data);
+      }
+   }
+}
+
+/**
+ * Membaca satu langkah dari stream. Teks diteruskan ke `onDelta` begitu
+ * tiba. Permintaan tool datang terpotong-potong (nama dan argumen JSON
+ * dicicil), jadi dirakit per `index` sampai stream selesai.
+ */
+const readStep = async (response, onDelta) => {
+   let content = "";
+   const calls = [];
+   let usage = null;
+
+   try {
+      for await (const chunk of readChunks(response)) {
+         const delta = chunk.choices?.[0]?.delta ?? {};
+
+         if (delta.content) {
+            content += delta.content;
+            onDelta?.(delta.content);
+         }
+
+         for (const part of delta.tool_calls ?? []) {
+            calls[part.index] ??= {
+               id: "",
+               type: "function",
+               function: { name: "", arguments: "" },
+            };
+            const call = calls[part.index];
+            if (part.id) call.id = part.id;
+            call.function.name += part.function?.name ?? "";
+            call.function.arguments += part.function?.arguments ?? "";
+         }
+
+         // Groq menaruh pemakaian token di potongan terakhir, di x_groq.
+         usage = chunk.x_groq?.usage ?? chunk.usage ?? usage;
+      }
+   } catch (err) {
+      throw toNetworkError(err);
+   }
+
+   return { content, calls: calls.filter(Boolean), usage };
 };
 
 // Argumen tool datang sebagai teks JSON buatan model. Kalau rusak, tool
@@ -135,8 +210,13 @@ const parseArgs = (text) => {
  * berarti beberapa request, karena itu dibatasi `maxSteps`: tanpa batas,
  * model yang terus meminta tool akan menguras kuota tanpa henti.
  *
- * `text` bernilai null kalau batas itu tercapai sebelum ada jawaban;
- * pemanggil yang menentukan pesan penggantinya.
+ * Request ke penyedia selalu memakai stream. Kalau `onDelta` diisi, teks
+ * diteruskan begitu tiba; kalau tidak, hasilnya cukup dikumpulkan.
+ *
+ * `text` berisi seluruh teks yang sudah dikirim model, termasuk kalimat
+ * pengantar sebelum ia meminta tool, supaya sama persis dengan yang dilihat
+ * pembeli lewat stream. Nilainya kosong kalau batas langkah tercapai sebelum
+ * ada jawaban; pemanggil yang menentukan pesan penggantinya.
  */
 export const generateReply = async ({
    messages,
@@ -144,25 +224,28 @@ export const generateReply = async ({
    tools = [],
    runTool,
    maxSteps,
+   onDelta,
+   signal,
 }) => {
    const { apiKey, model } = getConfig();
    const apiMessages = toApiMessages(systemPrompt, messages);
    const apiTools = toApiTools(tools);
+   let text = "";
    let totalTokens = 0;
 
    for (let step = 0; step < maxSteps; step++) {
-      const data = await postWithRetry(apiKey, {
-         model,
-         messages: apiMessages,
-         tools: apiTools,
-      });
+      const response = await openStreamWithRetry(
+         apiKey,
+         { model, messages: apiMessages, tools: apiTools },
+         signal
+      );
+      const { content, calls, usage } = await readStep(response, onDelta);
 
-      totalTokens += data.usage?.total_tokens ?? 0;
-      const message = data.choices[0].message;
-      const calls = message.tool_calls ?? [];
+      text += content;
+      totalTokens += usage?.total_tokens ?? 0;
 
       if (calls.length === 0) {
-         return { text: message.content ?? "", totalTokens, steps: step + 1 };
+         return { text, totalTokens, steps: step + 1 };
       }
 
       // Permintaan tool dari model wajib ikut di riwayat, dan tiap hasil
@@ -170,7 +253,7 @@ export const generateReply = async ({
       // menjawab permintaan yang mana.
       apiMessages.push({
          role: "assistant",
-         content: message.content ?? null,
+         content: content || null,
          tool_calls: calls,
       });
 
@@ -189,5 +272,5 @@ export const generateReply = async ({
       });
    }
 
-   return { text: null, totalTokens, steps: maxSteps };
+   return { text, totalTokens, steps: maxSteps };
 };
