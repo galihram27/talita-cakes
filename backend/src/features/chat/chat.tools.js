@@ -30,6 +30,10 @@ import { AppError } from "../../utils/appError.js";
 // Hasil pencarian dibatasi supaya kata kunci yang terlalu umum ("kue") tidak
 // mengirim seluruh katalog ke model.
 const MAX_SEARCH_RESULTS = 10;
+// Kalau hasil pencarian sedikit, harga per ukuran langsung disertakan.
+// Pertanyaan harga yang paling umum ("berapa harga X?") jadi selesai dalam
+// dua request, bukan tiga, tanpa menggembungkan hasil pencarian yang luas.
+const INLINE_PRICE_LIMIT = 3;
 const MAX_RECENT_ORDERS = 5;
 const MAX_DESCRIPTION_LENGTH = 400;
 
@@ -96,8 +100,16 @@ const flavorOptions = (product) => {
 
 const optionNames = (json) => json?.options?.map((o) => o.name) ?? undefined;
 
-const detailProduct = (product) => {
+const variantPrices = (product) => {
    const discount = Number(product.discount) || 0;
+   return product.variants.map((variant) => ({
+      ukuran: variantLabel(product, variant),
+      harga: applyDiscount(variant.price, discount),
+      hargaSebelumDiskon: discount > 0 ? Number(variant.price) : undefined,
+   }));
+};
+
+const detailProduct = (product) => {
    const hasCombo =
       Array.isArray(product.comboPrices) && product.comboPrices.length > 0;
 
@@ -107,11 +119,7 @@ const detailProduct = (product) => {
       subkategori: product.subcategory ?? undefined,
       deskripsi: product.description.slice(0, MAX_DESCRIPTION_LENGTH),
       ...flavorOptions(product),
-      varian: product.variants.map((variant) => ({
-         ukuran: variantLabel(product, variant),
-         harga: applyDiscount(variant.price, discount),
-         hargaSebelumDiskon: discount > 0 ? Number(variant.price) : undefined,
-      })),
+      varian: variantPrices(product),
       pilihanFilling: optionNames(product.filling),
       pilihanTopping: optionNames(product.topping),
       catatanHarga: hasCombo
@@ -127,31 +135,52 @@ const detailProduct = (product) => {
 // Katalog cukup kecil untuk disaring di memori. Dengan begitu pencarian
 // memakai daftar produk yang sudah di-cache (getAllProducts), bukan query
 // baru ke basis data untuk setiap kata kunci yang dicoba model.
+const matchesKeyword = (product, words) => {
+   const haystack = [
+      product.name,
+      product.category,
+      product.subcategory,
+      product.flavor,
+      product.description,
+   ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+   return words.every((word) => haystack.includes(word));
+};
+
 const searchCatalog = async ({ kataKunci, kategori }) => {
    const products = await getAllProducts();
    const words = (kataKunci ?? "").toLowerCase().split(/\s+/).filter(Boolean);
    const category = kategori?.toLowerCase();
 
-   const matches = products.filter((product) => {
-      if (category && !product.category?.toLowerCase().includes(category)) {
-         return false;
-      }
-      const haystack = [
-         product.name,
-         product.category,
-         product.subcategory,
-         product.flavor,
-         product.description,
-      ]
-         .filter(Boolean)
-         .join(" ")
-         .toLowerCase();
-      return words.every((word) => haystack.includes(word));
-   });
+   const byKeyword = products.filter((product) =>
+      matchesKeyword(product, words)
+   );
+   const byBoth = category
+      ? byKeyword.filter((product) =>
+           product.category?.toLowerCase().includes(category)
+        )
+      : byKeyword;
+
+   // Model kadang menebak kategori yang keliru (mis. "Custom" untuk kue
+   // Signature). Kalau kategori itulah yang membuat hasilnya kosong, abaikan
+   // kategorinya. Menjawab "produk tidak ada" untuk produk yang dijual jauh
+   // lebih merugikan daripada hasil yang sedikit lebih luas.
+   const matches = byBoth.length > 0 ? byBoth : byKeyword;
+
+   const withPrices = matches.length <= INLINE_PRICE_LIMIT;
 
    return {
       jumlahDitemukan: matches.length,
-      produk: matches.slice(0, MAX_SEARCH_RESULTS).map(summarizeProduct),
+      produk: matches.slice(0, MAX_SEARCH_RESULTS).map((product) =>
+         withPrices
+            ? {
+                 ...summarizeProduct(product),
+                 varian: variantPrices(product),
+              }
+            : summarizeProduct(product)
+      ),
    };
 };
 
@@ -182,7 +211,7 @@ const PRODUCT_TOOLS = [
    {
       name: "cariProduk",
       description:
-         "Mencari produk yang sedang dijual beserta harga mulai-darinya. Panggil setiap kali pembeli menanyakan produk, harga, atau ketersediaan. Kosongkan kedua parameter untuk melihat semua produk.",
+         "Mencari produk yang sedang dijual beserta harga mulai-darinya. Kalau hasilnya 3 produk atau kurang, harga per ukuran sudah disertakan di `varian`, jadi tidak perlu detailProduk untuk menjawab harga. Panggil setiap kali pembeli menanyakan produk, harga, atau ketersediaan. Kosongkan kedua parameter untuk melihat semua produk. Kalau hasilnya kosong, coba lagi dengan kata kunci yang lebih pendek (satu kata dari nama produk) sebelum menyimpulkan produknya tidak ada.",
       parameters: {
          type: "object",
          properties: {
@@ -202,7 +231,7 @@ const PRODUCT_TOOLS = [
    {
       name: "detailProduk",
       description:
-         "Harga per ukuran, pilihan rasa, dan detail lain satu produk. Pakai id dari hasil cariProduk.",
+         "Pilihan rasa, filling, topping, minimal beli, dan harga per ukuran satu produk. Pakai id dari hasil cariProduk.",
       parameters: {
          type: "object",
          properties: {

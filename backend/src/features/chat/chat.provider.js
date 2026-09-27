@@ -19,6 +19,10 @@ const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const REQUEST_TIMEOUT_MS = 30000;
 const RETRY_DELAY_MS = 1500;
 
+// reasoning_effort sengaja dibiarkan bawaan. Dengan "low", gpt-oss-120b
+// terukur lebih cepat tapi sering melewatkan tool dan menjawab "produk
+// tidak ada" untuk produk yang dijual.
+
 const getConfig = () => {
    const apiKey = process.env.GROQ_API_KEY;
    const model = process.env.GROQ_MODEL;
