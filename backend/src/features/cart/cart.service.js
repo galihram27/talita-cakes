@@ -55,8 +55,11 @@ const PRODUCT_TYPE = {
  * Hitung harga final per-unit setelah discount.
  * discount disimpan dalam Decimal(5,2) -> diasumsikan dalam PERSEN (0-100).
  * Kalau ternyata discount dimaksud nominal rupiah, ubah logic ini.
+ *
+ * Diekspor untuk chat.tools.js, supaya harga yang disebut asisten belanja
+ * memakai rumus yang sama persis dengan keranjang.
  */
-const applyDiscount = (basePrice, discountPercent) => {
+export const applyDiscount = (basePrice, discountPercent) => {
    const price = Number(basePrice);
    const discount = Number(discountPercent ?? 0);
    const finalPrice = price - (price * discount) / 100;
