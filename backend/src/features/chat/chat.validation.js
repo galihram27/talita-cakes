@@ -1,19 +1,32 @@
 import { z } from "zod";
 
 /**
- * Validasi body POST /chat.
+ * Validasi body POST /chat dan /chat/stream.
  *
- * Kedua batas di bawah bukan sekadar kerapian. Seluruh riwayat dikirim ulang
- * ke Gemini tiap giliran, jadi riwayat atau pesan yang tidak dibatasi berarti
- * pemakaian token (dan kuota) yang juga tidak terbatas.
+ * Seluruh riwayat dikirim ulang ke penyedia model tiap giliran, jadi batas di
+ * sini sekaligus batas pemakaian token. Riwayat yang lolos validasi masih
+ * dipangkas lagi oleh chat.service.js supaya muat di kuota per menit.
+ *
+ * Pesan pembeli dan jawaban asisten dibatasi berbeda. Pembeli mengetik
+ * sendiri, jadi 1000 karakter sudah longgar. Jawaban asisten ditulis model
+ * dan bisa jauh lebih panjang (penjelasan cara memesan sekitar 1900
+ * karakter); kalau batasnya disamakan, widget yang mengirim balik jawaban itu
+ * sebagai riwayat akan ditolak.
  */
-const MAX_MESSAGE_LENGTH = 1000;
+const MAX_USER_MESSAGE_LENGTH = 1000;
+const MAX_ASSISTANT_MESSAGE_LENGTH = 4000;
 const MAX_HISTORY = 20;
 
-const messageSchema = z.object({
-   role: z.enum(["user", "assistant"]),
-   text: z.string().trim().min(1).max(MAX_MESSAGE_LENGTH),
-});
+const messageSchema = z.discriminatedUnion("role", [
+   z.object({
+      role: z.literal("user"),
+      text: z.string().trim().min(1).max(MAX_USER_MESSAGE_LENGTH),
+   }),
+   z.object({
+      role: z.literal("assistant"),
+      text: z.string().trim().min(1).max(MAX_ASSISTANT_MESSAGE_LENGTH),
+   }),
+]);
 
 export const chatSchema = z.object({
    messages: z

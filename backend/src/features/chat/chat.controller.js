@@ -1,5 +1,10 @@
-import { replyToChat } from "./chat.service.js";
+import { replyToChat, isChatEnabled } from "./chat.service.js";
 import { asyncHandler } from "../../middlewares/asyncHandler.js";
+
+// GET /chat/status  (public)
+// Dipakai widget untuk memutuskan perlu tampil atau tidak.
+export const chatStatusController = (req, res) =>
+   res.status(200).json({ data: { enabled: isChatEnabled() } });
 
 // POST /chat  (public, login opsional)
 export const chatController = asyncHandler(async (req, res) => {
