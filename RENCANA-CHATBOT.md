@@ -19,7 +19,7 @@ Dikerjakan di branch `feat/chatbot`, belum digabung ke `main`.
 | 2. System prompt & konteks toko | ✅ Selesai |
 | 3. Tool calling | ✅ Selesai |
 | 4. Streaming | ✅ Selesai |
-| 5. Pembatasan & keamanan | Belum, **wajib sebelum produksi** |
+| 5. Pembatasan & keamanan | ✅ Selesai |
 | 6. Widget frontend | Belum |
 | 7. Terjemahan | Belum |
 | 8. Deploy | Belum |
@@ -318,11 +318,10 @@ Yang perlu diketahui widget di Tahap 6:
 - Menutup koneksi (`AbortController` di sisi widget) ikut menghentikan
   request ke Groq, jadi tidak ada token yang terbuang
 
-**Temuan untuk diperbaiki di prompt:** saat menjelaskan cara memesan, model
-sempat menambahkan janji yang tidak pernah dibuat toko ("kami akan
-mengingatkan menjelang tanggal ambil") dan menebak metode pembayaran
-("transfer bank"). Perlu aturan agar tidak menambah langkah atau janji di
-luar bagian CARA MEMESAN dan KEBIJAKAN.
+**Temuan soal prompt (ditangani di Tahap 5):** saat menjelaskan cara
+memesan, model sempat menambahkan janji yang tidak pernah dibuat toko ("kami
+akan mengingatkan menjelang tanggal ambil") dan menebak metode pembayaran
+("transfer bank").
 
 ---
 
@@ -332,19 +331,31 @@ luar bagian CARA MEMESAN dan KEBIJAKAN.
 layanan berkuota. Tanpa pembatasan, satu orang iseng bisa menghabiskan jatah
 gratis sebulan dalam satu malam.
 
-- [ ] **Rate limit per IP**, mis. 20 pesan per 10 menit, pakai
-      `express-rate-limit`. Backend sudah memasang `app.set("trust proxy", 1)`,
-      jadi `req.ip` berisi IP asli pengunjung, bukan IP proxy Render
-- [ ] **Rate limit per user** untuk yang sudah login, boleh lebih longgar
-- [ ] **Batas panjang pesan & jumlah riwayat**, sudah dipasang di Tahap 1,
-      pastikan benar-benar berlaku
-- [ ] **Saklar `CHAT_ENABLED`**, kalau `false` endpoint membalas 503
-- [ ] **Pencatatan pemakaian token**, `generateReply` sudah mengembalikan
-      `totalTokens` dan `steps`, tinggal ditulis ke log. Tanpa ini Anda tidak
-      akan tahu kuota habis ke mana
+- [x] **Rate limit per IP**: tamu 20 pesan per 10 menit, pakai
+      `express-rate-limit` dengan `ipKeyGenerator` (alamat IPv6 dikelompokkan
+      per blok). Backend sudah memasang `app.set("trust proxy", 1)`, jadi
+      `req.ip` berisi IP asli pengunjung, bukan IP proxy Render
+- [x] **Rate limit per user**: 40 pesan per 10 menit, dihitung per akun.
+      Hitungan disimpan di memori, jadi ter-reset saat restart dan tidak
+      berbagi antar-instance
+- [x] **Batas panjang pesan & jumlah riwayat.** Pesan pembeli maksimal 1000
+      karakter, jawaban asisten maksimal 4000 (batas 1000 yang lama akan
+      menolak widget yang mengirim balik jawaban panjang). Riwayat di atas
+      sekitar 6000 karakter dipangkas dari yang paling lama
+- [x] **Saklar `CHAT_ENABLED`**: hanya menyala kalau nilainya persis `true`,
+      selain itu 503. `GET /api/chat/status` memberi tahu widget perlu tampil
+      atau tidak
+- [x] **Pencatatan pemakaian token**, satu baris per pertanyaan tanpa isi
+      percakapan: `[chat] steps=2 tokens=6381 ms=1972 history=7/11 login=false`
 - [x] **Penanganan kuota habis.** 429 dari penyedia sudah diubah menjadi pesan
       ramah di `chat.provider.js`. Tinggal pastikan widget menampilkannya
       bersama tautan WhatsApp
+- [x] **Karangan soal layanan toko.** Prompt kini membatasi jawaban ke bagian
+      CARA MEMESAN dan KEBIJAKAN, dan menyatakan rincian pembayaran datang dari
+      owner lewat WhatsApp. Sekadar melarang kurang ampuh; memberi fakta yang
+      benar untuk mengisi celah jauh lebih efektif. Tebakan berkurang banyak
+      tapi belum nol, dan itu batasan model bahasa yang tidak bisa dijamin
+      lewat prompt
 
 ### Prompt injection
 
