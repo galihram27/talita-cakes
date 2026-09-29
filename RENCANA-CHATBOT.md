@@ -20,7 +20,7 @@ Dikerjakan di branch `feat/chatbot`, belum digabung ke `main`.
 | 3. Tool calling | ✅ Selesai |
 | 4. Streaming | ✅ Selesai |
 | 5. Pembatasan & keamanan | ✅ Selesai |
-| 6. Widget frontend | Belum |
+| 6. Widget frontend | ✅ Selesai |
 | 7. Terjemahan | Belum |
 | 8. Deploy | Belum |
 
@@ -392,6 +392,77 @@ Hal yang mudah terlewat:
   tunggal, tanpa titik koma. **Jangan jalankan prettier di frontend**
 - Simpan riwayat di `sessionStorage` supaya tidak hilang saat pindah halaman
 - Sediakan keadaan kosong, keadaan mengetik, dan keadaan error yang jelas
+
+**Hasilnya:**
+
+- Tombol asisten ditumpuk di atas tombol WhatsApp (`bottom-24`). Panelnya
+  memenuhi layar di ponsel dan melayang selebar 380 px di layar yang lebih
+  besar, menutupi kedua tombol; WhatsApp tetap terjangkau dari kotak error.
+  Tidak tampil di halaman `/admin`
+- Widget baru muncul setelah `GET /api/chat/status` menjawab menyala. Server
+  yang tidak terjangkau dianggap mati, supaya tombol tidak muncul lalu setiap
+  pertanyaan gagal
+- Tidak digambar saat pra-render (dijaga `onMounted`), dan `vite-ssg build`
+  lulus
+- Jawaban model berupa Markdown (tebal, daftar, tautan polos). Dirender oleh
+  `utils/chatMarkdown.js` buatan sendiri, yang meng-escape seluruh teks lebih
+  dulu dan hanya membuat tautan http/https. Sengaja tanpa lookbehind regex,
+  karena itu membuat bundle gagal dimuat di Safari iOS lama
+- Tombol kirim berganti jadi tombol berhenti selama menjawab. Jawaban yang
+  dihentikan atau terputus tetap tampil dengan tanda "Jawaban tidak lengkap",
+  tapi **tidak ikut dikirim sebagai riwayat**, supaya model tidak
+  melanjutkan kalimat setengah jadi
+- `fetch` tidak melewati penanganan token basi di `lib/api.js`, dan server
+  diam-diam menganggap token kedaluwarsa sebagai tamu. Karena itu
+  `services/chat.service.js` membaca `exp` token dan memperbaruinya sendiri
+  sebelum mengirim
+- Keluar akun ikut menghapus percakapan, karena isinya bisa memuat daftar
+  pesanan akun tersebut
+- Teks widget masih ditulis langsung dalam bahasa Indonesia; dipindah ke
+  berkas terjemahan di Tahap 7
+
+Diuji lewat store di Node terhadap backend sungguhan (ekstensi peramban
+tidak tersedia saat itu): stream, tombol berhenti, dan pesan 429 berjalan
+sesuai rencana. Tampilan di peramban kemudian dicek manual oleh pemilik repo.
+
+**Temuan untuk backend (sudah diperbaiki):** "berapa harga basque burnt
+cheese cake?" menghabiskan kelima langkah tool (sekitar 11.000 token) lalu
+jatuh ke jawaban "belum bisa menjawab", dan pertanyaan berikutnya kena 429.
+Penyebabnya bukan pencarian yang keliru: **belum ada produk Basque di basis
+data**, tapi katalog di prompt (disusun dari konstanta) tetap menyebutnya,
+sehingga model terus mencoba kata kunci lain. Selain itu, pencarian kategori
+tanpa kata kunci yang kosong malah mengembalikan seluruh katalog. Sekarang
+hasil kosong membawa `catatan` yang tegas beserta daftar kategori yang
+tersedia. Hasil uji: 2 langkah, sekitar 3.800 token.
+
+### Perbaikan setelah widget jadi
+
+- **Bahasa jawaban.** Pertanyaan berbahasa Inggris sering dijawab dalam
+  bahasa Indonesia, karena aturan bahasanya hanya satu kalimat di awal prompt
+  yang seluruhnya berbahasa Indonesia. Aturan itu kini ada di bagian paling
+  akhir, dan widget mengirim `locale` (id/en) sebagai cadangan untuk pesan
+  yang bahasanya tidak jelas. Sisa masalah: pesan yang cuma berisi nama produk
+  masih kadang dijawab dalam bahasa Indonesia, dan label ukuran dari tool
+  ("bulat 18 cm") tidak ikut diterjemahkan.
+- **Format.** Model kadang memakai tabel dan judul Markdown yang tidak
+  dirender widget. Prompt kini punya bagian FORMAT yang sesuai dengan
+  `utils/chatMarkdown.js`. Teks miring (`*...*`) juga belum dirender.
+- **Produk yang ada dijawab "tidak ada".** Model sesekali menjawab tanpa
+  memanggil `cariProduk`. Memaksanya lewat `tool_choice` sudah dicoba dan
+  dibatalkan: Groq tetap membiarkan model menulis teks lalu membatalkan
+  request dengan `tool_use_failed`, kuotanya tetap terpakai, dan pertanyaan
+  non-produk selalu gagal dipaksa. Penggantinya: server mencocokkan nama
+  produk di pertanyaan dengan katalog yang sudah di-cache, lalu menaruh
+  produk yang cocok beserta harganya di system prompt. Tidak ada request
+  tambahan. Log mencatat `mentioned=N`.
+- **Error di tengah stream.** Groq bisa membalas status 200 lalu mengirim
+  potongan `error`. Dulu diabaikan, sehingga jawaban setengah jadi dianggap
+  berhasil dengan `tokens=0`. Sekarang diperlakukan sebagai kegagalan.
+
+Masih terbuka: pemakaian token untuk pertanyaan yang sama masih bervariasi
+(2.700 sampai 8.100), karena model kadang tetap memanggil tool walaupun
+datanya sudah ada di prompt. Pertanyaan tentang produk yang tidak dijual juga
+sesekali masih memakai 4 langkah.
 
 ---
 
