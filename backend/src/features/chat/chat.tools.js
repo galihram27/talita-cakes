@@ -167,7 +167,25 @@ const searchCatalog = async ({ kataKunci, kategori }) => {
    // Signature). Kalau kategori itulah yang membuat hasilnya kosong, abaikan
    // kategorinya. Menjawab "produk tidak ada" untuk produk yang dijual jauh
    // lebih merugikan daripada hasil yang sedikit lebih luas.
-   const matches = byBoth.length > 0 ? byBoth : byKeyword;
+   // Tanpa kata kunci, byKeyword berisi seluruh katalog; mengabaikan kategori
+   // di sini berarti menjawab "Cheese Cake" dengan semua produk toko.
+   const matches = byBoth.length > 0 || words.length === 0 ? byBoth : byKeyword;
+
+   // Katalog di prompt memuat semua pilihan yang dikenal, termasuk kategori
+   // yang sedang kosong (mis. Basque). Tanpa jawaban tegas, model terus
+   // mencoba kata kunci lain sampai jatah langkahnya habis. Kata kunci
+   // panjang masih diberi satu kesempatan, karena bisa gagal hanya karena
+   // penulisan ("cheesecake" vs "cheese cake").
+   if (matches.length === 0) {
+      return {
+         jumlahDitemukan: 0,
+         catatan:
+            words.length > 1
+               ? "Tidak ada yang cocok. Coba sekali lagi dengan satu kata terpenting dari nama produk."
+               : "Produk ini sedang tidak dijual. Jangan mencari ulang; sampaikan ke pembeli, tawarkan kategori yang tersedia, atau arahkan ke WhatsApp untuk pesanan khusus.",
+         kategoriTersedia: [...new Set(products.map((p) => p.category))],
+      };
+   }
 
    const withPrices = matches.length <= INLINE_PRICE_LIMIT;
 
@@ -211,7 +229,7 @@ const PRODUCT_TOOLS = [
    {
       name: "cariProduk",
       description:
-         "Mencari produk yang sedang dijual beserta harga mulai-darinya. Kalau hasilnya 3 produk atau kurang, harga per ukuran sudah disertakan di `varian`, jadi tidak perlu detailProduk untuk menjawab harga. Panggil setiap kali pembeli menanyakan produk, harga, atau ketersediaan. Kosongkan kedua parameter untuk melihat semua produk. Kalau hasilnya kosong, coba lagi dengan kata kunci yang lebih pendek (satu kata dari nama produk) sebelum menyimpulkan produknya tidak ada.",
+         "Mencari produk yang sedang dijual beserta harga mulai-darinya. Kalau hasilnya 3 produk atau kurang, harga per ukuran sudah disertakan di `varian`, jadi tidak perlu detailProduk untuk menjawab harga. Panggil setiap kali pembeli menanyakan produk, harga, atau ketersediaan. Kosongkan kedua parameter untuk melihat semua produk. Kalau hasilnya kosong, ikuti `catatan` di hasilnya.",
       parameters: {
          type: "object",
          properties: {
