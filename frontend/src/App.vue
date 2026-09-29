@@ -8,6 +8,7 @@ import { useGalleryStore } from '@/stores/gallery.store'
 import { reportVisit } from '@/services/analytics.service'
 import { SITE_NAME, DEFAULT_DESCRIPTION } from '@/config/seo'
 import WhatsAppButton from '@/components/common/WhatsAppButton.vue'
+import ChatWidget from '@/components/common/ChatWidget.vue'
 
 const authStore = useAuthStore()
 const cartStore = useCartStore()
@@ -63,4 +64,5 @@ onMounted(async () => {
        router, bukan dengan cara menyembunyikan isinya di sini. -->
   <router-view />
   <WhatsAppButton />
+  <ChatWidget />
 </template>

@@ -77,8 +77,8 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.clearSession()
 
-        // Kedua store di bawah diambil saat dibutuhkan, bukan diimpor di atas,
-        // karena keduanya juga memakai store ini — impornya akan melingkar.
+        // Store-store di bawah diambil saat dibutuhkan, bukan diimpor di atas,
+        // karena semuanya juga memakai store ini — impornya akan melingkar.
         const { useCartStore } = await import('@/stores/cart.store')
         useCartStore().reset()
 
@@ -86,6 +86,10 @@ export const useAuthStore = defineStore('auth', {
         // pembeli, jadi harus ikut dibuang saat keluar
         const { useAdminOrdersStore } = await import('@/stores/adminOrders.store')
         useAdminOrdersStore().invalidate()
+
+        // Percakapan dengan asisten bisa memuat daftar pesanan akun ini
+        const { useChatStore } = await import('@/stores/chat.store')
+        useChatStore().reset()
       }
     },
 
