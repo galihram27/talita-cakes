@@ -1,5 +1,5 @@
 import { generateReply } from "./chat.provider.js";
-import { SYSTEM_PROMPT } from "./chat.prompt.js";
+import { buildSystemPrompt } from "./chat.prompt.js";
 import { buildTools } from "./chat.tools.js";
 import AppError from "../../utils/appError.js";
 
@@ -49,6 +49,9 @@ const trimHistory = (messages) => {
  * `userId` hanya terisi kalau pengunjung login, dan menentukan apakah tool
  * pesanan ikut tersedia.
  *
+ * `locale` adalah bahasa tampilan situs (id/en), dipakai kalau bahasa pesan
+ * pembeli tidak jelas.
+ *
  * `onDelta` dan `signal` hanya dipakai endpoint stream: yang pertama menerima
  * potongan teks, yang kedua menghentikan request ke penyedia saat pembeli
  * menutup koneksi.
@@ -56,7 +59,7 @@ const trimHistory = (messages) => {
 export const replyToChat = async (
    messages,
    userId,
-   { onDelta, signal } = {}
+   { locale, onDelta, signal } = {}
 ) => {
    if (!isChatEnabled()) {
       throw new AppError("Asisten belanja sedang tidak aktif.", 503);
@@ -68,7 +71,7 @@ export const replyToChat = async (
 
    const { text, totalTokens, steps } = await generateReply({
       messages: history,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: buildSystemPrompt(locale),
       tools: tools.definitions,
       runTool: tools.run,
       maxSteps: MAX_TOOL_STEPS,

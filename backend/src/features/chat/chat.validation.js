@@ -37,4 +37,6 @@ export const chatSchema = z.object({
       .refine((messages) => messages.at(-1)?.role === "user", {
          message: "Pesan terakhir harus dari user",
       }),
+   // Bahasa tampilan situs. Opsional supaya uji dengan curl tetap mudah.
+   locale: z.enum(["id", "en"]).optional(),
 });

@@ -8,7 +8,9 @@ export const chatStatusController = (req, res) =>
 
 // POST /chat  (public, login opsional)
 export const chatController = asyncHandler(async (req, res) => {
-   const result = await replyToChat(req.body.messages, req.user?.userId);
+   const result = await replyToChat(req.body.messages, req.user?.userId, {
+      locale: req.body.locale,
+   });
 
    return res.status(200).json({
       message: "Chat reply generated successfully",
@@ -58,6 +60,7 @@ export const chatStreamController = asyncHandler(async (req, res) => {
 
    try {
       await replyToChat(req.body.messages, req.user?.userId, {
+         locale: req.body.locale,
          signal: abort.signal,
          onDelta: (text) => {
             startStream();
