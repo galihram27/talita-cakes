@@ -159,9 +159,18 @@ const readStep = async (response, onDelta) => {
    let content = "";
    const calls = [];
    let usage = null;
+   let streamError = null;
 
    try {
       for await (const chunk of readChunks(response)) {
+         // Kegagalan setelah status 200 datang sebagai potongan berisi
+         // `error`. Tanpa pengecekan ini, jawaban setengah jadi dianggap
+         // berhasil.
+         if (chunk.error) {
+            streamError = chunk.error;
+            break;
+         }
+
          const delta = chunk.choices?.[0]?.delta ?? {};
 
          if (delta.content) {
@@ -186,6 +195,11 @@ const readStep = async (response, onDelta) => {
       }
    } catch (err) {
       throw toNetworkError(err);
+   }
+
+   if (streamError) {
+      console.error("Chat API stream error:", JSON.stringify(streamError));
+      throw toAppError(streamError.status_code);
    }
 
    return { content, calls: calls.filter(Boolean), usage };
