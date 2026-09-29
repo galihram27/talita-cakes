@@ -14,8 +14,12 @@ const MAX_TOOL_STEPS = 5;
 // giliran terakhir, yang memang paling relevan untuk menjawab.
 const HISTORY_CHAR_BUDGET = 6000;
 
-const FALLBACK_REPLY =
-   "Maaf, saya belum bisa menjawab pertanyaan ini. Silakan hubungi kami lewat tombol WhatsApp di situs, ya.";
+// Ditulis server, bukan model, jadi bahasanya harus dipilih sendiri
+// mengikuti bahasa situs.
+const FALLBACK_REPLY = {
+   id: "Maaf, saya belum bisa menjawab pertanyaan ini. Silakan hubungi kami lewat tombol WhatsApp di situs, ya.",
+   en: "Sorry, I can't answer this question yet. Please contact us using the WhatsApp button on the site.",
+};
 
 /**
  * Saklar fitur. Chat hanya menyala kalau CHAT_ENABLED bernilai persis
@@ -90,6 +94,7 @@ export const replyToChat = async (
 
    // Pesan pengganti juga dikirim lewat stream, supaya pembeli tidak menatap
    // gelembung chat yang kosong.
-   onDelta?.(FALLBACK_REPLY);
-   return { reply: FALLBACK_REPLY };
+   const fallback = FALLBACK_REPLY[locale] ?? FALLBACK_REPLY.id;
+   onDelta?.(fallback);
+   return { reply: fallback };
 };

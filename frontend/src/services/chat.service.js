@@ -60,15 +60,23 @@ const freshAccessToken = async () => {
 }
 
 /**
- * Kesalahan dengan pesan yang aman ditampilkan ke pembeli. `status` dipakai
- * widget untuk memutuskan perlu menawarkan WhatsApp atau tidak.
+ * Kesalahan chat. `code` adalah kunci teks di locales (chat.errors.*), jadi
+ * widget yang menerjemahkannya. Pesan dari server sengaja tidak ditampilkan:
+ * isinya selalu berbahasa Indonesia, apa pun bahasa situsnya. `status`
+ * dipakai widget untuk memutuskan perlu menawarkan tombol ulangi atau tidak.
  */
 export class ChatError extends Error {
-  constructor(message, status = 0) {
-    super(message)
+  constructor(code, status = 0) {
+    super(code)
+    this.code = code
     this.status = status
   }
 }
+
+// 503 juga dipakai saat saklar CHAT_ENABLED dimatikan di tengah percakapan;
+// bagi pembeli, "sedang sibuk" sudah cukup tepat untuk keduanya
+const codeForStatus = (status) =>
+  ({ 400: 'invalid', 429: 'rateLimited', 503: 'busy' })[status] || 'generic'
 
 /**
  * Kirim percakapan dan terima jawabannya bertahap.
@@ -98,12 +106,11 @@ export const streamChat = async (messages, { onDelta, signal } = {}) => {
     })
   } catch (err) {
     if (err.name === 'AbortError') throw err
-    throw new ChatError('Tidak bisa terhubung ke server. Periksa koneksi internetmu.')
+    throw new ChatError('offline')
   }
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null)
-    throw new ChatError(body?.message || 'Asisten sedang tidak bisa menjawab.', response.status)
+    throw new ChatError(codeForStatus(response.status), response.status)
   }
 
   const reader = response.body.getReader()
@@ -123,7 +130,7 @@ export const streamChat = async (messages, { onDelta, signal } = {}) => {
     const payload = data ? JSON.parse(data) : {}
 
     if (event === 'delta') onDelta?.(payload.text)
-    else if (event === 'error') throw new ChatError(payload.message || 'Asisten sedang tidak bisa menjawab.')
+    else if (event === 'error') throw new ChatError('generic')
     else if (event === 'done') return true
     return false
   }
@@ -143,5 +150,5 @@ export const streamChat = async (messages, { onDelta, signal } = {}) => {
 
   // Koneksi tertutup tanpa `done`: server mati atau jaringan putus di
   // tengah jawaban
-  throw new ChatError('Jawaban terputus. Coba kirim ulang.')
+  throw new ChatError('cutOff')
 }

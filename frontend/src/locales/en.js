@@ -1016,4 +1016,38 @@ export default {
     count: "({count} reviews)",
     viewAll: "See All Reviews on Google Maps",
   },
+  chat: {
+    openLabel: "Open shopping assistant",
+    panelLabel: "Shopping assistant",
+    title: "Talita Assistant",
+    subtitle: "Ask about products, prices, and ordering",
+    newChat: "Start a new conversation",
+    close: "Close assistant",
+    greeting:
+      "Hi! I'm the Talita's Cake assistant. I can help you check products, prices, and how to order. What would you like to know?",
+    suggestions: {
+      catalog: "What cakes do you have?",
+      cupcakePrice: "How much are the cupcakes?",
+      howToOrder: "How do I order?",
+    },
+    incomplete: "Incomplete answer",
+    typing: "Assistant is typing",
+    retry: "Try again",
+    whatsapp: "Chat on WhatsApp",
+    placeholder: "Type your question…",
+    inputLabel: "Question",
+    stop: "Stop answer",
+    send: "Send",
+    disclaimer:
+      "The AI assistant can make mistakes. Final prices are shown in the cart.",
+    errors: {
+      offline: "Can't reach the server. Please check your internet connection.",
+      generic: "The assistant can't answer right now.",
+      cutOff: "The answer was cut off. Please try sending it again.",
+      busy: "The assistant is busy. Please try again in a moment.",
+      rateLimited:
+        "The assistant is receiving too many questions. Please try again in a moment.",
+      invalid: "Your message couldn't be sent. Try making it shorter.",
+    },
+  },
 };

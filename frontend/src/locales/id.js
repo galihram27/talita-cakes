@@ -1022,4 +1022,37 @@ export default {
     count: "({count} ulasan)",
     viewAll: "Lihat Semua Ulasan di Google Maps",
   },
+  chat: {
+    openLabel: "Buka asisten belanja",
+    panelLabel: "Asisten belanja",
+    title: "Asisten Talita",
+    subtitle: "Tanya produk, harga, dan cara memesan",
+    newChat: "Mulai percakapan baru",
+    close: "Tutup asisten",
+    greeting:
+      "Halo! Saya asisten Talita's Cake. Saya bisa bantu cek produk, harga, dan cara memesan. Mau tanya apa?",
+    suggestions: {
+      catalog: "Ada kue apa saja?",
+      cupcakePrice: "Berapa harga cupcake?",
+      howToOrder: "Bagaimana cara memesan?",
+    },
+    incomplete: "Jawaban tidak lengkap",
+    typing: "Asisten sedang mengetik",
+    retry: "Coba lagi",
+    whatsapp: "Chat WhatsApp",
+    placeholder: "Tulis pertanyaanmu…",
+    inputLabel: "Pertanyaan",
+    stop: "Hentikan jawaban",
+    send: "Kirim",
+    disclaimer: "Asisten AI bisa keliru. Harga final tampil di keranjang.",
+    errors: {
+      offline: "Tidak bisa terhubung ke server. Periksa koneksi internetmu.",
+      generic: "Asisten sedang tidak bisa menjawab.",
+      cutOff: "Jawaban terputus. Coba kirim ulang.",
+      busy: "Asisten sedang sibuk. Coba lagi sebentar lagi.",
+      rateLimited:
+        "Asisten sedang menerima terlalu banyak pertanyaan. Coba lagi sebentar lagi.",
+      invalid: "Pesanmu tidak bisa dikirim. Coba persingkat.",
+    },
+  },
 };

@@ -125,7 +125,8 @@ export const useChatStore = defineStore('chat', {
         })
       } catch (err) {
         if (err.name !== 'AbortError') {
-          this.error = { message: err.message, status: err.status || 0 }
+          // Selain ChatError (mis. bug parsing) tidak punya code
+          this.error = { code: err.code || 'generic', status: err.status || 0 }
         }
         reply.failed = true
       } finally {

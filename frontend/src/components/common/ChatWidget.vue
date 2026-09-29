@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { MessageCircle, X, Send, Square, RotateCcw, Sparkles } from 'lucide-vue-next'
 import { useChatStore, MAX_USER_LENGTH } from '@/stores/chat.store'
 import { renderChatMarkdown } from '@/utils/chatMarkdown'
@@ -16,6 +17,7 @@ import { STORE_INFO } from '@/config/constants'
  */
 
 const chat = useChatStore()
+const { t } = useI18n()
 const route = useRoute()
 
 const isMounted = ref(false)
@@ -33,11 +35,10 @@ const whatsappUrl = STORE_INFO.whatsappNumber
   ? `https://wa.me/${STORE_INFO.whatsappNumber}`
   : ''
 
-const SUGGESTIONS = [
-  'Ada kue apa saja?',
-  'Berapa harga cupcake?',
-  'Bagaimana cara memesan?',
-]
+// Dibaca ulang saat bahasa situs diganti
+const suggestions = computed(() =>
+  ['catalog', 'cupcakePrice', 'howToOrder'].map((key) => t(`chat.suggestions.${key}`))
+)
 
 // Kuota habis (429) atau pesan ditolak (400) tidak akan berhasil kalau
 // langsung dicoba lagi, jadi tombol ulangi hanya untuk kegagalan lain
@@ -115,7 +116,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
     <button
       v-show="!chat.isOpen"
       type="button"
-      aria-label="Buka asisten belanja"
+      :aria-label="t('chat.openLabel')"
       class="fixed bottom-24 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-lg transition hover:scale-110 hover:bg-brand-600 hover:shadow-xl"
       @click="openPanel"
     >
@@ -129,7 +130,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
       <section
         v-if="chat.isOpen"
         role="dialog"
-        aria-label="Asisten belanja"
+        :aria-label="t('chat.panelLabel')"
         class="fixed inset-0 z-[60] flex flex-col bg-white sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[min(600px,calc(100dvh-3rem))] sm:w-[380px] sm:rounded-2xl sm:border sm:border-[#EBDCCC] sm:shadow-[0_18px_44px_-14px_rgba(51,38,31,0.4)] overflow-hidden"
       >
         <!-- Kepala -->
@@ -138,14 +139,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
             <Sparkles class="h-[18px] w-[18px]" />
           </div>
           <div class="min-w-0 flex-1">
-            <h2 class="font-display text-[17px] leading-tight">Asisten Talita</h2>
-            <p class="truncate text-xs text-cocoa-400">Tanya produk, harga, dan cara memesan</p>
+            <h2 class="font-display text-[17px] leading-tight">{{ t('chat.title') }}</h2>
+            <p class="truncate text-xs text-cocoa-400">{{ t('chat.subtitle') }}</p>
           </div>
           <button
             v-if="chat.messages.length"
             type="button"
-            title="Mulai percakapan baru"
-            aria-label="Mulai percakapan baru"
+            :title="t('chat.newChat')"
+            :aria-label="t('chat.newChat')"
             class="rounded-full p-2 text-cocoa-500 transition hover:bg-cream-200"
             @click="chat.reset()"
           >
@@ -153,7 +154,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
           </button>
           <button
             type="button"
-            aria-label="Tutup asisten"
+            :aria-label="t('chat.close')"
             class="rounded-full p-2 text-cocoa-500 transition hover:bg-cream-200"
             @click="chat.close()"
           >
@@ -171,12 +172,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
           <!-- Keadaan kosong: sapaan + contoh pertanyaan -->
           <div v-if="!chat.messages.length" class="pt-2">
             <div class="chat-bubble-assistant">
-              Halo! Saya asisten Talita's Cake. Saya bisa bantu cek produk,
-              harga, dan cara memesan. Mau tanya apa?
+              {{ t('chat.greeting') }}
             </div>
             <div class="mt-3 flex flex-wrap gap-2">
               <button
-                v-for="s in SUGGESTIONS"
+                v-for="s in suggestions"
                 :key="s"
                 type="button"
                 class="rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-[13px] font-semibold text-brand-600 transition hover:bg-brand-100"
@@ -198,14 +198,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
                    seluruh teks dulu, lihat utils/chatMarkdown.js -->
               <div class="chat-bubble-assistant chat-markdown" v-html="renderChatMarkdown(m.text)" />
               <span v-if="m.failed" class="mt-1 px-1 text-[11px] text-cocoa-400">
-                Jawaban tidak lengkap
+                {{ t('chat.incomplete') }}
               </span>
             </div>
           </template>
 
           <!-- Menunggu kata pertama. Dengan tool, jeda ini bisa beberapa
                detik — tanpa tanda apa pun pembeli mengira widgetnya macet. -->
-          <div v-if="chat.status === 'waiting'" class="chat-bubble-assistant inline-flex items-center gap-1" aria-label="Asisten sedang mengetik">
+          <div v-if="chat.status === 'waiting'" class="chat-bubble-assistant inline-flex items-center gap-1" :aria-label="t('chat.typing')">
             <span class="chat-dot" />
             <span class="chat-dot [animation-delay:0.15s]" />
             <span class="chat-dot [animation-delay:0.3s]" />
@@ -218,7 +218,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
             class="rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-3 text-sm text-brand-700"
             role="alert"
           >
-            <p>{{ chat.error.message }}</p>
+            <p>{{ t(`chat.errors.${chat.error.code}`) }}</p>
             <div class="mt-2 flex flex-wrap gap-2">
               <button
                 v-if="canRetry"
@@ -226,7 +226,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
                 class="rounded-full bg-white px-3 py-1 text-[13px] font-semibold text-brand-600 ring-1 ring-brand-200 transition hover:bg-brand-100"
                 @click="chat.retry()"
               >
-                Coba lagi
+                {{ t('chat.retry') }}
               </button>
               <a
                 v-if="whatsappUrl"
@@ -235,7 +235,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
                 rel="noopener"
                 class="rounded-full bg-[#25D366] px-3 py-1 text-[13px] font-semibold text-white transition hover:brightness-95"
               >
-                Chat WhatsApp
+                {{ t('chat.whatsapp') }}
               </a>
             </div>
           </div>
@@ -249,8 +249,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
               v-model="draft"
               rows="1"
               :maxlength="MAX_USER_LENGTH"
-              placeholder="Tulis pertanyaanmu…"
-              aria-label="Pertanyaan"
+              :placeholder="t('chat.placeholder')"
+              :aria-label="t('chat.inputLabel')"
               class="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm outline-none placeholder:text-cocoa-400"
               @input="resizeInput"
               @keydown="onKeydown"
@@ -259,7 +259,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
             <button
               v-if="chat.isBusy"
               type="button"
-              aria-label="Hentikan jawaban"
+              :aria-label="t('chat.stop')"
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cocoa-900 text-white transition hover:bg-cocoa-500"
               @click="chat.stop()"
             >
@@ -268,7 +268,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
             <button
               v-else
               type="submit"
-              aria-label="Kirim"
+              :aria-label="t('chat.send')"
               :disabled="!draft.trim()"
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -278,7 +278,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
           <!-- Asisten bisa keliru, dan yang mengikat tetap hitungan server
                di keranjang. Pembeli perlu tahu itu sebelum mengandalkannya. -->
           <p class="mt-1.5 px-1 text-center text-[11px] text-cocoa-400">
-            Asisten AI bisa keliru. Harga final tampil di keranjang.
+            {{ t('chat.disclaimer') }}
           </p>
         </form>
       </section>
