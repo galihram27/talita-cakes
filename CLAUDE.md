@@ -72,7 +72,7 @@ Kalau hanya salah satu: admin bisa memilih sesuatu yang lalu ditolak server,
 atau pilihan yang sah tidak pernah muncul di form.
 
 Hal yang sama berlaku untuk terjemahan — `frontend/src/locales/id.js` dan
-`en.js` harus punya kunci yang sama persis (saat ini 656 masing-masing).
+`en.js` harus punya kunci yang sama persis (saat ini 681 masing-masing).
 Kunci yang hanya ada di `id.js` akan tampil dalam bahasa Inggris, karena
 bahasa Inggris dipakai sebagai cadangan.
 

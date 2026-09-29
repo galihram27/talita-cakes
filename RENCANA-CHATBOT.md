@@ -21,7 +21,7 @@ Dikerjakan di branch `feat/chatbot`, belum digabung ke `main`.
 | 4. Streaming | ✅ Selesai |
 | 5. Pembatasan & keamanan | ✅ Selesai |
 | 6. Widget frontend | ✅ Selesai |
-| 7. Terjemahan | Belum |
+| 7. Terjemahan | ✅ Selesai |
 | 8. Deploy | Belum |
 
 ---
@@ -472,6 +472,19 @@ Semua teks widget (judul, placeholder, pesan error, sapaan pembuka) masuk ke
 `src/locales/id.js` dan `en.js`. **Kunci di keduanya harus sama persis.**
 Kunci yang hanya ada di `id.js` akan tampil dalam bahasa Inggris, karena
 bahasa Inggris dipakai sebagai cadangan.
+
+**Hasilnya:** 25 kunci baru di bagian `chat`, jadi 681 kunci di tiap
+berkas. Dua hal di luar widget ikut disesuaikan:
+
+- Pesan error dari server selalu berbahasa Indonesia, jadi tidak lagi
+  ditampilkan apa adanya. `services/chat.service.js` mengubah status HTTP
+  menjadi kode (`rateLimited`, `busy`, `invalid`, `offline`, `cutOff`,
+  `generic`), dan widget menerjemahkannya dari `chat.errors.*`.
+- Jawaban cadangan saat model kehabisan langkah ditulis server, bukan model,
+  jadi kini dipilih mengikuti `locale`.
+
+Build lulus dan semua kunci yang dipakai widget ada di kedua bahasa. Tampilan
+versi Inggris belum dicek di peramban.
 
 ---
 
