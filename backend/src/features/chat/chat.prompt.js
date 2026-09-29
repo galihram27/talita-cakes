@@ -124,11 +124,22 @@ const SITE_LANGUAGE = { id: "Indonesia", en: "Inggris" };
  * Bahasa situs hanya dipakai kalau bahasa pesan tidak jelas ("ok", nama
  * produk saja). Pembeli yang menulis bahasa Inggris di situs versi Indonesia
  * tetap dijawab bahasa Inggris.
+ *
+ * `mentionedProducts` berisi produk yang namanya disebut pembeli, sudah dicari
+ * server (lihat findMentionedProducts di chat.tools.js).
  */
-export const buildSystemPrompt = (locale) => {
+export const buildSystemPrompt = (locale, mentionedProducts = []) => {
    const fallback = SITE_LANGUAGE[locale] ?? SITE_LANGUAGE.id;
+   const mentioned =
+      mentionedProducts.length > 0
+         ? `
 
-   return `${BASE_PROMPT}
+PRODUK YANG DISEBUT PEMBELI
+Data asli dari katalog, beserta harga per ukuran. Produk ini sedang dijual; pakai data ini tanpa perlu memanggil cariProduk lagi.
+${JSON.stringify(mentionedProducts)}`
+         : "";
+
+   return `${BASE_PROMPT}${mentioned}
 
 BAHASA (aturan terpenting)
 Bahasa jawaban mengikuti pesan terakhir pembeli: pesan berbahasa Inggris dijawab seluruhnya dalam bahasa Inggris, pesan berbahasa Indonesia dalam bahasa Indonesia. Ini berlaku walaupun instruksi, katalog, dan hasil tool di atas berbahasa Indonesia. Terjemahkan isinya, tapi nama produk dan kategori tetap ditulis seperti aslinya. Hanya kalau pesan itu tidak jelas bahasanya (mis. cuma nama produk atau angka), pakai bahasa ${fallback}.`;

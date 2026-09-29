@@ -1,6 +1,6 @@
 import { generateReply } from "./chat.provider.js";
 import { buildSystemPrompt } from "./chat.prompt.js";
-import { buildTools } from "./chat.tools.js";
+import { buildTools, findMentionedProducts } from "./chat.tools.js";
 import AppError from "../../utils/appError.js";
 
 // Pertanyaan wajar butuh 2-3 langkah (cari produk, lihat detail, menjawab).
@@ -68,10 +68,11 @@ export const replyToChat = async (
    const tools = buildTools({ userId });
    const history = trimHistory(messages);
    const startedAt = Date.now();
+   const mentionedProducts = await findMentionedProducts(history.at(-1).text);
 
    const { text, totalTokens, steps } = await generateReply({
       messages: history,
-      systemPrompt: buildSystemPrompt(locale),
+      systemPrompt: buildSystemPrompt(locale, mentionedProducts),
       tools: tools.definitions,
       runTool: tools.run,
       maxSteps: MAX_TOOL_STEPS,
@@ -82,7 +83,7 @@ export const replyToChat = async (
    // Satu baris per pertanyaan, supaya pemakaian kuota bisa dibaca dari log
    // Render. Isi percakapan sengaja tidak dicatat: itu data pribadi pembeli.
    console.info(
-      `[chat] steps=${steps} tokens=${totalTokens} ms=${Date.now() - startedAt} history=${history.length}/${messages.length} login=${Boolean(userId)}`
+      `[chat] steps=${steps} tokens=${totalTokens} ms=${Date.now() - startedAt} history=${history.length}/${messages.length} login=${Boolean(userId)} mentioned=${mentionedProducts.length}`
    );
 
    if (text) return { reply: text };

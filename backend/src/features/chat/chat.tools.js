@@ -202,6 +202,79 @@ const searchCatalog = async ({ kataKunci, kategori }) => {
    };
 };
 
+// Kata yang muncul di banyak nama produk, sehingga tidak membedakan satu
+// produk dari yang lain.
+const GENERIC_NAME_WORDS = new Set([
+   "cake",
+   "cakes",
+   "cupcake",
+   "cupcakes",
+   "series",
+   "with",
+   "the",
+   "and",
+   "kue",
+]);
+const MIN_WORD_LENGTH = 3;
+const MAX_MENTIONED_PRODUCTS = 3;
+
+const significantWords = (text) =>
+   new Set(
+      text
+         .toLowerCase()
+         .replace(/[^\p{L}\p{N}\s]/gu, " ")
+         .split(/\s+/)
+         .filter(
+            (word) =>
+               word.length >= MIN_WORD_LENGTH && !GENERIC_NAME_WORDS.has(word)
+         )
+         // Pembeli jarang menulis bentuk jamak persis seperti nama produk
+         // ("cinnamon roll" untuk "Cinnamon Rolls").
+         .map((word) => (word.length > 3 ? word.replace(/s$/, "") : word))
+   );
+
+/**
+ * Produk yang namanya disebut di pesan pembeli, dicari server sebelum
+ * pesan dikirim ke model.
+ *
+ * Model kadang menjawab "produknya tidak ada" tanpa memanggil cariProduk.
+ * Memaksanya lewat tool_choice tidak bisa diandalkan di Groq: model tetap
+ * boleh menulis teks, lalu request dibatalkan dan kuotanya tetap terpakai.
+ * Menyodorkan datanya lebih dulu tidak butuh request tambahan sama sekali.
+ *
+ * Sebuah produk dianggap disebut kalau minimal dua kata khas namanya ada di
+ * pesan, atau semua kata khasnya ada (untuk nama pendek). Yang diambil hanya
+ * yang paling banyak cocok, supaya "choco mocha" tidak ikut menyeret semua
+ * produk "choco". Pesan umum seperti "brownies" sengaja tidak menghasilkan
+ * apa-apa; untuk itu model tetap memakai cariProduk.
+ */
+export const findMentionedProducts = async (text) => {
+   const messageWords = significantWords(text);
+   if (messageWords.size === 0) return [];
+
+   const products = await getAllProducts();
+   const scored = products
+      .map((product) => {
+         const nameWords = [...significantWords(product.name)];
+         const hits = nameWords.filter((word) => messageWords.has(word));
+         const matched =
+            hits.length >= 2 ||
+            (hits.length > 0 && hits.length === nameWords.length);
+         return { product, score: matched ? hits.length : 0 };
+      })
+      .filter(({ score }) => score > 0);
+
+   const best = Math.max(0, ...scored.map(({ score }) => score));
+
+   return scored
+      .filter(({ score }) => score === best)
+      .slice(0, MAX_MENTIONED_PRODUCTS)
+      .map(({ product }) => ({
+         ...summarizeProduct(product),
+         varian: variantPrices(product),
+      }));
+};
+
 const storeInfo = () => ({
    whatsapp: `https://wa.me/${OWNER_WHATSAPP_NUMBER}`,
    lokasiDiPeta:
