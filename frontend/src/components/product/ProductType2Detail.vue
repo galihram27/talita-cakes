@@ -10,6 +10,7 @@ import DesignReferencePicker from './DesignReferencePicker.vue'
 import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
 import { TYPE2_FLAVORS } from '@/config/constants'
+import { applyDiscount } from '@/utils/price'
 
 /**
  * Detail produk berukuran tetap, tapi pembeli memilih rasa dan boleh
@@ -35,9 +36,7 @@ const variant = computed(() => props.product.variants?.[0] ?? null)
 
 const finalPrice = computed(() => {
   if (!variant.value) return null
-  const price = Number(variant.value.price)
-  const discount = Number(props.product.discount ?? 0)
-  return Math.round((price - (price * discount) / 100) * 100) / 100
+  return applyDiscount(variant.value.price, props.product.discount)
 })
 
 const handleSubmit = async () => {

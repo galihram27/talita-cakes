@@ -1,6 +1,7 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
 import { formatRupiah } from '@/utils/formatCurrency'
+import { applyDiscount } from '@/utils/price'
 
 /**
  * Pemilih isi box untuk cupcake (TYPE6).
@@ -17,14 +18,6 @@ const props = defineProps({
 
 defineEmits(['update:variantId'])
 const { t } = useI18n()
-
-// Diskon disimpan dalam persen. Angka ini hanya untuk ditampilkan —
-// harga yang sesungguhnya tetap dihitung ulang oleh server saat memesan.
-const applyDiscount = (price) => {
-  const base = Number(price)
-  const discount = Number(props.discount ?? 0)
-  return Math.round((base - (base * discount) / 100) * 100) / 100
-}
 
 // Urutkan dari isi paling sedikit. Disalin dulu dengan [...] karena sort()
 // mengubah array aslinya, dan itu milik komponen induk.
@@ -51,7 +44,7 @@ const sortedVariants = () => [...props.variants].sort((a, b) => a.size - b.size)
           {{ t('product.boxOf', { count: v.size }) }}
         </span>
         <span class="text-[11.5px] text-cocoa-400">
-          {{ formatRupiah(applyDiscount(v.price)) }}
+          {{ formatRupiah(applyDiscount(v.price, discount)) }}
         </span>
       </button>
     </div>

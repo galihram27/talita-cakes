@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isType5SizeSubcategory } from '@/config/productOptions'
+import { applyDiscount } from '@/utils/price'
 
 const props = defineProps({
   product: { type: Object, required: true },
@@ -61,14 +62,11 @@ const getDisplayPrice = () => {
   return Math.min(...prices)
 }
 
-// Diskon dalam persen. Rumusnya harus sama dengan halaman detail, kalau tidak
-// harga di kartu dan di halaman produk bisa berbeda.
 const getDiscountedPrice = () => {
   const price = getDisplayPrice()
   if (price === null) return null
-  const discount = Number(props.product.discount ?? 0)
-  if (discount <= 0) return price
-  return Math.round((price - (price * discount) / 100) * 100) / 100
+  if (Number(props.product.discount ?? 0) <= 0) return price
+  return applyDiscount(price, props.product.discount)
 }
 
 /**

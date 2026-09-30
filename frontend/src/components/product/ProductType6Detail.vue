@@ -18,6 +18,7 @@ import {
   goodiebagFlavorsForSubcategory,
   goodiebagFlavorLimit,
 } from '@/config/productOptions'
+import { applyDiscount } from '@/utils/price'
 
 /**
  * Detail cupcake. Cara memilihnya berbeda menurut kategori:
@@ -83,9 +84,7 @@ const selectedVariant = computed(
 // Harga satu box setelah diskon
 const unitPrice = computed(() => {
   if (!selectedVariant.value) return null
-  const price = Number(selectedVariant.value.price)
-  const discount = Number(props.product.discount ?? 0)
-  return Math.round((price - (price * discount) / 100) * 100) / 100
+  return applyDiscount(selectedVariant.value.price, props.product.discount)
 })
 
 // Jumlah box yang dipesan. Goodiebag diketik sendiri oleh pembeli dan

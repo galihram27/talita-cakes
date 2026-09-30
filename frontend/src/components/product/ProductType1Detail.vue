@@ -7,6 +7,7 @@ import ProductPriceDisplay from './ProductPriceDisplay.vue'
 import ProductFixedSpec from './ProductFixedSpec.vue'
 import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
+import { applyDiscount } from '@/utils/price'
 
 /**
  * Halaman detail untuk produk paling sederhana: bentuk, ukuran, dan rasa
@@ -31,9 +32,7 @@ const variant = computed(() => props.product.variants?.[0] ?? null)
 
 const finalPrice = computed(() => {
   if (!variant.value) return null
-  const price = Number(variant.value.price)
-  const discount = Number(props.product.discount ?? 0)
-  return Math.round((price - (price * discount) / 100) * 100) / 100
+  return applyDiscount(variant.value.price, props.product.discount)
 })
 
 const handleSubmit = async () => {

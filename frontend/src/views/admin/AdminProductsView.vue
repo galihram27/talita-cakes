@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { Search, Plus, Pencil, Copy, Trash2, ChevronDown, Star } from 'lucide-vue-next'
 import { deleteProduct, updateProduct } from '@/services/product.service'
 import { cloudinaryThumb } from '@/utils/cloudinaryImage'
+import { applyDiscount } from '@/utils/price'
 import { useProductStore } from '@/stores/product.store'
 import { useAnalyticsStore } from '@/stores/analytics.store'
 import ProductFormModal from '@/components/admin/ProductFormModal.vue'
@@ -181,12 +182,8 @@ const priceLabel = (product) => {
   const prices = product.variants?.map((v) => Number(v.price)) ?? []
   if (prices.length === 0) return { value: '—', hasRange: false }
 
-  const discount = Number(product.discount ?? 0)
-  // Dikalikan dan dibagi 100 untuk membulatkan sampai dua angka di belakang koma.
-  const applyDiscount = (price) =>
-    discount > 0 ? Math.round((price - (price * discount) / 100) * 100) / 100 : price
-
-  const min = applyDiscount(Math.min(...prices))
+  const lowest = Math.min(...prices)
+  const min = Number(product.discount ?? 0) > 0 ? applyDiscount(lowest, product.discount) : lowest
   const value = `Rp ${min.toLocaleString('id-ID')}`
   const hasRange = prices.length > 1 && Math.max(...prices) !== Math.min(...prices)
 

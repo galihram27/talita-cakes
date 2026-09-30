@@ -1,5 +1,7 @@
 // src/config/seo.js
 
+import { applyDiscount } from '@/utils/price'
+
 /**
  * Perkakas SEO: judul & deskripsi halaman, serta data terstruktur yang dibaca
  * mesin pencari.
@@ -47,9 +49,7 @@ export const lowestPrice = (product) => {
     .map((v) => Number(v.price))
     .filter((n) => n > 0)
   if (!prices.length) return null
-  const discount = Number(product.discount || 0)
-  const min = Math.min(...prices)
-  return Math.round((min - (min * discount) / 100) * 100) / 100
+  return applyDiscount(Math.min(...prices), product.discount || 0)
 }
 
 /**
