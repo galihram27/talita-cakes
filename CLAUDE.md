@@ -86,6 +86,12 @@ Frontend menghitung harga hanya untuk ditampilkan. Yang mengikat selalu
 hitungan server (`cart.service.js`, `order.service.js`). Ongkir juga dihitung
 ulang server dari koordinat alamat.
 
+Mengubah tarif ongkir berarti menyunting `calculateDeliveryFee` di
+`backend/src/features/order/order.helper.js` **dan** `DELIVERY_FEE_TIERS` +
+`deliveryTierIndex` di `frontend/src/config/constants.js` (tabel yang disorot
+di checkout). `frontend/src/config/constants.test.js` gagal kalau keduanya
+berbeda.
+
 Kalau mengubah rumus diskon di satu sisi, ubah juga di sisi lain — kalau tidak,
 harga di kartu produk bisa berbeda dari harga di keranjang. Di frontend
 rumusnya hanya ada di `utils/price.js`; jangan menulis ulang di komponen.

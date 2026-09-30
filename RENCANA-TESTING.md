@@ -434,9 +434,11 @@ Cara membuktikan test bekerja sudah dicoba untuk tiap berkas: rumus diskon
 box di `product.constant.js` diubah, escape `<` di `chatMarkdown.js` dihapus,
 dan alamat relatif dijadikan tautan. Semuanya membuat test gagal.
 
-**Saran di luar rencana:** tarif ongkir juga disalin di frontend
-(`DELIVERY_FEE_TIERS` di `config/constants.js`, untuk dibaca pembeli). Belum
-ada test yang mencocokkannya dengan `calculateDeliveryFee` di backend.
+**Di luar rencana:** tarif ongkir juga disalin di frontend
+(`DELIVERY_FEE_TIERS` dan `deliveryTierIndex` di `config/constants.js`, untuk
+dibaca pembeli). Sekarang dicocokkan dengan `calculateDeliveryFee` di backend
+oleh `config/constants.test.js`, untuk setiap jarak 0,1 sampai 25 km.
+Ditambahkan saat tarif ongkir diganti.
 
 Commit: satu commit per berkas sumber.
 
@@ -894,7 +896,7 @@ beserta keputusannya.
 
 | Temuan | Keputusan |
 | --- | --- |
-| `calculateDeliveryFee`: 10,5 km masuk tarif Rp55.000, padahal komentar menyebut "11–15 km" | Belum ditanyakan |
+| `calculateDeliveryFee`: 10,5 km masuk tarif Rp55.000, padahal komentar menyebut "11–15 km" | Tarif diganti (`ab0319c`) dan pertanyaannya tetap berlaku: tabel baru dari toko juga ditulis dengan angka bulat ("< 2 km", "3 - 5 km", ...). Kode memakai aturan lama: batas atas ikut tarifnya, jarak di celah masuk tarif berikutnya (2,5 km → Rp45.000, 5,5 km → Rp55.000, 10,5 km → Rp65.000). Aturan ini sekarang tertulis di komentar `calculateDeliveryFee` dan dites. Belum dikonfirmasi pemilik toko |
 | `confirmCheckout`: pesanan PICKUP dengan `recipientType: "FOR_SOMEONE_ELSE"` dari client tetap menyimpan nama penerima, padahal komentar menyebut data penerima tidak disimpan untuk PICKUP | Belum diputuskan |
 | `otpCodeSchema` hanya memeriksa panjang 6 karakter, jadi `"abcdef"` lolos validasi. Tidak berbahaya karena kode tetap dicocokkan dengan hash | Belum diputuskan |
 | Checkout memakai harga yang tersimpan di keranjang. Kalau admin mengubah harga setelah barang masuk keranjang, pembeli membayar harga lama | Belum diputuskan: disengaja atau perlu dihitung ulang |
