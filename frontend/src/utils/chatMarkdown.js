@@ -11,7 +11,8 @@
  * KEAMANAN: jawaban model tidak bisa dipercaya. Pembeli bisa memancingnya
  * menulis `<script>` atau tautan `javascript:`. Karena itu seluruh teks
  * di-escape LEBIH DULU, baru tag yang dikenali disusun sendiri di sini, dan
- * tautan hanya dibuat untuk alamat http/https.
+ * tautan hanya dibuat untuk alamat http/https, serta tautan produk berbentuk
+ * `[Nama produk](#produk)`.
  */
 
 const escapeHtml = (text) =>
@@ -25,16 +26,38 @@ const escapeHtml = (text) =>
 const link = (url, label) =>
   `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`
 
-// `[label](https://...)` atau alamat polos. Keduanya dicari dalam satu
-// langkah supaya alamat yang sudah jadi tautan tidak dibungkus dua kali.
-// Tanda baca di ujung alamat polos dianggap penutup kalimat, bukan alamat.
-const LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]*[^\s<.,!?)])/g
+// Model tidak pernah menulis id produk (ia sering salah menyalin UUID), hanya
+// namanya. Id-nya dicari widget dari nama itu saat tautan diklik (lihat
+// ChatWidget.vue). `href` ke Menu hanya cadangan untuk Ctrl+klik atau buka
+// di tab baru, yang tidak melewati pencarian itu.
+//
+// `label` sudah di-escape, jadi aman ditaruh di atribut. Tanda * dibuang dari
+// nama, karena tanda tebal di dalam kurung siku bukan bagian nama produk.
+const productLink = (label) =>
+  `<a href="/menu" data-product-name="${label.replace(/\*/g, '')}">${label}</a>`
+
+// `[label](https://...)`, `[label](#produk)`, atau alamat polos. Semuanya
+// dicari dalam satu langkah supaya alamat yang sudah jadi tautan tidak
+// dibungkus dua kali. Tanda baca di ujung alamat polos dianggap penutup
+// kalimat, bukan alamat.
+//
+// Alamat relatif lain (mis. /admin, atau /product/<uuid> dari jawaban lama
+// yang masih tersimpan di sesi) ikut dikenali hanya supaya tampil sebagai
+// labelnya saja, bukan tautan.
+const LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|#produk|\/[^\s)]*)\)|(https?:\/\/[^\s<]*[^\s<.,!?)])/g
+
+const renderLink = (_, label, url, bare) => {
+  if (bare) return link(bare, bare)
+  if (url === '#produk') return productLink(label)
+  if (url.startsWith('/')) return label
+  return link(url, label)
+}
 
 // Dijalankan pada teks yang sudah di-escape, jadi `url` di sini tidak bisa
 // lagi memuat tanda kutip atau kurung sudut yang membobol atribut
 const renderInline = (text) =>
   text
-    .replace(LINK_PATTERN, (_, label, url, bare) => (bare ? link(bare, bare) : link(url, label)))
+    .replace(LINK_PATTERN, renderLink)
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 
 export const renderChatMarkdown = (text) => {

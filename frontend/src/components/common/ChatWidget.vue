@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { MessageCircle, X, Send, Square, RotateCcw, Sparkles } from 'lucide-vue-next'
 import { useChatStore, MAX_USER_LENGTH } from '@/stores/chat.store'
+import { useProductStore } from '@/stores/product.store'
 import { renderChatMarkdown } from '@/utils/chatMarkdown'
 import { STORE_INFO } from '@/config/constants'
 
@@ -17,8 +18,10 @@ import { STORE_INFO } from '@/config/constants'
  */
 
 const chat = useChatStore()
+const productStore = useProductStore()
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 
 const isMounted = ref(false)
 const draft = ref('')
@@ -94,6 +97,37 @@ const openPanel = async () => {
   chat.open()
   await scrollToBottom(true)
   inputEl.value?.focus()
+}
+
+const normalizeName = (name) => name.trim().toLowerCase()
+
+// Katalog yang sama dengan halaman Menu. Kalau namanya tidak ketemu,
+// katalog di peramban mungkin sudah lama (disimpan sampai 10 menit) dan
+// produknya baru ditambahkan, jadi diambil ulang sekali sebelum menyerah.
+const findProductByName = async (name) => {
+  const target = normalizeName(name)
+  const find = () => productStore.products.find((p) => normalizeName(p.name ?? '') === target)
+  try {
+    await productStore.ensureLoaded()
+    return find() ?? (await productStore.refresh(), find())
+  } catch {
+    return find()
+  }
+}
+
+// Tautan produk di jawaban asisten ([Nama](#produk), lihat chatMarkdown.js)
+// dibuka lewat router: halaman berganti tanpa dimuat ulang dan percakapan
+// tetap ada. Ctrl/Cmd/Shift+klik dibiarkan dan jatuh ke halaman Menu.
+// Kalau nama produknya tidak ada (mis. baru diganti admin), pembeli juga
+// diarahkan ke Menu, bukan ke halaman "produk tidak ditemukan".
+const onMessageClick = async (e) => {
+  const anchor = e.target.closest('a[data-product-name]')
+  if (!anchor || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return
+  e.preventDefault()
+  const product = await findProductByName(anchor.dataset.productName)
+  router.push(product ? `/product/${product.id}` : '/menu')
+  // Di ponsel panel memenuhi layar dan menutupi halaman produknya
+  if (!window.matchMedia('(min-width: 640px)').matches) chat.close()
 }
 
 const onEscape = (e) => {
@@ -196,7 +230,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
             <div v-else-if="m.text" class="flex flex-col items-start">
               <!-- Aman dipakai dengan v-html: renderChatMarkdown meng-escape
                    seluruh teks dulu, lihat utils/chatMarkdown.js -->
-              <div class="chat-bubble-assistant chat-markdown" v-html="renderChatMarkdown(m.text)" />
+              <div
+                class="chat-bubble-assistant chat-markdown"
+                @click="onMessageClick"
+                v-html="renderChatMarkdown(m.text)"
+              />
               <span v-if="m.failed" class="mt-1 px-1 text-[11px] text-cocoa-400">
                 {{ t('chat.incomplete') }}
               </span>
@@ -251,7 +289,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
               :maxlength="MAX_USER_LENGTH"
               :placeholder="t('chat.placeholder')"
               :aria-label="t('chat.inputLabel')"
-              class="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm outline-none placeholder:text-cocoa-400"
+              class="chat-input max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm placeholder:text-cocoa-400"
               @input="resizeInput"
               @keydown="onKeydown"
             />
@@ -327,7 +365,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
 .chat-markdown :deep(a) {
   color: var(--color-brand-600);
   text-decoration: underline;
-  word-break: break-all;
+  /* Alamat panjang tetap boleh dipatah di mana saja, tapi nama produk
+     yang jadi tautan hanya dipatah kalau memang tidak muat */
+  overflow-wrap: anywhere;
+}
+
+/* main.css memberi garis fokus ke semua textarea, dan aturan itu mengalahkan
+   kelas outline-none Tailwind (yang berada di dalam @layer). Penanda fokus
+   kotak ketik ini sudah diurus bingkai pembungkusnya (focus-within), jadi
+   garis kedua di dalamnya hanya membuat tampilannya dobel. */
+.chat-input:focus {
+  outline: none;
 }
 
 .chat-dot {

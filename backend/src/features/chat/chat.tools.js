@@ -27,9 +27,12 @@ import { AppError } from "../../utils/appError.js";
  * diringkas. Foto, id varian, dan kolom internal lain tidak ikut.
  */
 
-// Hasil pencarian dibatasi supaya kata kunci yang terlalu umum ("kue") tidak
-// mengirim seluruh katalog ke model.
-const MAX_SEARCH_RESULTS = 10;
+// Hasil pencarian dibatasi supaya pencarian tanpa kata kunci tidak mengirim
+// seluruh katalog ke model. Batas ini harus cukup longgar untuk satu rasa
+// umum: dengan batas 10, "chocolate" (16 produk) memotong semua kue dan
+// hanya menyisakan brownies & cupcake, sehingga asisten tidak pernah tahu
+// kue cokelatnya ada.
+const MAX_SEARCH_RESULTS = 20;
 // Kalau hasil pencarian sedikit, harga per ukuran langsung disertakan.
 // Pertanyaan harga yang paling umum ("berapa harga X?") jadi selesai dalam
 // dua request, bukan tiga, tanpa menggembungkan hasil pencarian yang luas.
@@ -54,14 +57,30 @@ const startingPrice = (product) => {
    return applyDiscount(cheapest, product.discount);
 };
 
+// Id produk (UUID) sengaja TIDAK pernah dikirim ke model. Pengenal produk
+// bagi model adalah namanya, baik untuk detailProduk maupun untuk tautan di
+// jawaban (widget mencari id-nya sendiri dari nama, lihat ChatWidget.vue).
+//
+// Alasannya dua. Model kadang salah menyalin UUID satu karakter, dan
+// tautannya berakhir di "Product tidak ditemukan". UUID juga mahal, sekitar
+// 20 token per buah, dikali 20 hasil pencarian.
 const summarizeProduct = (product) => ({
-   id: product.id,
    nama: product.name,
    kategori: product.category,
    subkategori: product.subcategory ?? undefined,
    hargaMulai: startingPrice(product),
    diskonPersen: Number(product.discount) || undefined,
 });
+
+// Nama produk saat ini unik, tapi basis data tidak memaksakannya. Kalau
+// suatu saat ada nama ganda, yang dipakai produk pertama di katalog.
+const normalizeName = (name) => name.trim().toLowerCase();
+
+const findProductByName = async (name) => {
+   const target = normalizeName(name);
+   const products = await getAllProducts();
+   return products.find((product) => normalizeName(product.name) === target);
+};
 
 // Arti kolom size berbeda per tipe. Pada cupcake ia jumlah isi box, bukan
 // diameter; salah membacanya berarti asisten menyebut "kue 6 cm".
@@ -128,37 +147,88 @@ const detailProduct = (product) => {
       minimalBeli: isGoodiebagCupcake(product.category)
          ? `${goodiebagMinQty(product.category)} paket`
          : undefined,
-      halaman: `/product/${product.id}`,
    };
 };
+
+// Nama produk berbahasa Inggris, deskripsinya berbahasa Indonesia, dan
+// pembeli menulis dengan ejaan apa saja. Tanpa ini "coklat" tidak menemukan
+// apa pun karena data memakai "cokelat".
+const SYNONYM_GROUPS = [
+   ["chocolate", "choco", "cokelat", "coklat"],
+   ["cheese", "keju"],
+   ["strawberry", "stroberi"],
+   ["vanilla", "vanila"],
+   ["coffee", "kopi"],
+   ["bread", "roti"],
+];
+
+const synonymsOf = (word) =>
+   SYNONYM_GROUPS.find((group) => group.includes(word)) ?? [word];
+
+// Kata kunci dari model diperlakukan seperti pesan pembeli: kata umum
+// ("kue", "cakes") dibuang dan bentuk jamak dinormalkan. Kalau tidak,
+// "kue cokelat" tidak menemukan apa pun karena tidak ada produk yang memuat
+// kata "kue". Kalau semua katanya umum (mis. "cupcake"), kata aslinya tetap
+// dipakai supaya pencarian tidak berubah jadi seluruh katalog.
+const searchWords = (keyword) => {
+   const original = keyword.toLowerCase().split(/\s+/).filter(Boolean);
+   const significant = [...significantWords(keyword)];
+   return significant.length > 0 ? significant : original;
+};
+
+// Seberapa kuat produk cocok dengan kata kunci, dari yang terkuat. Hasil
+// diurutkan menurut ini sebelum dipotong MAX_SEARCH_RESULTS, supaya yang
+// terbuang adalah yang paling lemah. Tanpa urutan, "chocolate" memotong
+// Choco Mocha Custard Cake tapi menyisakan kue custom yang hanya
+// kebetulan menawarkan pilihan rasa cokelat.
+const MATCH_IN_NAME = 0; // nama atau rasa tetap
+const MATCH_IN_TEXT = 1; // kategori atau deskripsi
+const MATCH_IN_CHOICES = 2; // hanya pilihan rasa yang bisa dipilih pembeli
+
+const joinLower = (values) => values.filter(Boolean).join(" ").toLowerCase();
 
 // Katalog cukup kecil untuk disaring di memori. Dengan begitu pencarian
 // memakai daftar produk yang sudah di-cache (getAllProducts), bukan query
 // baru ke basis data untuk setiap kata kunci yang dicoba model.
-const matchesKeyword = (product, words) => {
-   const haystack = [
-      product.name,
-      product.category,
-      product.subcategory,
-      product.flavor,
-      product.description,
-   ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-   return words.every((word) => haystack.includes(word));
+//
+// Pilihan rasa ikut dicari. Kue custom dan petite cake tidak menyimpan
+// rasa di kolom `flavor` karena rasanya dipilih pembeli, padahal pembeli
+// yang mencari "cokelat" juga perlu tahu kue itu bisa dipesan rasa cokelat.
+//
+// Mengembalikan null kalau tidak cocok. Untuk beberapa kata, yang dipakai
+// kecocokan terlemah di antara kata-katanya.
+const matchStrength = (product, words) => {
+   const levels = [
+      joinLower([product.name, product.flavor]),
+      joinLower([product.category, product.subcategory, product.description]),
+      joinLower(flavorOptions(product).pilihanRasa ?? []),
+   ];
+
+   let weakest = MATCH_IN_NAME;
+   for (const word of words) {
+      const synonyms = synonymsOf(word);
+      const level = levels.findIndex((text) =>
+         synonyms.some((synonym) => text.includes(synonym))
+      );
+      if (level === -1) return null;
+      weakest = Math.max(weakest, level);
+   }
+   return weakest;
 };
 
 const searchCatalog = async ({ kataKunci, kategori }) => {
    const products = await getAllProducts();
-   const words = (kataKunci ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+   const words = searchWords(kataKunci ?? "");
    const category = kategori?.toLowerCase();
 
-   const byKeyword = products.filter((product) =>
-      matchesKeyword(product, words)
-   );
+   // sort() di Node stabil, jadi urutan asli katalog tetap terjaga di dalam
+   // tingkat kecocokan yang sama.
+   const byKeyword = products
+      .map((product) => ({ product, strength: matchStrength(product, words) }))
+      .filter(({ strength }) => strength !== null)
+      .sort((a, b) => a.strength - b.strength);
    const byBoth = category
-      ? byKeyword.filter((product) =>
+      ? byKeyword.filter(({ product }) =>
            product.category?.toLowerCase().includes(category)
         )
       : byKeyword;
@@ -188,17 +258,25 @@ const searchCatalog = async ({ kataKunci, kategori }) => {
    }
 
    const withPrices = matches.length <= INLINE_PRICE_LIMIT;
+   const hidden = matches.slice(MAX_SEARCH_RESULTS);
 
    return {
       jumlahDitemukan: matches.length,
-      produk: matches.slice(0, MAX_SEARCH_RESULTS).map((product) =>
-         withPrices
-            ? {
-                 ...summarizeProduct(product),
-                 varian: variantPrices(product),
-              }
-            : summarizeProduct(product)
-      ),
+      // Tanpa catatan ini model menganggap daftar yang terpotong sudah
+      // lengkap, dan menjawab seolah produk lain tidak ada.
+      catatan:
+         hidden.length > 0
+            ? `${hidden.length} produk lain tidak ditampilkan, dari kategori: ${[...new Set(hidden.map(({ product }) => product.category))].join(", ")}. Cari lagi dengan kategori itu kalau pembeli membutuhkannya.`
+            : undefined,
+      produk: matches
+         .slice(0, MAX_SEARCH_RESULTS)
+         .map(({ product, strength }) => ({
+            ...summarizeProduct(product),
+            // Supaya asisten bilang "bisa dipesan rasa cokelat", bukan
+            // menyebut kue custom itu sebagai kue cokelat.
+            hanyaPilihanRasa: strength === MATCH_IN_CHOICES || undefined,
+            varian: withPrices ? variantPrices(product) : undefined,
+         })),
    };
 };
 
@@ -302,7 +380,7 @@ const PRODUCT_TOOLS = [
    {
       name: "cariProduk",
       description:
-         "Mencari produk yang sedang dijual beserta harga mulai-darinya. Kalau hasilnya 3 produk atau kurang, harga per ukuran sudah disertakan di `varian`, jadi tidak perlu detailProduk untuk menjawab harga. Panggil setiap kali pembeli menanyakan produk, harga, atau ketersediaan. Kosongkan kedua parameter untuk melihat semua produk. Kalau hasilnya kosong, ikuti `catatan` di hasilnya.",
+         "Mencari produk yang sedang dijual beserta harga mulai-darinya. Kalau hasilnya 3 produk atau kurang, harga per ukuran sudah disertakan di `varian`, jadi tidak perlu detailProduk untuk menjawab harga. Panggil setiap kali pembeli menanyakan produk, harga, atau ketersediaan. Kosongkan kedua parameter untuk melihat semua produk. Hasil diurutkan dari yang paling cocok. Produk bertanda `hanyaPilihanRasa` tidak memiliki rasa itu secara tetap; pembeli bisa memilih rasa itu saat memesan. Kalau ada `catatan` di hasilnya, ikuti.",
       parameters: {
          type: "object",
          properties: {
@@ -322,13 +400,17 @@ const PRODUCT_TOOLS = [
    {
       name: "detailProduk",
       description:
-         "Pilihan rasa, filling, topping, minimal beli, dan harga per ukuran satu produk. Pakai id dari hasil cariProduk.",
+         "Pilihan rasa, filling, topping, minimal beli, dan harga per ukuran satu produk. Pakai `nama` persis dari hasil cariProduk.",
       parameters: {
          type: "object",
          properties: {
-            id: { type: "string", description: "id produk dari cariProduk" },
+            nama: {
+               type: "string",
+               description:
+                  "Nama produk persis seperti kolom `nama` di cariProduk",
+            },
          },
-         required: ["id"],
+         required: ["nama"],
       },
    },
    {
@@ -356,13 +438,20 @@ const ORDER_TOOL = {
 export const buildTools = ({ userId }) => {
    const handlers = {
       cariProduk: (args) => searchCatalog(args),
-      detailProduk: async ({ id }) => {
-         // Argumen disusun model, bukan divalidasi Zod. Tanpa pengecekan ini
-         // id kosong sampai ke Prisma dan menjadi error 500.
-         if (typeof id !== "string" || id === "") {
-            return { error: "id produk wajib diisi, ambil dari cariProduk." };
+      detailProduk: async ({ nama }) => {
+         // Argumen disusun model, bukan divalidasi Zod, jadi bisa kosong
+         // atau berupa nama karangan.
+         const found =
+            typeof nama === "string" && nama.trim() !== ""
+               ? await findProductByName(nama)
+               : undefined;
+         if (!found) {
+            return {
+               error: "Produk dengan nama itu tidak ada. Salin nama persis dari hasil cariProduk.",
+            };
          }
-         return detailProduct(await getProductById(id));
+         // Katalog yang di-cache belum tentu memuat semua kolom detail
+         return detailProduct(await getProductById(found.id));
       },
       infoToko: () => storeInfo(),
    };

@@ -22,7 +22,17 @@ import pageBg from '@/assets/images/Figure Fondant Cake.png'
         backgroundImage: `linear-gradient(rgba(255,255,255,0.55), rgba(255,255,255,0.55)), url(${pageBg})`,
       }"
     >
-      <RouterView />
+      <!-- Pindah dari satu produk ke produk lain (mis. lewat tautan di chat)
+           memakai rute yang sama, dan Vue memakai ulang komponennya: data
+           dan pilihan ukuran/rasa produk sebelumnya ikut tertinggal. Key
+           per alamat membuat halaman produk dibuat ulang. Halaman lain
+           tidak diberi key, jadi perilakunya tetap seperti sebelumnya. -->
+      <RouterView v-slot="{ Component, route }">
+        <component
+          :is="Component"
+          :key="route.name === 'product-detail' ? route.path : undefined"
+        />
+      </RouterView>
     </main>
     <Footer />
   </div>
