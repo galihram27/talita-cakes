@@ -57,13 +57,23 @@ const startingPrice = (product) => {
    return applyDiscount(cheapest, product.discount);
 };
 
+// Alamat halaman ikut dikirim di setiap hasil, supaya model menautkan
+// produk dengan alamat jadi, bukan menyusunnya sendiri dari id.
+//
+// Alamat ini sekaligus menjadi pengenal produk untuk detailProduk; kolom
+// `id` terpisah sengaja tidak dikirim. UUID mahal dalam token (sekitar 20
+// token per buah), dan mengirimnya dua kali untuk 20 hasil pencarian
+// menambah sekitar 500 token per pertanyaan.
+const productPage = (product) => `/product/${product.id}`;
+const PRODUCT_PAGE_ID = /^\/product\/([0-9a-f-]{36})$/i;
+
 const summarizeProduct = (product) => ({
-   id: product.id,
    nama: product.name,
    kategori: product.category,
    subkategori: product.subcategory ?? undefined,
    hargaMulai: startingPrice(product),
    diskonPersen: Number(product.discount) || undefined,
+   halaman: productPage(product),
 });
 
 // Arti kolom size berbeda per tipe. Pada cupcake ia jumlah isi box, bukan
@@ -131,7 +141,7 @@ const detailProduct = (product) => {
       minimalBeli: isGoodiebagCupcake(product.category)
          ? `${goodiebagMinQty(product.category)} paket`
          : undefined,
-      halaman: `/product/${product.id}`,
+      halaman: productPage(product),
    };
 };
 
@@ -385,13 +395,17 @@ const PRODUCT_TOOLS = [
    {
       name: "detailProduk",
       description:
-         "Pilihan rasa, filling, topping, minimal beli, dan harga per ukuran satu produk. Pakai id dari hasil cariProduk.",
+         "Pilihan rasa, filling, topping, minimal beli, dan harga per ukuran satu produk. Pakai `halaman` dari hasil cariProduk.",
       parameters: {
          type: "object",
          properties: {
-            id: { type: "string", description: "id produk dari cariProduk" },
+            halaman: {
+               type: "string",
+               description:
+                  "Kolom `halaman` produk dari cariProduk, mis. '/product/...'",
+            },
          },
-         required: ["id"],
+         required: ["halaman"],
       },
    },
    {
@@ -419,11 +433,17 @@ const ORDER_TOOL = {
 export const buildTools = ({ userId }) => {
    const handlers = {
       cariProduk: (args) => searchCatalog(args),
-      detailProduk: async ({ id }) => {
+      detailProduk: async ({ halaman }) => {
          // Argumen disusun model, bukan divalidasi Zod. Tanpa pengecekan ini
-         // id kosong sampai ke Prisma dan menjadi error 500.
-         if (typeof id !== "string" || id === "") {
-            return { error: "id produk wajib diisi, ambil dari cariProduk." };
+         // alamat kosong atau karangan sampai ke Prisma dan menjadi error 500.
+         const id =
+            typeof halaman === "string"
+               ? halaman.trim().match(PRODUCT_PAGE_ID)?.[1]
+               : undefined;
+         if (!id) {
+            return {
+               error: "halaman produk wajib diisi, salin dari hasil cariProduk.",
+            };
          }
          return detailProduct(await getProductById(id));
       },

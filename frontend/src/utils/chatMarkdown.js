@@ -11,7 +11,8 @@
  * KEAMANAN: jawaban model tidak bisa dipercaya. Pembeli bisa memancingnya
  * menulis `<script>` atau tautan `javascript:`. Karena itu seluruh teks
  * di-escape LEBIH DULU, baru tag yang dikenali disusun sendiri di sini, dan
- * tautan hanya dibuat untuk alamat http/https.
+ * tautan hanya dibuat untuk alamat http/https, serta satu bentuk alamat di
+ * situs ini sendiri: halaman produk (`/product/<uuid>`).
  */
 
 const escapeHtml = (text) =>
@@ -25,16 +26,30 @@ const escapeHtml = (text) =>
 const link = (url, label) =>
   `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`
 
-// `[label](https://...)` atau alamat polos. Keduanya dicari dalam satu
-// langkah supaya alamat yang sudah jadi tautan tidak dibungkus dua kali.
-// Tanda baca di ujung alamat polos dianggap penutup kalimat, bukan alamat.
-const LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]*[^\s<.,!?)])/g
+// Tanpa target=_blank: halaman produk dibuka di tab yang sama lewat router
+// (lihat ChatWidget.vue), supaya percakapan tidak tertinggal di tab lain.
+// Polanya ketat, hanya huruf heksa dan tanda hubung, jadi tidak ada alamat
+// relatif lain (mis. /admin) yang bisa diselipkan model.
+const PRODUCT_PATH = /^\/product\/[0-9a-f-]{36}$/i
+const internalLink = (path, label) => `<a href="${path}" data-internal>${label}</a>`
+
+// `[label](https://...)`, `[label](/product/...)`, atau alamat polos. Semuanya
+// dicari dalam satu langkah supaya alamat yang sudah jadi tautan tidak
+// dibungkus dua kali. Tanda baca di ujung alamat polos dianggap penutup
+// kalimat, bukan alamat.
+const LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)|(https?:\/\/[^\s<]*[^\s<.,!?)])/g
+
+const renderLink = (_, label, url, bare) => {
+  if (bare) return link(bare, bare)
+  if (url.startsWith('/')) return PRODUCT_PATH.test(url) ? internalLink(url, label) : label
+  return link(url, label)
+}
 
 // Dijalankan pada teks yang sudah di-escape, jadi `url` di sini tidak bisa
 // lagi memuat tanda kutip atau kurung sudut yang membobol atribut
 const renderInline = (text) =>
   text
-    .replace(LINK_PATTERN, (_, label, url, bare) => (bare ? link(bare, bare) : link(url, label)))
+    .replace(LINK_PATTERN, renderLink)
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 
 export const renderChatMarkdown = (text) => {

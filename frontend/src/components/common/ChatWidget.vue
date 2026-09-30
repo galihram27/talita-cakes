@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { MessageCircle, X, Send, Square, RotateCcw, Sparkles } from 'lucide-vue-next'
 import { useChatStore, MAX_USER_LENGTH } from '@/stores/chat.store'
@@ -19,6 +19,7 @@ import { STORE_INFO } from '@/config/constants'
 const chat = useChatStore()
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 
 const isMounted = ref(false)
 const draft = ref('')
@@ -94,6 +95,19 @@ const openPanel = async () => {
   chat.open()
   await scrollToBottom(true)
   inputEl.value?.focus()
+}
+
+// Tautan produk di jawaban asisten (data-internal, lihat chatMarkdown.js)
+// dibuka lewat router: halaman berganti tanpa dimuat ulang dan percakapan
+// tetap ada. Ctrl/Cmd/Shift+klik dibiarkan, supaya pembeli tetap bisa
+// membukanya di tab baru.
+const onMessageClick = (e) => {
+  const anchor = e.target.closest('a[data-internal]')
+  if (!anchor || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return
+  e.preventDefault()
+  router.push(anchor.getAttribute('href'))
+  // Di ponsel panel memenuhi layar dan menutupi halaman produknya
+  if (!window.matchMedia('(min-width: 640px)').matches) chat.close()
 }
 
 const onEscape = (e) => {
@@ -196,7 +210,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
             <div v-else-if="m.text" class="flex flex-col items-start">
               <!-- Aman dipakai dengan v-html: renderChatMarkdown meng-escape
                    seluruh teks dulu, lihat utils/chatMarkdown.js -->
-              <div class="chat-bubble-assistant chat-markdown" v-html="renderChatMarkdown(m.text)" />
+              <div
+                class="chat-bubble-assistant chat-markdown"
+                @click="onMessageClick"
+                v-html="renderChatMarkdown(m.text)"
+              />
               <span v-if="m.failed" class="mt-1 px-1 text-[11px] text-cocoa-400">
                 {{ t('chat.incomplete') }}
               </span>
@@ -327,7 +345,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
 .chat-markdown :deep(a) {
   color: var(--color-brand-600);
   text-decoration: underline;
-  word-break: break-all;
+  /* Alamat panjang tetap boleh dipatah di mana saja, tapi nama produk
+     yang jadi tautan hanya dipatah kalau memang tidak muat */
+  overflow-wrap: anywhere;
 }
 
 .chat-dot {
