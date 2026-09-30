@@ -9,7 +9,12 @@ export default defineConfig({
     path: "prisma/migrations",
     seed: "node prisma/seed.js",
   },
+  // Hanya dipakai Prisma CLI (migrate, studio). Aplikasi terhubung sendiri
+  // lewat src/lib/prisma.js dengan DATABASE_URL (pooler).
+  // Migrasi sengaja memakai koneksi langsung: `migrate deploy` memegang
+  // advisory lock, dan lewat pooler Neon (PgBouncer mode transaksi) kunci itu
+  // tidak bisa dipegang dengan benar sehingga berakhir error P1002 (timeout).
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: process.env["DIRECT_URL"],
   },
 });
