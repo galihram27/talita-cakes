@@ -22,7 +22,7 @@ supaya setiap commit konversi bisa dibuktikan tidak mengubah perilaku.
 | 5. Frontend: pasang Vitest | Selesai |
 | 6. Frontend: rumus harga, terjemahan, utilitas | Selesai (lihat catatan di Tahap 6) |
 | 7. Penutup: dokumentasi | Selesai |
-| 8. (Opsional) Test otomatis di GitHub | Belum |
+| 8. (Opsional) Test otomatis di GitHub | Berkas dibuat, belum dijalankan di GitHub |
 
 ---
 
@@ -468,10 +468,16 @@ Catatan:
 Kalau repo disimpan di GitHub, test bisa dijalankan otomatis setiap kali ada
 push atau pull request, lewat GitHub Actions.
 
-- [ ] Buat `.github/workflows/test.yml` yang menjalankan `npm ci` dan
+- [x] Buat `.github/workflows/test.yml` yang menjalankan `npm ci` dan
       `npm test` di folder `backend` dan `frontend`
-- [ ] Pastikan tidak ada test yang membutuhkan rahasia (kunci API, `.env`).
+- [x] Pastikan tidak ada test yang membutuhkan rahasia (kunci API, `.env`).
       Kalau Tahap 1 sampai 6 mengikuti aturan kerja, tidak ada
+
+      Dicek dengan salinan repo yang bersih (tanpa `node_modules` dan
+      `.env`): `npm ci` lalu `npm test` lolos di backend (511 test) dan
+      frontend (69 test).
+
+- [ ] Push, lalu pastikan tanda centang hijau muncul di tab Actions
 
 Hasilnya: pull request yang merusak test langsung terlihat di GitHub sebelum
 digabung ke `main`.
