@@ -7,6 +7,7 @@ import ProductPriceDisplay from './ProductPriceDisplay.vue'
 import ProductVariantPicker from './ProductVariantPicker.vue'
 import ProductOrderForm from './ProductOrderForm.vue'
 import { addItemToCart } from '@/services/cart.service'
+import { applyDiscount } from '@/utils/price'
 
 /**
  * Detail kue yang tersedia dalam banyak bentuk & ukuran. Rasanya sudah
@@ -44,9 +45,7 @@ const shapeImage = computed(
 
 const finalPrice = computed(() => {
   if (!selectedVariant.value) return null
-  const price = Number(selectedVariant.value.price)
-  const discount = Number(props.product.discount ?? 0)
-  return Math.round((price - (price * discount) / 100) * 100) / 100
+  return applyDiscount(selectedVariant.value.price, props.product.discount)
 })
 
 const handleSubmit = async () => {

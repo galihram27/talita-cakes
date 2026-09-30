@@ -18,6 +18,7 @@ import {
   breadSizeForVariant,
 } from '@/config/productOptions'
 import { formatRupiah } from '@/utils/formatCurrency'
+import { applyDiscount } from '@/utils/price'
 
 /**
  * Detail produk non-kue: roti, cheesecake, dan brownies.
@@ -76,9 +77,7 @@ const breadSizeOptions = computed(() => {
 
 const baseFinalPrice = computed(() => {
   if (!activeVariant.value) return null
-  const price = Number(activeVariant.value.price)
-  const discount = Number(props.product.discount ?? 0)
-  return Math.round((price - (price * discount) / 100) * 100) / 100
+  return applyDiscount(activeVariant.value.price, props.product.discount)
 })
 
 // ===== FILLING =====

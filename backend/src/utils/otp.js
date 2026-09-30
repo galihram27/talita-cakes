@@ -12,6 +12,9 @@ import crypto from "crypto";
 export const OTP_LENGTH = 6;
 export const OTP_EXPIRES_MINUTES = 10; // masa berlaku satu kode
 export const OTP_RESEND_COOLDOWN_SECONDS = 60; // jeda minimal antar permintaan kode
+// Batas tebakan untuk satu kode. Tanpa batas, kode 6 digit bisa ditebak
+// terus-menerus selama masa berlakunya.
+export const OTP_MAX_ATTEMPTS = 5;
 
 /**
  * Bikin kode OTP acak sepanjang OTP_LENGTH digit.

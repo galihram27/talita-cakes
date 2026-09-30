@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatRupiah } from '@/utils/formatCurrency'
+import { applyDiscount } from '@/utils/price'
 import { sizeLabel } from '@/config/productOptions'
 
 /**
@@ -44,14 +45,6 @@ const sizesForSelectedShape = computed(() => {
     .filter((v) => v.shape === selectedShape.value)
     .sort((a, b) => a.size - b.size)
 })
-
-// Diskon dalam persen. Hanya untuk ditampilkan — harga sebenarnya
-// dihitung ulang server saat memesan.
-const applyDiscount = (price) => {
-  const base = Number(price)
-  const discount = Number(props.discount ?? 0)
-  return Math.round((base - (base * discount) / 100) * 100) / 100
-}
 
 const selectShape = (shape) => {
   selectedShape.value = shape
@@ -124,7 +117,7 @@ watch(
       >
         <span class="font-extrabold text-sm text-cocoa-900">{{ sizeLabel(v.shape, v.size) }}</span>
         <span class="text-[11.5px] text-cocoa-400">
-          {{ formatRupiah(applyDiscount(v.price)) }}
+          {{ formatRupiah(applyDiscount(v.price, discount)) }}
         </span>
       </button>
     </div>

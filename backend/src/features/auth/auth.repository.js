@@ -177,6 +177,28 @@ export const findLatestOtpByUserAndPurpose = async (userId, purpose) => {
    });
 };
 
+// Catat satu percobaan untuk sebuah OTP, hanya kalau jatahnya belum habis.
+// Pengecekan dan penambahan dilakukan dalam satu query, supaya tebakan yang
+// datang bersamaan tidak bisa sama-sama lolos sebelum hitungannya naik.
+// Mengembalikan true kalau percobaan masih diizinkan.
+export const consumeOtpAttempt = async (id, maxAttempts) => {
+   const { count } = await prisma.otpCode.updateMany({
+      where: { id, attempts: { lt: maxAttempts } },
+      data: { attempts: { increment: 1 } },
+   });
+   return count > 0;
+};
+
+// Kembalikan satu percobaan yang sudah dicatat consumeOtpAttempt. Memakai
+// updateMany supaya tidak melempar error kalau OTP-nya sudah terhapus karena
+// pembeli meminta kode baru di saat yang sama.
+export const releaseOtpAttempt = async (id) => {
+   return prisma.otpCode.updateMany({
+      where: { id },
+      data: { attempts: { decrement: 1 } },
+   });
+};
+
 // Hapus 1 OTP (setelah berhasil dipakai atau ketahuan sudah kedaluwarsa)
 export const deleteOtpById = async (id) => {
    return prisma.otpCode.delete({ where: { id } });

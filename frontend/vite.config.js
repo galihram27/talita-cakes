@@ -56,5 +56,12 @@ export default defineConfig(({ mode }) => {
         return [...STATIC_PUBLIC_ROUTES, ...productRoutes]
       },
     },
+    // Vitest membaca berkas ini juga, jadi alias `@/` langsung berlaku di test.
+    // Environment `node` cukup karena yang dites hanya fungsi biasa, bukan
+    // komponen Vue.
+    test: {
+      environment: 'node',
+      include: ['src/**/*.test.js'],
+    },
   }
 })

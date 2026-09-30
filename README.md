@@ -172,7 +172,18 @@ cp .env.example .env          # set VITE_API_BASE_URL=http://localhost:5000/api
 npm run dev                   # → http://localhost:5173
 ```
 
-### 3. Verify the production build
+### 3. Run the tests
+
+```bash
+cd backend && npm test        # pricing, delivery fee, validation, auth, services
+cd frontend && npm test       # discount formula, translations, shared constants
+```
+
+Tests never touch the database or any external service: repositories and
+third-party APIs are mocked, so no `.env` and no running server are needed.
+Use `npm run test:watch` to re-run tests on every save.
+
+### 4. Verify the production build
 
 ```bash
 cd frontend

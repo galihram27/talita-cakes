@@ -39,12 +39,27 @@ export const STORE_INFO = {
  */
 export const MAX_DELIVERY_DISTANCE_KM = 25
 export const DELIVERY_FEE_TIERS = [
-  { label: 'Radius < 5 km', fee: 30000 },
-  { label: 'Radius 5–10 km', fee: 45000 },
-  { label: 'Radius 11–15 km', fee: 55000 },
-  { label: 'Radius 16–20 km', fee: 65000 },
-  { label: 'Radius 21–25 km', fee: 75000 },
+  { label: 'Radius < 2 km', fee: 35000 },
+  { label: 'Radius 3–5 km', fee: 45000 },
+  { label: 'Radius 6–10 km', fee: 55000 },
+  { label: 'Radius 11–15 km', fee: 65000 },
+  { label: 'Radius 16–20 km', fee: 75000 },
+  { label: 'Radius 21–25 km', fee: 85000 },
 ]
+
+// Baris DELIVERY_FEE_TIERS yang berlaku untuk suatu jarak, dipakai untuk
+// menyorot tarif di checkout. -1 berarti jarak belum diketahui atau di luar
+// jangkauan. Batasnya harus sama dengan calculateDeliveryFee di backend.
+export const deliveryTierIndex = (distanceKm) => {
+  const d = distanceKm
+  if (d === null || d <= 0 || d > MAX_DELIVERY_DISTANCE_KM) return -1
+  if (d < 2) return 0
+  if (d <= 5) return 1
+  if (d <= 10) return 2
+  if (d <= 15) return 3
+  if (d <= 20) return 4
+  return 5
+}
 
 // Rasa untuk petite cake custom decor (TYPE2).
 // Salinan dari backend product.constant.js — ubah keduanya bersamaan.
