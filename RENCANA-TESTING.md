@@ -19,7 +19,7 @@ supaya setiap commit konversi bisa dibuktikan tidak mengubah perilaku.
 | 2. Backend: fungsi murni | Selesai |
 | 3. Backend: skema validasi | Selesai |
 | 4. Backend: service dengan repository tiruan | Selesai (lihat catatan di Tahap 4) |
-| 5. Frontend: pasang Vitest | Belum |
+| 5. Frontend: pasang Vitest | Selesai |
 | 6. Frontend: rumus harga, terjemahan, utilitas | Belum |
 | 7. Penutup: dokumentasi | Belum |
 | 8. (Opsional) Test otomatis di GitHub | Belum |
@@ -94,7 +94,7 @@ test(frontend): cover discount formula
 ## Tahap 0 — Persiapan
 
 - [x] Pastikan working tree bersih, buat branch `test/vitest`
-- [ ] Pastikan build frontend dan backend lolos sebelum mulai
+- [x] Pastikan build frontend dan backend lolos sebelum mulai
 - [ ] Catat beberapa contoh nyata dari situs, untuk dipakai sebagai angka di
       test:
   - harga dan diskon beberapa produk, minimal satu dari setiap tipe
@@ -305,9 +305,9 @@ Commit: satu commit per service.
 
 Tujuan: `npm test` berjalan di frontend.
 
-- [ ] Pasang `vitest` sebagai dependensi pengembangan
-- [ ] Tambahkan script `"test": "vitest run"` dan `"test:watch": "vitest"`
-- [ ] Tambahkan bagian `test` di `vite.config.js`:
+- [x] Pasang `vitest` sebagai dependensi pengembangan
+- [x] Tambahkan script `"test": "vitest run"` dan `"test:watch": "vitest"`
+- [x] Tambahkan bagian `test` di `vite.config.js`:
 
       ```js
       test: {
@@ -319,10 +319,15 @@ Tujuan: `npm test` berjalan di frontend.
       Vitest membaca `vite.config.js` yang sudah ada, jadi alias `@/` langsung
       berlaku di test tanpa pengaturan tambahan.
 
-- [ ] Pastikan test **tidak** memicu pengambilan daftar produk dari backend
+- [x] Pastikan test **tidak** memicu pengambilan daftar produk dari backend
       (`fetchProductRoutes`). Fungsi itu hanya dipanggil saat build pra-render,
       tapi tetap perlu dicek dengan menjalankan `npm test` saat backend mati
-- [ ] Jalankan build frontend, pastikan bagian `test` tidak mengganggu build
+
+      Dicek dengan alamat API yang tidak bisa dijangkau (backend lokal sedang
+      menyala saat itu): tidak ada pesan `[ssg]`, jadi fungsinya tidak
+      terpanggil.
+
+- [x] Jalankan build frontend, pastikan bagian `test` tidak mengganggu build
 
 Commit: `chore(frontend): add vitest`
 
