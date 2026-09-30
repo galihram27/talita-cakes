@@ -34,4 +34,4 @@ export const clearRefreshTokenCookie = (res) => {
    res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, CROSS_SITE_COOKIE);
 };
 
-export { REFRESH_TOKEN_COOKIE_NAME };
+export { REFRESH_TOKEN_COOKIE_NAME, REFRESH_TOKEN_MAX_AGE };

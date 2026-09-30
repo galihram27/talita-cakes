@@ -54,7 +54,7 @@ const OTP_PURPOSE = {
 };
 
 // Umur refresh token: 7 hari (harus sinkron dengan masa berlaku cookie-nya)
-const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Akun yang tidak pernah diverifikasi dianggap sampah setelah 24 jam
 const UNVERIFIED_ACCOUNT_TTL_HOURS = 24;
