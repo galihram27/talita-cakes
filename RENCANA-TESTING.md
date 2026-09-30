@@ -23,6 +23,16 @@ supaya setiap commit konversi bisa dibuktikan tidak mengubah perilaku.
 | 6. Frontend: rumus harga, terjemahan, utilitas | Selesai (lihat catatan di Tahap 6) |
 | 7. Penutup: dokumentasi | Selesai |
 | 8. (Opsional) Test otomatis di GitHub | Berkas dibuat, belum dijalankan di GitHub |
+| **Putaran kedua** | |
+| 9. API test tanpa basis data | Belum |
+| 10. Integration test dengan basis data | Belum |
+| 11. Component test Vue | Belum |
+| 12. End-to-end (Playwright) | Belum |
+| 13. Security test | Belum |
+| 14. Accessibility test | Belum |
+| 15. Visual regression | Belum |
+| 16. Smoke test setelah deploy | Belum |
+| 17. Performance / load test | Belum |
 
 ---
 
@@ -484,7 +494,317 @@ digabung ke `main`.
 
 ---
 
+## Putaran kedua: jenis test selain unit test
+
+Tahap 0 sampai 8 hanya berisi **unit test**: satu fungsi dipanggil, bagian
+lain ditiru. Putaran kedua menambah jenis test yang memeriksa hal yang tidak
+bisa dijangkau unit test, misalnya query ke basis data, middleware login,
+tampilan di peramban, dan kecepatan server.
+
+## Ringkasan alat yang disarankan
+
+| Tahap | Jenis test | Alat | Kenapa alat ini |
+| --- | --- | --- | --- |
+| 9 | API test tanpa basis data | `supertest` + Vitest | Memanggil `app.js` lewat HTTP tanpa membuka port. Paling banyak dipakai untuk Express, dan berjalan di dalam Vitest yang sudah terpasang |
+| 10 | Integration test dengan basis data | Vitest + PostgreSQL khusus test | Prisma dan Vitest sudah ada. Di GitHub Actions, PostgreSQL disediakan lewat `services: postgres`, gratis dan tanpa Docker di laptop |
+| 11 | Component test Vue | `@vue/test-utils` + `happy-dom` | `@vue/test-utils` adalah pustaka resmi Vue. `happy-dom` meniru peramban di dalam Node dan lebih ringan daripada `jsdom` |
+| 12 | End-to-end (E2E) | Playwright (`@playwright/test`) | Menjalankan Chromium, Firefox, dan WebKit (mesin Safari), bisa meniru layar ponsel, dan menyediakan fitur foto layar (Tahap 15) dan pemeriksaan aksesibilitas (Tahap 14) |
+| 13 | Security test | `npm audit`, Dependabot, CodeQL, `supertest`, OWASP ZAP | Tiga yang pertama gratis dan bawaan GitHub/npm. `supertest` untuk menguji hak akses. ZAP untuk pemindaian dari luar |
+| 14 | Accessibility test | `@axe-core/playwright`, Lighthouse CI | axe adalah mesin pemeriksa aksesibilitas yang paling umum; menempel ke test Playwright. Lighthouse sekaligus memeriksa SEO dan kecepatan halaman |
+| 15 | Visual regression | Playwright `toHaveScreenshot()` | Sudah ada di Playwright, tidak perlu layanan berbayar |
+| 16 | Smoke test setelah deploy | Skrip Node (`fetch`) di GitHub Actions + UptimeRobot | Skripnya kecil dan tidak butuh dependensi. UptimeRobot (gratis) memantau terus setelahnya |
+| 17 | Performance / load test | k6 (backend), Lighthouse (frontend) | k6 menulis skenario dalam JavaScript dan memberi laporan waktu respons yang jelas. Gratis dan dijalankan sendiri |
+
+## Aturan tambahan untuk putaran kedua
+
+- **Tidak pernah menyentuh basis data produksi.** Semua test yang memakai
+  basis data menolak berjalan kalau `DATABASE_URL` tidak mengandung kata
+  `test`. Pemeriksaan ini ditulis di berkas setup, bukan diandalkan dari
+  ingatan.
+- **Tidak pernah membebani server produksi.** Load test (Tahap 17) dan
+  pemindaian ZAP (Tahap 13) hanya diarahkan ke server lokal atau server uji.
+  Hanya smoke test (Tahap 16) yang boleh memanggil produksi, dan hanya
+  beberapa request ringan.
+- **Layanan luar tetap tidak dipanggil.** `DEPLOY_HOOK_URL`, `GROQ_API_KEY`,
+  `HERE_API_KEY`, Cloudinary, dan Resend dikosongkan atau ditiru di semua
+  tahap. Deploy hook yang lupa dikosongkan akan memicu build Vercel setiap
+  kali test mengubah produk.
+- **Test lambat dipisah dari `npm test`.** `npm test` tetap hanya unit test
+  supaya selesai dalam hitungan detik. Jenis lain punya script sendiri
+  (`npm run test:api`, `test:db`, `test:e2e`, dan seterusnya), dan GitHub
+  Actions menjalankannya sebagai pekerjaan terpisah.
+- **Disk C: hampir penuh.** Playwright mengunduh peramban (beberapa ratus MB)
+  ke C: secara bawaan. Arahkan ke D: dengan variabel
+  `PLAYWRIGHT_BROWSERS_PATH`, atau kosongkan C: dulu.
+
+---
+
+## Tahap 9 — API test tanpa basis data (`supertest`)
+
+Tujuan: memeriksa jalur HTTP lengkap (route → middleware → controller →
+error handler) untuk request yang **ditolak sebelum menyentuh basis data**.
+Bagian ini bisa dikerjakan tanpa menyiapkan basis data test.
+
+- [ ] Pasang `supertest` di backend sebagai dependensi pengembangan
+- [ ] Buat `backend/vitest.api.config.js` dengan `include`
+      `["src/**/*.api.test.js"]`, dan script `"test:api"`
+- [ ] Berkas `vitest.setup.js` yang meniru Prisma tetap dipakai: kalau ada
+      request yang ternyata sampai ke basis data, test langsung gagal
+
+Yang diperiksa:
+
+| Skenario | Hasil yang diharapkan |
+| --- | --- |
+| `GET /api/carts`, `POST /api/orders/preview` tanpa login | 401 |
+| Endpoint admin (`POST /api/products`, `PATCH /api/galleries/:id`, `PUT /api/settings/:key`) dengan token pembeli | 403 |
+| Token kedaluwarsa, token ditandatangani `JWT_REFRESH_SECRET` | 401. Refresh token tidak boleh diterima sebagai access token |
+| Body rusak ke `/api/auth/register`, `/api/carts` | 422 dengan pesan validasi, bukan 500 |
+| `GET /api/products/bukan-uuid` | 422 |
+| Alamat yang tidak ada (`GET /api/tidak-ada`) | 404 berformat JSON |
+| `POST /api/chat` saat `CHAT_ENABLED` bukan `true` | 503 |
+| Header CORS | Hanya `FRONTEND_URL` yang diizinkan, dengan `credentials` |
+
+Commit: `chore(backend): add supertest`, lalu satu commit per fitur.
+
+---
+
+## Tahap 10 — Integration test dengan basis data
+
+Tujuan: menjalankan service, repository, dan query Prisma sungguhan terhadap
+PostgreSQL khusus test. Ini menangkap kesalahan yang lolos dari unit test
+karena repository-nya ditiru, misalnya salah nama kolom, `include` yang
+kurang, atau transaksi yang tidak dibatalkan.
+
+### Menyiapkan basis data test
+
+- [ ] **Di GitHub Actions:** pekerjaan baru di `test.yml` dengan
+      `services: postgres` (image `postgres:17`). Basis datanya dibuat baru
+      setiap kali jalan dan dibuang setelahnya
+- [ ] **Di laptop:** pilih salah satu:
+  - buat *branch* terpisah di Neon bernama `test` (gratis, tidak perlu
+    memasang apa pun), atau
+  - pasang PostgreSQL untuk Windows di D:
+- [ ] Buat `backend/.env.test` berisi `DATABASE_URL` basis data test.
+      Berkas ini masuk `.gitignore`
+- [ ] Buat `backend/vitest.db.config.js` dan `vitest.db.setup.js`:
+  - tolak berjalan kalau `DATABASE_URL` tidak mengandung `test`
+  - jalankan `prisma migrate reset --force --skip-seed` sekali sebelum semua
+    test
+  - kosongkan tabel (`TRUNCATE ... CASCADE`) sebelum setiap berkas test
+  - `fileParallelism: false`, supaya dua berkas test tidak mengubah basis
+    data yang sama bersamaan
+- [ ] Script `"test:db"`
+
+### Yang diperiksa
+
+| Area | Skenario |
+| --- | --- |
+| Produk | Membuat produk tiap tipe lalu membacanya kembali: varian, rasa, filling & topping tersimpan utuh. Produk dengan ukuran tidak lengkap dibatalkan seluruhnya (transaksi di `product.repository.js`), tidak ada varian yang tertinggal |
+| Keranjang | Barang yang sama ditambah dua kali menjadi satu baris dengan jumlah bertambah. Menghapus produk tidak merusak keranjang orang lain |
+| Checkout | `confirmCheckout` membuat pesanan beserta itemnya dan mengosongkan keranjang, dalam satu transaksi |
+| Auth | Daftar → OTP tersimpan dalam bentuk hash → verifikasi → login → refresh → logout menghapus refresh token |
+| Analitik | Kunjungan ganda di hari yang sama hanya tercatat sekali (constraint unik di basis data) |
+| API dengan basis data | Skenario Tahap 9 yang butuh data: pembeli A tidak bisa mengubah keranjang atau melihat pesanan pembeli B |
+
+Commit: `chore(backend): add database test setup`, lalu satu commit per fitur.
+
+---
+
+## Tahap 11 — Component test Vue
+
+Tujuan: memeriksa perilaku tampilan yang tidak bisa dipindah ke berkas `.js`
+biasa, terutama komponen pemilih di halaman produk.
+
+- [ ] Pasang `@vue/test-utils` dan `happy-dom` di frontend
+- [ ] Berkas test komponen memakai `// @vitest-environment happy-dom` di baris
+      pertama, supaya test `.js` yang sudah ada tetap memakai environment
+      `node` yang lebih cepat
+- [ ] Siapkan pembantu kecil yang memasang `vue-i18n` dan Pinia, karena
+      hampir semua komponen memakainya
+
+| Komponen | Yang diperiksa |
+| --- | --- |
+| `ProductVariantPicker.vue` | Memilih bentuk hanya menampilkan ukuran bentuk itu; harga tiap ukuran sudah dipotong diskon |
+| `ProductBoxPicker.vue` | Isi box urut dari yang paling sedikit; `size` ditampilkan sebagai jumlah cupcake |
+| `ProductType5Detail.vue` | Cinrolls: topping lebih dari 3 tidak bisa dipilih; harga berubah sesuai kombinasi filling |
+| `ProductType6Detail.vue` | Goodiebag: jumlah di bawah 10 ditolak; harga coret ikut dikali jumlah box |
+| `ProductCard.vue` | Harga termurah setelah diskon dan label ukuran di pojok kartu |
+| `ChatWidget.vue` | Klik tautan produk mencari produk dari `data-product-name` |
+
+Commit: `chore(frontend): add vue test utils`, lalu satu commit per komponen.
+
+---
+
+## Tahap 12 — End-to-end (Playwright)
+
+Tujuan: menjalankan alur pembeli dan admin di peramban sungguhan, dengan
+frontend dan backend benar-benar menyala.
+
+### Persiapan
+
+- [ ] Buat folder `e2e/` di akar repo dengan `package.json` sendiri, supaya
+      Playwright tidak ikut terpasang di backend maupun frontend
+- [ ] Pasang `@playwright/test`, lalu `npx playwright install chromium`
+      (arahkan ke D: dengan `PLAYWRIGHT_BROWSERS_PATH`)
+- [ ] `playwright.config.js` menyalakan backend dan frontend lewat
+      `webServer`, keduanya memakai basis data test dari Tahap 10
+- [ ] Skrip seed khusus E2E: satu akun admin, satu akun pembeli yang sudah
+      terverifikasi, dan satu produk dari tiap tipe
+- [ ] **Email.** Resend tidak boleh dipanggil. Untuk alur daftar akun, perlu
+      mode email "catat saja" di backend (mis. `EMAIL_TRANSPORT=log` yang
+      menulis kode OTP ke log alih-alih mengirimnya). Ini perubahan kode,
+      jadi masuk commit `feat(...)` sendiri. Sampai itu ada, alur daftar akun
+      dilewati dan test memakai akun dari seed
+- [ ] **Unggah gambar.** Cloudinary tidak boleh dipanggil. Test admin memakai
+      produk dari seed, bukan mengunggah foto baru
+- [ ] Jalankan dua ukuran layar: desktop dan ponsel (`devices['Pixel 7']`),
+      karena sebagian besar pembeli datang dari ponsel
+
+| Alur | Hasil yang diharapkan |
+| --- | --- |
+| Buka menu, filter kategori, buka produk | Harga di kartu sama dengan harga di halaman detail |
+| Tambah produk tiap tipe ke keranjang | Harga di keranjang sama dengan halaman detail |
+| Checkout dengan alamat di peta | Ongkir tampil; alamat di atas 25 km ditolak dengan pesan jelas |
+| Login, muat ulang halaman | Tetap masuk (refresh token bekerja) |
+| Ganti bahasa ke English | Tidak ada kunci mentah seperti `product.boxOf` di layar |
+| Admin: ubah harga produk | Harga baru tampil di menu |
+| Pembeli membuka `/admin` | Dialihkan, halaman admin tidak tampil |
+
+Commit: `chore(e2e): add playwright`, lalu satu commit per alur.
+
+---
+
+## Tahap 13 — Security test
+
+Tujuan: mencari celah keamanan dengan cara yang bisa diulang, bukan sekali
+periksa lalu dilupakan.
+
+| Pemeriksaan | Alat | Cara |
+| --- | --- | --- |
+| Dependensi yang punya celah | `npm audit --audit-level=high` | Langkah baru di `test.yml`, gagal kalau ada celah tingkat tinggi |
+| Pembaruan dependensi | Dependabot | Berkas `.github/dependabot.yml`; GitHub membuka pull request setiap minggu. Test di Actions otomatis memeriksa pull request itu |
+| Pola kode berbahaya | CodeQL | Aktifkan di Settings → Code security. Gratis untuk repo publik |
+| Kunci API yang ter-commit | GitHub secret scanning | Aktifkan di Settings → Code security |
+| Hak akses & token | `supertest` | Sudah dicakup Tahap 9 & 10 (401, 403, pembeli A vs B, refresh token sebagai access token) |
+| Masukan berbahaya ke chatbot | Vitest | Sudah dicakup test `chatMarkdown.js` di Tahap 6 |
+| Pemindaian dari luar | OWASP ZAP (baseline scan) | Dijalankan terhadap server lokal atau server uji, **bukan produksi**. Memeriksa header keamanan, cookie, dan celah umum |
+| Tebakan kode OTP & sandi | `supertest` | Lihat "Temuan": saat ini belum ada batas percobaan. Test ditulis setelah pemilik memutuskan batasnya |
+
+Commit: satu commit per pemeriksaan.
+
+---
+
+## Tahap 14 — Accessibility test
+
+Tujuan: situs bisa dipakai dengan pembaca layar, keyboard, dan oleh
+pengunjung dengan penglihatan terbatas.
+
+- [ ] Pasang `@axe-core/playwright` di folder `e2e/`
+- [ ] Jalankan pemeriksaan axe di halaman utama, menu, detail produk tiap
+      tipe, keranjang, checkout, login, dan halaman Tentang Kami
+- [ ] Mulai dengan mencatat semua pelanggaran yang ada, lalu gagalkan test
+      hanya untuk pelanggaran tingkat `critical` dan `serious`. Sisanya
+      diperbaiki bertahap
+- [ ] Lighthouse CI (`@lhci/cli`) di GitHub Actions untuk hasil build
+      pra-render: skor aksesibilitas dan SEO minimal 90
+
+Commit: `test(e2e): add accessibility checks`, `ci: add lighthouse`.
+
+---
+
+## Tahap 15 — Visual regression
+
+Tujuan: perubahan tampilan yang tidak disengaja (tombol bergeser, warna
+berubah, teks terpotong) langsung ketahuan.
+
+- [ ] Pakai `expect(page).toHaveScreenshot()` di test Playwright
+- [ ] Foto acuan diambil dan disimpan **dari GitHub Actions (Linux)**, bukan
+      dari laptop Windows. Hasil gambar font berbeda antarsistem, jadi foto
+      dari Windows akan selalu dianggap berbeda
+- [ ] Halaman: beranda, menu, detail produk satu per tipe, keranjang; ukuran
+      desktop dan ponsel
+- [ ] Sembunyikan bagian yang berubah sendiri (peta, tanggal, jumlah
+      pengunjung) dengan opsi `mask`
+
+Commit: `test(e2e): add visual snapshots`.
+
+---
+
+## Tahap 16 — Smoke test setelah deploy
+
+Tujuan: beberapa menit setelah deploy, pastikan situs produksi masih hidup.
+
+- [ ] Buat `scripts/smoke.mjs` di akar repo (tanpa dependensi, cukup
+      `fetch`), yang memeriksa:
+  - `GET <API>/api/products` menjawab 200 dan berisi minimal satu produk
+  - `GET <API>/api/chat/status` menjawab 200
+  - halaman utama dan `/menu` di Vercel menjawab 200 dan memuat nama toko
+  - `sitemap.xml` ada dan memuat alamat halaman produk
+- [ ] Workflow `.github/workflows/smoke.yml` yang bisa dijalankan manual
+      (`workflow_dispatch`) dan setiap hari sekali (`schedule`)
+- [ ] Daftarkan alamat API dan situs di UptimeRobot (gratis, pemeriksaan
+      tiap 5 menit, kirim email kalau mati)
+
+Catatan: kalau backend di Render memakai paket gratis, server tidur setelah
+tidak dipakai. Request pertama bisa lambat sampai sekitar satu menit, jadi
+batas waktu smoke test perlu longgar.
+
+Commit: `ci: add production smoke test`.
+
+---
+
+## Tahap 17 — Performance / load test
+
+Tujuan: mengetahui berapa banyak pengunjung bersamaan yang masih bisa
+dilayani dengan cepat, dan endpoint mana yang paling lambat.
+
+- [ ] Pasang k6 (program terpisah, bukan paket npm). Skenario ditulis di
+      `load/*.js`
+- [ ] Dijalankan terhadap backend lokal dengan basis data test yang sudah
+      diisi, atau server uji terpisah. **Tidak terhadap produksi:** Render
+      dan Neon paket gratis punya batas pemakaian, dan load test bisa
+      menghabiskannya
+- [ ] Skenario:
+  - pengunjung membuka menu dan detail produk (menguji cache 5 menit)
+  - pembeli menambah ke keranjang lalu `POST /api/orders/preview`
+  - banyak login bersamaan (bcrypt sengaja lambat, jadi ini yang paling
+    berat untuk CPU)
+- [ ] Batas yang disarankan sebagai awal: 95% request menu di bawah 500 ms
+      dengan 50 pengunjung bersamaan. Sesuaikan setelah hasil pertama
+- [ ] Frontend: skor performa Lighthouse dari Tahap 14 dipakai sebagai
+      pemeriksaan kecepatan halaman
+
+Load test tidak dijalankan di setiap push, cukup sebelum rilis besar atau
+setelah mengubah query yang sering dipanggil.
+
+Commit: `test(load): add k6 scenarios`.
+
+---
+
+## Urutan pengerjaan putaran kedua
+
+1. **Tahap 9** (API tanpa basis data) dan bagian cepat **Tahap 13**
+   (`npm audit`, Dependabot, CodeQL). Tidak butuh basis data, hasilnya
+   langsung terasa.
+2. **Tahap 10** (basis data test). Tahap 12, 14, 15, dan 17 bergantung pada
+   ini.
+3. **Tahap 16** (smoke test). Kecil dan melindungi produksi.
+4. **Tahap 12** (E2E), lalu **14** dan **15** yang menempel padanya.
+5. **Tahap 11** (component test) dan **Tahap 17** (load test), sesuai
+   kebutuhan.
+
+Soal waktu terhadap [RENCANA-TYPESCRIPT.md](RENCANA-TYPESCRIPT.md): Tahap 9
+dan bagian cepat Tahap 13 berguna dikerjakan **sebelum** konversi, karena
+ikut membuktikan konversi tidak mengubah perilaku. Tahap lain lebih hemat
+dikerjakan **setelah** konversi, supaya berkas test langsung ditulis dalam
+TypeScript dan tidak perlu dikonversi dua kali.
+
+---
+
 ## Daftar berkas yang akan disentuh
+
+Daftar ini untuk Tahap 0 sampai 8. Berkas putaran kedua disebut di tahap
+masing-masing.
 
 **Baru**
 
@@ -550,26 +870,18 @@ beserta keputusannya.
 | `getProductById`: komentar menyebut jawaban "tidak ada" tidak ikut tersimpan di cache, padahal `cached()` menyimpan `null` juga, jadi id yang tidak ada dijawab dari cache selama 5 menit. Dampaknya kecil karena setiap perubahan produk mengosongkan cache | Belum diputuskan: perbaiki kodenya atau komentarnya |
 | Data nyata (Tahap 0): semua produk saat ini diskon 0, jadi persen diskon di test adalah contoh di atas harga nyata | Catatan saja |
 | `formatRupiah` menampilkan harga berdesimal apa adanya, mis. `Rp18.667,6`. Baru terjadi kalau diskon menghasilkan pecahan rupiah; saat ini tidak ada karena semua diskon 0 | Catatan saja: perlu diputuskan kalau diskon mulai dipakai |
+| **Keamanan:** tidak ada batas percobaan kode OTP. Kolom `attempts` di tabel OTP (`schema.prisma`) ada tapi tidak pernah dibaca atau ditambah. Kode 6 digit berlaku 10 menit, jadi kode atur ulang sandi bisa ditebak berulang kali | Belum diputuskan. Perlu batas percobaan per kode (mis. 5 kali lalu kode hangus) di commit `fix(auth)` tersendiri; test-nya di Tahap 13 |
+| **Keamanan:** hanya `/api/chat` yang punya pembatas request (`express-rate-limit`). Login, daftar, kirim ulang OTP, dan atur ulang sandi tidak dibatasi, jadi sandi bisa ditebak terus-menerus dan email OTP bisa dikirim berulang ke alamat yang sama | Belum diputuskan. Paket `express-rate-limit` sudah terpasang, tinggal dipakai di `auth.routes.js` |
 | `npx prettier --check` melaporkan 9 berkas backend lama. Penyebabnya hanya akhiran baris CRLF di working copy, bukan gaya kode | Catatan saja |
 
 ---
 
 ## Yang sengaja tidak dikerjakan dulu
 
-Dicatat supaya tidak terlupa, bukan supaya dikerjakan sekarang:
+Test dengan basis data, test endpoint, test komponen, dan test di peramban
+sebelumnya tercatat di sini. Sekarang semuanya sudah punya tahap sendiri di
+putaran kedua (Tahap 9 sampai 17).
 
-- **Test yang menyentuh basis data sungguhan.** Butuh basis data PostgreSQL
-  terpisah khusus test, diisi ulang sebelum setiap test. Berguna untuk menguji
-  repository dan query Prisma, tapi pengaturannya cukup banyak.
-- **Test endpoint lewat HTTP (`supertest`).** `app.js` sudah terpisah dari
-  `server.js`, jadi aplikasi Express bisa dites tanpa membuka port. Paling
-  berguna setelah ada basis data khusus test.
-- **Test komponen Vue (`@vue/test-utils`).** Logika penting dipindah ke
-  berkas `.js` biasa dan dites di sana. Test komponen baru perlu kalau ada
-  perilaku tampilan yang sering rusak.
-- **Test ujung ke ujung di peramban (Playwright).** Paling mendekati pemakaian
-  sungguhan, tapi paling lambat dan paling sering gagal karena hal di luar
-  kode.
 - **Target persentase cakupan (coverage).** Angka cakupan tinggi tidak
   menjamin bagian yang penting sudah dites. Daftar di rencana ini lebih
   berguna daripada angka.
