@@ -12,6 +12,7 @@ import {
    compareOtpCode,
    OTP_EXPIRES_MINUTES,
    OTP_RESEND_COOLDOWN_SECONDS,
+   OTP_MAX_ATTEMPTS,
 } from "../../utils/otp.js";
 import { sendOtpEmail } from "../../utils/email.js";
 import {
@@ -25,6 +26,8 @@ import {
    deleteAllRefreshTokensByUserId,
    createOtpCode,
    findLatestOtpByUserAndPurpose,
+   consumeOtpAttempt,
+   releaseOtpAttempt,
    deleteOtpById,
    deleteOtpsByUserAndPurpose,
    markUserVerified,
@@ -45,6 +48,7 @@ import { CURRENT_TERMS_VERSION } from "../../config/legal.config.js";
  * - Password & refresh token & kode OTP disimpan dalam bentuk hash, tidak pernah plaintext.
  * - Pesan error tidak membocorkan apakah sebuah email terdaftar atau tidak.
  * - Ada cooldown pengiriman OTP supaya email user tidak bisa dijadikan spam.
+ * - Satu kode OTP hanya boleh dicoba OTP_MAX_ATTEMPTS kali.
  */
 
 // Keperluan OTP. Nilainya harus sama dengan enum OtpPurpose di schema.prisma.
@@ -116,10 +120,28 @@ const assertValidOtp = async (userId, purpose, code) => {
       );
    }
 
+   // Satu percobaan dicatat SEBELUM kode dicocokkan, supaya tebakan yang
+   // dikirim bersamaan tetap terhitung satu per satu. Kalau kodenya benar,
+   // percobaan itu dikembalikan di bawah: alur lupa sandi mencocokkan kode
+   // yang sama dua kali (cek kode, lalu ganti sandi) dan itu tidak boleh
+   // memakan jatah.
+   //
+   // Kodenya tidak dihapus saat jatah habis. Kode itu tetap ditolak sampai
+   // diganti kode baru, sedangkan menghapusnya bisa bentrok dengan permintaan
+   // kode baru yang datang bersamaan.
+   const attemptAllowed = await consumeOtpAttempt(otp.id, OTP_MAX_ATTEMPTS);
+   if (!attemptAllowed) {
+      throw new AppError(
+         "Kode OTP sudah terlalu sering salah, silakan minta kode baru",
+         400
+      );
+   }
+
    const isMatch = await compareOtpCode(code, otp.code);
    if (!isMatch) {
       throw new AppError("Kode OTP salah", 400);
    }
+   await releaseOtpAttempt(otp.id);
 
    return otp;
 };
