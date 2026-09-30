@@ -289,7 +289,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
               :maxlength="MAX_USER_LENGTH"
               :placeholder="t('chat.placeholder')"
               :aria-label="t('chat.inputLabel')"
-              class="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm outline-none placeholder:text-cocoa-400"
+              class="chat-input max-h-32 flex-1 resize-none bg-transparent py-1.5 text-sm placeholder:text-cocoa-400"
               @input="resizeInput"
               @keydown="onKeydown"
             />
@@ -368,6 +368,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onEscape))
   /* Alamat panjang tetap boleh dipatah di mana saja, tapi nama produk
      yang jadi tautan hanya dipatah kalau memang tidak muat */
   overflow-wrap: anywhere;
+}
+
+/* main.css memberi garis fokus ke semua textarea, dan aturan itu mengalahkan
+   kelas outline-none Tailwind (yang berada di dalam @layer). Penanda fokus
+   kotak ketik ini sudah diurus bingkai pembungkusnya (focus-within), jadi
+   garis kedua di dalamnya hanya membuat tampilannya dobel. */
+.chat-input:focus {
+  outline: none;
 }
 
 .chat-dot {
