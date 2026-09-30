@@ -32,21 +32,31 @@ export const isRequestCakeDateValid = (date) => {
 };
 
 /**
- * Hitung ongkir berdasarkan radius jarak (km) dari toko:
- *   < 5 km    -> Rp30.000
- *   5–10 km   -> Rp45.000
- *   11–15 km  -> Rp55.000
- *   16–20 km  -> Rp65.000
- *   21–25 km  -> Rp75.000
+ * Hitung ongkir berdasarkan radius jarak (km) dari toko. Tarif dari toko:
+ *   < 2 km    -> Rp35.000
+ *   3–5 km    -> Rp45.000
+ *   6–10 km   -> Rp55.000
+ *   11–15 km  -> Rp65.000
+ *   16–20 km  -> Rp75.000
+ *   21–25 km  -> Rp85.000
  *   > 25 km   -> null (di luar jangkauan, hubungi toko)
+ *
+ * Tabel toko ditulis dengan angka bulat, sedangkan jarak dari peta berupa
+ * pecahan. Batas atas tiap tarif ikut tarif itu, dan jarak di celah antar
+ * baris (mis. 2,4 km atau 5,5 km) masuk tarif berikutnya.
+ *
+ * Salinannya untuk ditampilkan ada di frontend/src/config/constants.js
+ * (DELIVERY_FEE_TIERS & deliveryTierIndex); keselarasannya diperiksa
+ * constants.test.js di frontend.
  */
 export const calculateDeliveryFee = (distanceKm) => {
    if (!distanceKm || distanceKm <= 0) return 0;
    if (distanceKm > MAX_DELIVERY_DISTANCE_KM) return null;
 
-   if (distanceKm < 5) return 30000;
-   if (distanceKm <= 10) return 45000;
-   if (distanceKm <= 15) return 55000;
-   if (distanceKm <= 20) return 65000;
-   return 75000;
+   if (distanceKm < 2) return 35000;
+   if (distanceKm <= 5) return 45000;
+   if (distanceKm <= 10) return 55000;
+   if (distanceKm <= 15) return 65000;
+   if (distanceKm <= 20) return 75000;
+   return 85000;
 };

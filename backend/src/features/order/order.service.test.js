@@ -100,11 +100,12 @@ describe("previewCheckout", () => {
    });
 
    it.each([
-      [3.2, 30000],
-      [7.5, 45000],
-      [10.5, 55000],
-      [18, 65000],
-      [24.9, 75000],
+      [1.5, 35000],
+      [3.2, 45000],
+      [7.5, 55000],
+      [10.5, 65000],
+      [18, 75000],
+      [24.9, 85000],
    ])("pengiriman %s km: ongkir Rp%s", async (km, fee) => {
       getDeliveryDistanceKm.mockResolvedValue(km);
 
@@ -170,8 +171,8 @@ describe("previewCheckout", () => {
       expect(summary).toMatchObject({
          subtotal: 375000,
          distanceKm: 18,
-         deliveryFee: 65000,
-         total: 440000,
+         deliveryFee: 75000,
+         total: 450000,
       });
    });
 
@@ -192,7 +193,7 @@ describe("previewCheckout", () => {
       getDeliveryDistanceKm.mockResolvedValue(3);
       const { requestCakeDate, ...noDate } = delivery;
       await expect(previewCheckout(USER, noDate)).resolves.toMatchObject({
-         deliveryFee: 30000,
+         deliveryFee: 45000,
       });
    });
 
@@ -228,8 +229,8 @@ describe("confirmCheckout", () => {
          addressLng: delivery.addressLng,
          distanceKm: 7.5,
          subtotal: 375000,
-         deliveryFee: 45000,
-         total: 420000,
+         deliveryFee: 55000,
+         total: 430000,
       });
       expect(savedOrder().items.create).toHaveLength(2);
    });
