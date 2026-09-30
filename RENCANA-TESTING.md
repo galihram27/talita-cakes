@@ -24,7 +24,7 @@ supaya setiap commit konversi bisa dibuktikan tidak mengubah perilaku.
 | 7. Penutup: dokumentasi | Selesai |
 | 8. (Opsional) Test otomatis di GitHub | Berkas dibuat, belum dijalankan di GitHub |
 | **Putaran kedua** | |
-| 9. API test tanpa basis data | Belum |
+| 9. API test tanpa basis data | Selesai (lihat catatan di Tahap 9) |
 | 10. Integration test dengan basis data | Belum |
 | 11. Component test Vue | Belum |
 | 12. End-to-end (Playwright) | Belum |
@@ -545,10 +545,18 @@ Tujuan: memeriksa jalur HTTP lengkap (route → middleware → controller →
 error handler) untuk request yang **ditolak sebelum menyentuh basis data**.
 Bagian ini bisa dikerjakan tanpa menyiapkan basis data test.
 
-- [ ] Pasang `supertest` di backend sebagai dependensi pengembangan
-- [ ] Buat `backend/vitest.api.config.js` dengan `include`
-      `["src/**/*.api.test.js"]`, dan script `"test:api"`
-- [ ] Berkas `vitest.setup.js` yang meniru Prisma tetap dipakai: kalau ada
+- [x] Pasang `supertest` di backend sebagai dependensi pengembangan
+- [ ] ~~Buat `backend/vitest.api.config.js` dengan `include`
+      `["src/**/*.api.test.js"]`, dan script `"test:api"`~~
+
+      **Berbeda dari rencana.** Tidak dibuat config dan script terpisah.
+      API test tanpa basis data ternyata cepat (seluruh `npm test` backend
+      sekitar 14 detik), jadi ikut `npm test` dan otomatis dijalankan GitHub
+      Actions. Akhiran `.api.test.js` tetap dipakai supaya mudah dibedakan.
+      Config terpisah baru perlu di Tahap 10, untuk test yang memakai
+      basis data.
+
+- [x] Berkas `vitest.setup.js` yang meniru Prisma tetap dipakai: kalau ada
       request yang ternyata sampai ke basis data, test langsung gagal
 
 Yang diperiksa:
@@ -563,6 +571,29 @@ Yang diperiksa:
 | Alamat yang tidak ada (`GET /api/tidak-ada`) | 404 berformat JSON |
 | `POST /api/chat` saat `CHAT_ENABLED` bukan `true` | 503 |
 | Header CORS | Hanya `FRONTEND_URL` yang diizinkan, dengan `credentials` |
+
+Semua skenario di atas sudah dites, ditambah:
+
+- token yang isinya diubah (mis. role dijadikan `ADMIN`) ditolak 401
+- admin lolos penjaga lalu ditolak validasi, supaya ketahuan kalau penjaga
+  admin diam-diam menolak semua orang
+- pembatas request chat: tamu 20 dan pembeli login 40 request per 10 menit,
+  dihitung per IP / per akun
+- `POST /api/uploads/images`: pembeli boleh mengunggah (acuan desain),
+  berkas bukan gambar ditolak 400, lebih dari 5 MB ditolak 413
+- body lebih dari 10 MB ditolak 413; JSON rusak (lihat "Temuan")
+- `POST /api/auth/refresh-token` tanpa cookie atau dengan token palsu 401
+- kunjungan bot ke `/api/analytics/visit` tidak dicatat
+
+Pembantu bersama ada di `backend/src/test-helpers/api.js`: memuat
+`app.js` dengan `.env` tiruan (termasuk kunci Resend palsu, karena klien
+Resend menolak dibuat tanpa kunci) dan membuat token login palsu. Saat
+konversi TypeScript, folder ini perlu ikut dikecualikan dari kompilasi ke
+`dist/`, sama seperti berkas `*.test.ts`.
+
+Dicek dengan merusak kode secara sengaja: melepas `requireRole` dari
+`POST /api/products`, mengganti secret di `auth.middleware.js`, dan menaikkan
+batas chat tamu. Ketiganya membuat test gagal.
 
 Commit: `chore(backend): add supertest`, lalu satu commit per fitur.
 
@@ -872,6 +903,9 @@ beserta keputusannya.
 | `formatRupiah` menampilkan harga berdesimal apa adanya, mis. `Rp18.667,6`. Baru terjadi kalau diskon menghasilkan pecahan rupiah; saat ini tidak ada karena semua diskon 0 | Catatan saja: perlu diputuskan kalau diskon mulai dipakai |
 | **Keamanan:** tidak ada batas percobaan kode OTP. Kolom `attempts` di tabel OTP (`schema.prisma`) ada tapi tidak pernah dibaca atau ditambah. Kode 6 digit berlaku 10 menit, jadi kode atur ulang sandi bisa ditebak berulang kali | Belum diputuskan. Perlu batas percobaan per kode (mis. 5 kali lalu kode hangus) di commit `fix(auth)` tersendiri; test-nya di Tahap 13 |
 | **Keamanan:** hanya `/api/chat` yang punya pembatas request (`express-rate-limit`). Login, daftar, kirim ulang OTP, dan atur ulang sandi tidak dibatasi, jadi sandi bisa ditebak terus-menerus dan email OTP bisa dikirim berulang ke alamat yang sama | Belum diputuskan. Paket `express-rate-limit` sudah terpasang, tinggal dipakai di `auth.routes.js` |
+| **Keamanan:** logout tidak pernah mencabut refresh token. Cookie `refreshToken` dipasang dengan `Path=/api/auth/refresh-token` (`utils/cookie.js`), jadi peramban tidak mengirimnya ke `POST /api/auth/logout`. `logout()` di `auth.service.js` menerima nilai kosong dan langsung selesai, sehingga token di basis data tetap berlaku sampai 7 hari. Cookie di peramban tetap terhapus, jadi dampaknya hanya kalau token sempat dicuri | Belum diputuskan. Pilihan: perluas path cookie ke `/api/auth`, atau cabut token dari `userId` di access token. Perbaikannya commit `fix(auth)` tersendiri |
+| JSON rusak di body dijawab status 400 (benar) tapi dengan pesan `"Internal Server Error"`, dan dicatat ke log sebagai error tak terduga. Penyebabnya error dari body-parser bukan `AppError` | Belum diputuskan. Bisa ditangani di `errorHandler.js` seperti kasus 413 |
+| Jawaban 401/403 dari `auth.middleware.js` dan `role.middleware.js` hanya berisi `{ message }`, tanpa `success: false` seperti jawaban error lain | Catatan saja. Frontend saat ini tidak bergantung pada `success` |
 | `npx prettier --check` melaporkan 9 berkas backend lama. Penyebabnya hanya akhiran baris CRLF di working copy, bukan gaya kode | Catatan saja |
 
 ---

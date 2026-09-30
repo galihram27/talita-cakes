@@ -164,6 +164,12 @@ Daftar lengkap dan alasannya ada di [RENCANA-TESTING.md](RENCANA-TESTING.md).
 
 - Berkas test diletakkan di sebelah berkas yang dites, dengan nama yang sama
   ditambah `.test`: `cart.service.js` → `cart.service.test.js`.
+- API test (`*.api.test.js`) mengirim request HTTP ke `app.js` lewat
+  `supertest`. Muat aplikasinya lewat `loadApp()` di
+  `backend/src/test-helpers/api.js`, jangan meng-import `app.js` langsung:
+  `.env` tiruan harus terisi sebelum `app.js` dimuat. Karena basis data
+  ditiru, API test hanya cocok untuk request yang ditolak sebelum menyentuh
+  basis data (401, 403, 422).
 - Nama `it(...)` dalam bahasa Indonesia dan menjelaskan kejadiannya.
 - **Test tidak pernah menyentuh basis data.** `backend/vitest.setup.js` meniru
   Prisma dan melempar error kalau ada test yang lupa meniru repository.
