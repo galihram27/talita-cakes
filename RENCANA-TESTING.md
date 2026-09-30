@@ -20,7 +20,7 @@ supaya setiap commit konversi bisa dibuktikan tidak mengubah perilaku.
 | 3. Backend: skema validasi | Selesai |
 | 4. Backend: service dengan repository tiruan | Selesai (lihat catatan di Tahap 4) |
 | 5. Frontend: pasang Vitest | Selesai |
-| 6. Frontend: rumus harga, terjemahan, utilitas | Belum |
+| 6. Frontend: rumus harga, terjemahan, utilitas | Selesai (lihat catatan di Tahap 6) |
 | 7. Penutup: dokumentasi | Belum |
 | 8. (Opsional) Test otomatis di GitHub | Belum |
 
@@ -351,22 +351,39 @@ Isinya sama: `Math.round((price - (price * discount) / 100) * 100) / 100`.
 Kalau salah satunya berubah, harga di kartu produk bisa berbeda dari harga di
 halaman detail tanpa ketahuan.
 
-- [ ] Buat `frontend/src/utils/price.js` berisi satu fungsi
+- [x] Buat `frontend/src/utils/price.js` berisi satu fungsi
       `applyDiscount(price, discount)` dengan rumus yang **sama persis**
-- [ ] Ganti kesepuluh tempat itu dengan memanggil fungsi tersebut.
+- [x] Ganti kesepuluh tempat itu dengan memanggil fungsi tersebut.
       Commit sendiri: `refactor(frontend): move discount formula to utils/price.js`
+
+      **Berbeda dari rencana.** Ternyata ada tempat kesebelas,
+      `config/seo.js` (`lowestPrice`, harga untuk mesin pencari), dengan rumus
+      yang sama; ikut diganti. `ProductCard.vue` dan `AdminProductsView.vue`
+      tetap melewati rumus kalau diskon 0, seperti sebelumnya.
+      `views/MenuView.vue` (`sortPriceOf`) sengaja dibiarkan: rumusnya tanpa
+      pembulatan dan hanya dipakai untuk mengurutkan, tidak ditampilkan.
+
 - [ ] Jalankan build frontend dan cek manual harga di menu & detail produk.
       Angkanya harus sama dengan catatan dari Tahap 0
-- [ ] Tulis `price.test.js` memakai **contoh angka yang sama** dengan test
+
+      Build sudah lolos. Pengecekan harga di peramban **belum** dilakukan.
+      Karena semua produk saat ini diskon 0, harga yang tampil tidak melewati
+      bagian rumus yang berubah; risikonya kecil tapi tetap perlu dilihat.
+
+- [x] Tulis `price.test.js` memakai **contoh angka yang sama** dengan test
       `applyDiscount` di backend. Dengan begitu, kalau rumus di salah satu
       sisi berubah, test di sisi itu gagal. Aturan "ubah rumus diskon di kedua
       sisi" di `CLAUDE.md` jadi diperiksa otomatis
 
 ### Terjemahan: kunci `id` dan `en` harus sama
 
-- [ ] Tulis `locales/locales.test.js` yang membandingkan seluruh kunci
+- [x] Tulis `locales/locales.test.js` yang membandingkan seluruh kunci
       `id.js` dan `en.js`, termasuk kunci bertingkat. Kalau berbeda, test gagal
       dan menampilkan kunci yang hilang di masing-masing berkas
+
+      Ditambah: `locales/id/about.js` dibandingkan dengan bagian `about` di
+      `en.js`, karena berkas itulah yang benar-benar tampil (menimpa `id.js`,
+      lihat `i18n/index.js`). Juga diperiksa tidak ada teks kosong.
 
 Test ini menggantikan penghitungan manual "681 kunci" di `CLAUDE.md`.
 
@@ -375,8 +392,14 @@ Test ini menggantikan penghitungan manual "681 kunci" di `CLAUDE.md`.
 `backend/src/features/product/product.constant.js` tidak meng-import apa pun,
 jadi bisa di-import langsung dari test frontend dengan path relatif.
 
-- [ ] Tulis `config/productOptions.test.js` yang membandingkan daftar
+- [x] Tulis `config/productOptions.test.js` yang membandingkan daftar
       kategori, sub-kategori, rasa, dan ukuran roti di kedua berkas
+
+      Rasa TYPE2 & TYPE4 di frontend ada di `config/constants.js`, jadi ikut
+      dibandingkan dari sana. Baris `config/productOptions.js` di tabel
+      "Utilitas lain" digabung ke berkas test ini: setiap fungsi `is...` /
+      `...For...` dicoba dengan semua kategori & sub-kategori plus nilai yang
+      tidak dikenal, dan jawabannya harus sama dengan backend.
 
 Dengan test ini, aturan "dua berkas wajib sinkron" di `CLAUDE.md` diperiksa
 otomatis.
@@ -393,6 +416,17 @@ otomatis.
 Test `chatMarkdown.js` adalah test keamanan. Teks jawaban asisten berasal dari
 model AI, dan tidak boleh ada jalan bagi teks itu untuk menjalankan kode di
 peramban pembeli.
+
+Semua baris di tabel di atas sudah dites.
+
+Cara membuktikan test bekerja sudah dicoba untuk tiap berkas: rumus diskon
+`/ 100` jadi `/ 10`, satu kunci `en.js` diganti nama, satu rasa dan satu isi
+box di `product.constant.js` diubah, escape `<` di `chatMarkdown.js` dihapus,
+dan alamat relatif dijadikan tautan. Semuanya membuat test gagal.
+
+**Saran di luar rencana:** tarif ongkir juga disalin di frontend
+(`DELIVERY_FEE_TIERS` di `config/constants.js`, untuk dibaca pembeli). Belum
+ada test yang mencocokkannya dengan `calculateDeliveryFee` di backend.
 
 Commit: satu commit per berkas sumber.
 
@@ -498,6 +532,7 @@ beserta keputusannya.
 | Checkout memakai harga yang tersimpan di keranjang. Kalau admin mengubah harga setelah barang masuk keranjang, pembeli membayar harga lama | Belum diputuskan: disengaja atau perlu dihitung ulang |
 | `getProductById`: komentar menyebut jawaban "tidak ada" tidak ikut tersimpan di cache, padahal `cached()` menyimpan `null` juga, jadi id yang tidak ada dijawab dari cache selama 5 menit. Dampaknya kecil karena setiap perubahan produk mengosongkan cache | Belum diputuskan: perbaiki kodenya atau komentarnya |
 | Data nyata (Tahap 0): semua produk saat ini diskon 0, jadi persen diskon di test adalah contoh di atas harga nyata | Catatan saja |
+| `formatRupiah` menampilkan harga berdesimal apa adanya, mis. `Rp18.667,6`. Baru terjadi kalau diskon menghasilkan pecahan rupiah; saat ini tidak ada karena semua diskon 0 | Catatan saja: perlu diputuskan kalau diskon mulai dipakai |
 | `npx prettier --check` melaporkan 9 berkas backend lama. Penyebabnya hanya akhiran baris CRLF di working copy, bukan gaya kode | Catatan saja |
 
 ---
