@@ -12,7 +12,12 @@ import { useAuthStore } from '@/stores/auth.store'
 import { formatRupiah } from '@/utils/formatCurrency'
 import { searchAddress, reverseGeocode as reverseGeocodeApi } from '@/utils/geocode'
 import OrderConfirmModal from '@/components/checkout/OrderConfirmModal.vue'
-import { DELIVERY_FEE_TIERS, MAX_DELIVERY_DISTANCE_KM, STORE_INFO } from '@/config/constants'
+import {
+  DELIVERY_FEE_TIERS,
+  MAX_DELIVERY_DISTANCE_KM,
+  STORE_INFO,
+  deliveryTierIndex,
+} from '@/config/constants'
 
 const { t } = useI18n()
 const cartStore = useCartStore()
@@ -101,15 +106,7 @@ const dateError = computed(() =>
 // Ongkos kirim dibagi per rentang jarak. Nilai ini hanya menentukan baris mana
 // yang disorot di tabel ongkir; perhitungan biayanya tetap dilakukan server.
 // -1 berarti tidak ada yang disorot (jarak belum diketahui atau terlalu jauh).
-const activeTierIndex = computed(() => {
-  const d = distanceKm.value
-  if (d === null || d <= 0 || d > MAX_DELIVERY_DISTANCE_KM) return -1
-  if (d < 5) return 0
-  if (d <= 10) return 1
-  if (d <= 15) return 2
-  if (d <= 20) return 3
-  return 4
-})
+const activeTierIndex = computed(() => deliveryTierIndex(distanceKm.value))
 
 const isDelivery = computed(() => fulfillmentType.value === 'DELIVERY')
 const isForSomeoneElse = computed(() => recipientType.value === 'FOR_SOMEONE_ELSE')

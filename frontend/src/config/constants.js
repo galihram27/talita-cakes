@@ -46,6 +46,19 @@ export const DELIVERY_FEE_TIERS = [
   { label: 'Radius 21–25 km', fee: 75000 },
 ]
 
+// Baris DELIVERY_FEE_TIERS yang berlaku untuk suatu jarak, dipakai untuk
+// menyorot tarif di checkout. -1 berarti jarak belum diketahui atau di luar
+// jangkauan. Batasnya harus sama dengan calculateDeliveryFee di backend.
+export const deliveryTierIndex = (distanceKm) => {
+  const d = distanceKm
+  if (d === null || d <= 0 || d > MAX_DELIVERY_DISTANCE_KM) return -1
+  if (d < 5) return 0
+  if (d <= 10) return 1
+  if (d <= 15) return 2
+  if (d <= 20) return 3
+  return 4
+}
+
 // Rasa untuk petite cake custom decor (TYPE2).
 // Salinan dari backend product.constant.js — ubah keduanya bersamaan.
 export const TYPE2_FLAVORS = [
