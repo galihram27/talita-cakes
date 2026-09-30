@@ -21,7 +21,7 @@ supaya setiap commit konversi bisa dibuktikan tidak mengubah perilaku.
 | 4. Backend: service dengan repository tiruan | Selesai (lihat catatan di Tahap 4) |
 | 5. Frontend: pasang Vitest | Selesai |
 | 6. Frontend: rumus harga, terjemahan, utilitas | Selesai (lihat catatan di Tahap 6) |
-| 7. Penutup: dokumentasi | Belum |
+| 7. Penutup: dokumentasi | Selesai |
 | 8. (Opsional) Test otomatis di GitHub | Belum |
 
 ---
@@ -434,21 +434,32 @@ Commit: satu commit per berkas sumber.
 
 ## Tahap 7 — Penutup: dokumentasi
 
-- [ ] Perbarui `CLAUDE.md`:
+- [x] Perbarui `CLAUDE.md`:
   - hapus kalimat "Repo ini **tidak punya automated test**"
   - tambahkan `npm test` di backend dan frontend ke bagian "Menjalankan &
     memverifikasi"
   - aturan sinkron `id`/`en`, `product.constant`/`productOptions`, dan rumus
     diskon: sebutkan bahwa sekarang diperiksa oleh test
   - letak dan penamaan berkas test
-- [ ] Perbarui `README.md`: cara menjalankan test
-- [ ] Perbarui [RENCANA-TYPESCRIPT.md](RENCANA-TYPESCRIPT.md):
+- [x] Perbarui `README.md`: cara menjalankan test
+- [x] Perbarui [RENCANA-TYPESCRIPT.md](RENCANA-TYPESCRIPT.md):
   - bagian "Verifikasi": tambahkan `npm test` sebagai pemeriksaan wajib di
     setiap commit
   - `backend/tsconfig.json` perlu `"exclude": ["src/**/*.test.ts"]`, supaya
     berkas test tidak ikut dikompilasi ke `dist/`
   - `include` di `vitest.config.js` dan `vite.config.js` diganti menjadi
     `*.test.{js,ts}`
+
+Catatan:
+
+- README ditulis dalam bahasa Inggris, jadi bagian cara menjalankan test
+  juga berbahasa Inggris.
+- Klaim di README bahwa test backend tidak butuh `.env` sudah dicek dengan
+  menjalankan `npm test` saat `.env` disingkirkan sementara: 511 test lolos.
+- `CLAUDE.md` juga menyebut bahwa sinkronisasi masa berlaku token diperiksa
+  `utils/token.test.js`.
+- `RENCANA-TYPESCRIPT.md` juga mencatat bahwa `frontend/vite.config.js` dan
+  `backend/vitest.config.js` sekarang ikut disunting saat konversi.
 
 ---
 
