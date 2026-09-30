@@ -1,3 +1,5 @@
 # Ignore local structure export
 /wireframes
 /.vscode
+# Folder latihan Gemini (Tahap 0), berisi kunci API
+/belajar-gemini
