@@ -8,7 +8,9 @@
     "build": "vite-ssg build",
     "postbuild": "node scripts/generate-sitemap.mjs",
     "build:spa": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@vee-validate/zod": "^4.15.1",
@@ -32,6 +34,7 @@
     "@vitejs/plugin-vue": "^6.0.7",
     "tailwindcss": "^4.3.2",
     "vite": "^8.1.1",
-    "vite-ssg": "^28.3.0"
+    "vite-ssg": "^28.3.0",
+    "vitest": "^5.0.2"
   }
 }
