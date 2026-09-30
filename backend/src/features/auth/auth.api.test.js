@@ -117,17 +117,25 @@ describe("POST /api/auth/refresh-token", () => {
 });
 
 describe("POST /api/auth/logout", () => {
-   // Mencatat perilaku sekarang. Cookie refresh token hanya berlaku untuk
-   // path /api/auth/refresh-token, jadi peramban tidak mengirimnya ke
-   // /api/auth/logout dan token di basis data tidak pernah dihapus saat
-   // logout. Lihat "Temuan" di RENCANA-TESTING.md.
-   it("tanpa cookie tetap berhasil dan menghapus cookie di path refresh-token", async () => {
+   it("tanpa cookie tetap berhasil dan menghapus cookie", async () => {
       const res = await request(app).post("/api/auth/logout");
 
       expect(res.status).toBe(200);
       const [cookie] = res.headers["set-cookie"];
       expect(cookie).toMatch(/^refreshToken=;/);
-      expect(cookie).toContain("Path=/api/auth/refresh-token");
+      expect(cookie).toContain("Path=/api/auth;");
       expect(cookie).toContain("HttpOnly");
+   });
+
+   // Pembeli yang login sebelum path cookie diganti masih menyimpan cookie di
+   // path lama. Lihat utils/cookie.js.
+   it("ikut menghapus cookie di path lama /api/auth/refresh-token", async () => {
+      const res = await request(app).post("/api/auth/logout");
+
+      expect(res.headers["set-cookie"]).toContainEqual(
+         expect.stringMatching(
+            /^refreshToken=;.*Path=\/api\/auth\/refresh-token;.*Expires=Thu, 01 Jan 1970/
+         )
+      );
    });
 });
