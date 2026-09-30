@@ -22,41 +22,61 @@ import {
    verifyResetOtpSchema,
    resetPasswordSchema,
 } from "./auth.validation.js";
+import {
+   loginLimiter,
+   otpSendLimiter,
+   otpVerifyLimiter,
+} from "./auth.limiter.js";
 
 /**
  * Daftar endpoint auth (semua di-mount dengan prefix /api/auth).
  *
- * Urutan tiap route: validate(skema) -> controller.
- * `validate` menolak body yang tidak sesuai, jadi controller pasti menerima
- * data yang sudah bersih.
+ * Urutan tiap route: pembatas request -> validate(skema) -> controller.
+ * Pembatas dipasang sebelum validate supaya request rusak yang dikirim
+ * berulang-ulang juga ikut terhitung. `validate` menolak body yang tidak
+ * sesuai, jadi controller pasti menerima data yang sudah bersih.
  */
 const router = Router();
 
 // --- Register: daftar -> verifikasi OTP -> (opsional) kirim ulang OTP ---
-router.post("/register", validate(registerSchema), registerController);
+router.post(
+   "/register",
+   otpSendLimiter,
+   validate(registerSchema),
+   registerController
+);
 router.post(
    "/verify-email",
+   otpVerifyLimiter,
    validate(verifyEmailSchema),
    verifyEmailController
 );
-router.post("/resend-otp", validate(resendOtpSchema), resendOtpController);
+router.post(
+   "/resend-otp",
+   otpSendLimiter,
+   validate(resendOtpSchema),
+   resendOtpController
+);
 
 // --- Login ---
-router.post("/login", validate(loginSchema), loginController);
+router.post("/login", loginLimiter, validate(loginSchema), loginController);
 
 // --- Lupa password: minta OTP -> cek OTP -> ganti password ---
 router.post(
    "/forgot-password",
+   otpSendLimiter,
    validate(forgotPasswordSchema),
    forgotPasswordController
 );
 router.post(
    "/verify-reset-otp",
+   otpVerifyLimiter,
    validate(verifyResetOtpSchema),
    verifyResetOtpController
 );
 router.post(
    "/reset-password",
+   otpVerifyLimiter,
    validate(resetPasswordSchema),
    resetPasswordController
 );
