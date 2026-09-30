@@ -11,8 +11,8 @@
  * KEAMANAN: jawaban model tidak bisa dipercaya. Pembeli bisa memancingnya
  * menulis `<script>` atau tautan `javascript:`. Karena itu seluruh teks
  * di-escape LEBIH DULU, baru tag yang dikenali disusun sendiri di sini, dan
- * tautan hanya dibuat untuk alamat http/https, serta satu bentuk alamat di
- * situs ini sendiri: halaman produk (`/product/<uuid>`).
+ * tautan hanya dibuat untuk alamat http/https, serta tautan produk berbentuk
+ * `[Nama produk](#produk)`.
  */
 
 const escapeHtml = (text) =>
@@ -26,22 +26,30 @@ const escapeHtml = (text) =>
 const link = (url, label) =>
   `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`
 
-// Tanpa target=_blank: halaman produk dibuka di tab yang sama lewat router
-// (lihat ChatWidget.vue), supaya percakapan tidak tertinggal di tab lain.
-// Polanya ketat, hanya huruf heksa dan tanda hubung, jadi tidak ada alamat
-// relatif lain (mis. /admin) yang bisa diselipkan model.
-const PRODUCT_PATH = /^\/product\/[0-9a-f-]{36}$/i
-const internalLink = (path, label) => `<a href="${path}" data-internal>${label}</a>`
+// Model tidak pernah menulis id produk (ia sering salah menyalin UUID), hanya
+// namanya. Id-nya dicari widget dari nama itu saat tautan diklik (lihat
+// ChatWidget.vue). `href` ke Menu hanya cadangan untuk Ctrl+klik atau buka
+// di tab baru, yang tidak melewati pencarian itu.
+//
+// `label` sudah di-escape, jadi aman ditaruh di atribut. Tanda * dibuang dari
+// nama, karena tanda tebal di dalam kurung siku bukan bagian nama produk.
+const productLink = (label) =>
+  `<a href="/menu" data-product-name="${label.replace(/\*/g, '')}">${label}</a>`
 
-// `[label](https://...)`, `[label](/product/...)`, atau alamat polos. Semuanya
+// `[label](https://...)`, `[label](#produk)`, atau alamat polos. Semuanya
 // dicari dalam satu langkah supaya alamat yang sudah jadi tautan tidak
 // dibungkus dua kali. Tanda baca di ujung alamat polos dianggap penutup
 // kalimat, bukan alamat.
-const LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)|(https?:\/\/[^\s<]*[^\s<.,!?)])/g
+//
+// Alamat relatif lain (mis. /admin, atau /product/<uuid> dari jawaban lama
+// yang masih tersimpan di sesi) ikut dikenali hanya supaya tampil sebagai
+// labelnya saja, bukan tautan.
+const LINK_PATTERN = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|#produk|\/[^\s)]*)\)|(https?:\/\/[^\s<]*[^\s<.,!?)])/g
 
 const renderLink = (_, label, url, bare) => {
   if (bare) return link(bare, bare)
-  if (url.startsWith('/')) return PRODUCT_PATH.test(url) ? internalLink(url, label) : label
+  if (url === '#produk') return productLink(label)
+  if (url.startsWith('/')) return label
   return link(url, label)
 }
 

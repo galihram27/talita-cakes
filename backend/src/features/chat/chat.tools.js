@@ -57,24 +57,30 @@ const startingPrice = (product) => {
    return applyDiscount(cheapest, product.discount);
 };
 
-// Alamat halaman ikut dikirim di setiap hasil, supaya model menautkan
-// produk dengan alamat jadi, bukan menyusunnya sendiri dari id.
+// Id produk (UUID) sengaja TIDAK pernah dikirim ke model. Pengenal produk
+// bagi model adalah namanya, baik untuk detailProduk maupun untuk tautan di
+// jawaban (widget mencari id-nya sendiri dari nama, lihat ChatWidget.vue).
 //
-// Alamat ini sekaligus menjadi pengenal produk untuk detailProduk; kolom
-// `id` terpisah sengaja tidak dikirim. UUID mahal dalam token (sekitar 20
-// token per buah), dan mengirimnya dua kali untuk 20 hasil pencarian
-// menambah sekitar 500 token per pertanyaan.
-const productPage = (product) => `/product/${product.id}`;
-const PRODUCT_PAGE_ID = /^\/product\/([0-9a-f-]{36})$/i;
-
+// Alasannya dua. Model kadang salah menyalin UUID satu karakter, dan
+// tautannya berakhir di "Product tidak ditemukan". UUID juga mahal, sekitar
+// 20 token per buah, dikali 20 hasil pencarian.
 const summarizeProduct = (product) => ({
    nama: product.name,
    kategori: product.category,
    subkategori: product.subcategory ?? undefined,
    hargaMulai: startingPrice(product),
    diskonPersen: Number(product.discount) || undefined,
-   halaman: productPage(product),
 });
+
+// Nama produk saat ini unik, tapi basis data tidak memaksakannya. Kalau
+// suatu saat ada nama ganda, yang dipakai produk pertama di katalog.
+const normalizeName = (name) => name.trim().toLowerCase();
+
+const findProductByName = async (name) => {
+   const target = normalizeName(name);
+   const products = await getAllProducts();
+   return products.find((product) => normalizeName(product.name) === target);
+};
 
 // Arti kolom size berbeda per tipe. Pada cupcake ia jumlah isi box, bukan
 // diameter; salah membacanya berarti asisten menyebut "kue 6 cm".
@@ -141,7 +147,6 @@ const detailProduct = (product) => {
       minimalBeli: isGoodiebagCupcake(product.category)
          ? `${goodiebagMinQty(product.category)} paket`
          : undefined,
-      halaman: productPage(product),
    };
 };
 
@@ -395,17 +400,17 @@ const PRODUCT_TOOLS = [
    {
       name: "detailProduk",
       description:
-         "Pilihan rasa, filling, topping, minimal beli, dan harga per ukuran satu produk. Pakai `halaman` dari hasil cariProduk.",
+         "Pilihan rasa, filling, topping, minimal beli, dan harga per ukuran satu produk. Pakai `nama` persis dari hasil cariProduk.",
       parameters: {
          type: "object",
          properties: {
-            halaman: {
+            nama: {
                type: "string",
                description:
-                  "Kolom `halaman` produk dari cariProduk, mis. '/product/...'",
+                  "Nama produk persis seperti kolom `nama` di cariProduk",
             },
          },
-         required: ["halaman"],
+         required: ["nama"],
       },
    },
    {
@@ -433,19 +438,20 @@ const ORDER_TOOL = {
 export const buildTools = ({ userId }) => {
    const handlers = {
       cariProduk: (args) => searchCatalog(args),
-      detailProduk: async ({ halaman }) => {
-         // Argumen disusun model, bukan divalidasi Zod. Tanpa pengecekan ini
-         // alamat kosong atau karangan sampai ke Prisma dan menjadi error 500.
-         const id =
-            typeof halaman === "string"
-               ? halaman.trim().match(PRODUCT_PAGE_ID)?.[1]
+      detailProduk: async ({ nama }) => {
+         // Argumen disusun model, bukan divalidasi Zod, jadi bisa kosong
+         // atau berupa nama karangan.
+         const found =
+            typeof nama === "string" && nama.trim() !== ""
+               ? await findProductByName(nama)
                : undefined;
-         if (!id) {
+         if (!found) {
             return {
-               error: "halaman produk wajib diisi, salin dari hasil cariProduk.",
+               error: "Produk dengan nama itu tidak ada. Salin nama persis dari hasil cariProduk.",
             };
          }
-         return detailProduct(await getProductById(id));
+         // Katalog yang di-cache belum tentu memuat semua kolom detail
+         return detailProduct(await getProductById(found.id));
       },
       infoToko: () => storeInfo(),
    };

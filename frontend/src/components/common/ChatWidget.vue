@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { MessageCircle, X, Send, Square, RotateCcw, Sparkles } from 'lucide-vue-next'
 import { useChatStore, MAX_USER_LENGTH } from '@/stores/chat.store'
+import { useProductStore } from '@/stores/product.store'
 import { renderChatMarkdown } from '@/utils/chatMarkdown'
 import { STORE_INFO } from '@/config/constants'
 
@@ -17,6 +18,7 @@ import { STORE_INFO } from '@/config/constants'
  */
 
 const chat = useChatStore()
+const productStore = useProductStore()
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
@@ -97,15 +99,33 @@ const openPanel = async () => {
   inputEl.value?.focus()
 }
 
-// Tautan produk di jawaban asisten (data-internal, lihat chatMarkdown.js)
+const normalizeName = (name) => name.trim().toLowerCase()
+
+// Katalog yang sama dengan halaman Menu. Kalau namanya tidak ketemu,
+// katalog di peramban mungkin sudah lama (disimpan sampai 10 menit) dan
+// produknya baru ditambahkan, jadi diambil ulang sekali sebelum menyerah.
+const findProductByName = async (name) => {
+  const target = normalizeName(name)
+  const find = () => productStore.products.find((p) => normalizeName(p.name ?? '') === target)
+  try {
+    await productStore.ensureLoaded()
+    return find() ?? (await productStore.refresh(), find())
+  } catch {
+    return find()
+  }
+}
+
+// Tautan produk di jawaban asisten ([Nama](#produk), lihat chatMarkdown.js)
 // dibuka lewat router: halaman berganti tanpa dimuat ulang dan percakapan
-// tetap ada. Ctrl/Cmd/Shift+klik dibiarkan, supaya pembeli tetap bisa
-// membukanya di tab baru.
-const onMessageClick = (e) => {
-  const anchor = e.target.closest('a[data-internal]')
+// tetap ada. Ctrl/Cmd/Shift+klik dibiarkan dan jatuh ke halaman Menu.
+// Kalau nama produknya tidak ada (mis. baru diganti admin), pembeli juga
+// diarahkan ke Menu, bukan ke halaman "produk tidak ditemukan".
+const onMessageClick = async (e) => {
+  const anchor = e.target.closest('a[data-product-name]')
   if (!anchor || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return
   e.preventDefault()
-  router.push(anchor.getAttribute('href'))
+  const product = await findProductByName(anchor.dataset.productName)
+  router.push(product ? `/product/${product.id}` : '/menu')
   // Di ponsel panel memenuhi layar dan menutupi halaman produknya
   if (!window.matchMedia('(min-width: 640px)').matches) chat.close()
 }
